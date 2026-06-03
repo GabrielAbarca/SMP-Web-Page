@@ -3,155 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="Simple Manage Pro — Student portal for grades, attendance, schedule, and class information.">
+    <link rel="stylesheet" href="/src/css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="icon" type="image/png" href="logo.jpg">
-    <script src="script.js" defer></script>
+    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg">
+    <script src="/src/js/main.js" type="module" defer></script>
     <title>Simple Manage Pro</title>
 </head>
 <body>
     <div class="container">
+
+        <!-- ═══ SIDEBAR ═══ -->
         <aside>
             <div class="top">
                 <div class="logo">
-                    <img src="./img/logo.jpg" alt="logo">
+                    <img src="/src/assets/img/logo.jpg" alt="logo">
                     <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
                 </div>
                 <div class="close" id="close-btn">
                     <span class="material-symbols-outlined">close</span>
                 </div>
-                    </div>
-                <div class="sidebar">
-                    <a href="#" class="active">
-                        <span class="material-symbols-outlined">dashboard</span>
-                        <h3>Dashboard</h3>
-                    </a>
-                     <a href="teachers.html">
-                        <span class="material-symbols-outlined">engineering</span>
-                        <h3>Teachers</h3>
-                    </a>
-                    <a href="#">
-                        <span class="material-symbols-outlined">restaurant</span>
-                        <h3>Food</h3>
-                    </a>
-                    <a href="#">
-                        <span class="material-symbols-outlined">analytics</span>
-                        <h3>Analytics</h3>
-                    </a>
-                    <a href="#">
-                        <span class="material-symbols-outlined">partner_reports</span>
-                        <h3>Reports</h3>
-                    </a>
-                    <a href="#">
-                        <span class="material-symbols-outlined">settings</span>
-                        <h3>Settings</h3>
-                    </a>
-                    <a href="#">
-                        <span class="material-symbols-outlined">logout</span>
-                        <h3>Logout</h3>
-                    </a>
-                </div>
+            </div>
+            <div class="sidebar">
+                <a href="#" data-page="dashboard" class="active">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <h3>Dashboard</h3>
+                </a>
+                <a href="#" data-page="grades">
+                    <span class="material-symbols-outlined">school</span>
+                    <h3>Grades</h3>
+                </a>
+                <a href="#" data-page="schedule">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    <h3>Schedule</h3>
+                </a>
+                <a href="#" data-page="teachers">
+                    <span class="material-symbols-outlined">groups</span>
+                    <h3>Teachers</h3>
+                </a>
+                <a href="#" data-page="attendance">
+                    <span class="material-symbols-outlined">fact_check</span>
+                    <h3>Attendance</h3>
+                </a>
+                <a href="#" data-page="events">
+                    <span class="material-symbols-outlined">event</span>
+                    <h3>Events</h3>
+                </a>
+                <a href="#" data-page="settings">
+                    <span class="material-symbols-outlined">settings</span>
+                    <h3>Settings</h3>
+                </a>
+                <a href="#">
+                    <span class="material-symbols-outlined">logout</span>
+                    <h3>Logout</h3>
+                </a>
+            </div>
         </aside>
-                             <!-- END OF ASIDE -->
+        <!-- END OF ASIDE -->
 
+        <!-- ═══ MAIN CONTENT ═══ -->
         <main>
-            <h1>Dashboard</h1>
 
-            <div class="dashboard">
+            <!-- ─── DASHBOARD VIEW ─── -->
+            <section class="view-section active" id="view-dashboard">
+                <h1>Dashboard</h1>
 
-                <div class="assistance">
-                    <span class="material-symbols-outlined">handshake</span>
-                    <div class="middle">
-                        <div class="left">
-                            <h3>Assistance</h3>
-                            <h1>140/190</h1>
-                        </div>
-                        <div class="progress">
-                            <svg>
-                                <circle cx="38" cy="38" r="37" ></circle>
-                            </svg>
-                            <div class="number">
-                                <p>81%</p>
-                            </div>
-                        </div>
+                <!-- Student info bar -->
+                <div class="student-info-bar" id="student-info-bar">
+                    <div class="student-avatar">
+                        <span class="material-symbols-outlined">person</span>
                     </div>
-                    <small class="text-muted">actual school year</small>
+                    <div class="student-details">
+                        <h3 id="student-name">Loading...</h3>
+                        <p id="student-class">—</p>
+                    </div>
+                    <div class="student-meta">
+                        <span class="badge badge-primary" id="student-year">—</span>
+                        <span class="badge badge-success" id="student-status">—</span>
+                    </div>
                 </div>
 
-                            <!-- END OF ASSISTANCE -->
-
-
-                <div class="grade">
-                    <span class="material-symbols-outlined">grade</span>
-                    <div class="middle">
-                        <div class="left">
-                            <h3>Grade</h3>
-                            <h1>92</h1>
-                        </div>
-                        <div class="progress">
-                            <svg>
-                                <circle cx="38" cy="38" r="37" ></circle>
-                            </svg>
-                            <div class="number">
-                                <p>92%</p>
+                <!-- KPI Cards -->
+                <div class="dashboard">
+                    <div class="assistance" id="card-attendance">
+                        <span class="material-symbols-outlined">handshake</span>
+                        <div class="middle">
+                            <div class="left">
+                                <h3>Attendance</h3>
+                                <h1 id="attendance-fraction">—/—</h1>
+                            </div>
+                            <div class="progress">
+                                <svg><circle cx="38" cy="38" r="37" id="circle-attendance"></circle></svg>
+                                <div class="number"><p id="attendance-pct">—</p></div>
                             </div>
                         </div>
+                        <small class="text-muted">current school year</small>
                     </div>
-                    <small class="text-muted">actual school year</small>
-                </div>
 
-
-                         <!-- END OF TOTAL GRADE -->
-
-                <div class="exam">
-                    <span class="material-symbols-outlined">assignment_turned_in</span>
-                    <div class="middle">
-                        <div class="left">
-                            <h3>Exam I</h3>
-                            <h1>30/35</h1>
-                        </div>
-                        <div class="progress">
-                            <svg>
-                                <circle cx="38" cy="38" r="37" ></circle>
-                            </svg>
-                            <div class="number">
-                                <p>85%</p>
+                    <div class="grade" id="card-grade">
+                        <span class="material-symbols-outlined">grade</span>
+                        <div class="middle">
+                            <div class="left">
+                                <h3>Grade Average</h3>
+                                <h1 id="grade-avg">—</h1>
+                            </div>
+                            <div class="progress">
+                                <svg><circle cx="38" cy="38" r="37" id="circle-grade"></circle></svg>
+                                <div class="number"><p id="grade-pct">—</p></div>
                             </div>
                         </div>
+                        <small class="text-muted">current school year</small>
                     </div>
-                    <small class="text-muted">actual school year</small>
+
+                    <div class="next-class-card" id="card-next-class">
+                        <span class="material-symbols-outlined">schedule</span>
+                        <div class="middle">
+                            <div class="left">
+                                <h3>Next Class</h3>
+                                <h1 id="next-class-subject">—</h1>
+                            </div>
+                            <div class="next-class-info">
+                                <p id="next-class-teacher">—</p>
+                                <p id="next-class-time">—</p>
+                                <p id="next-class-room">—</p>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="next-class-day">—</small>
+                    </div>
                 </div>
-            </div>
 
+                <!-- Dashboard Grade Table -->
+                <div class="recent-activity">
+                    <h2>Grade Overview</h2>
+                    <table id="dashboard-grade-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>1er Lapso</th>
+                                <th>2do Lapso</th>
+                                <th>3er Lapso</th>
+                                <th>Average</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-grades-body">
+                            <tr><td colspan="5" class="loading-cell">Loading grades...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-                          <!-- END OF EXAM -->
+            <!-- ─── GRADES VIEW ─── -->
+            <section class="view-section" id="view-grades">
+                <h1>Grades</h1>
+                <div class="view-toolbar">
+                    <div class="period-selector">
+                        <label for="period-select">Grading Period:</label>
+                        <select id="period-select">
+                            <option value="all">All Periods</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="recent-activity">
+                    <table id="grades-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Code</th>
+                                <th>Teacher</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                                <th>Period</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grades-body">
+                            <tr><td colspan="6" class="loading-cell">Loading grades...</td></tr>
+                        </tbody>
+                        <tfoot id="grades-footer"></tfoot>
+                    </table>
+                </div>
+            </section>
 
-                          <!-- END OF DASHBOARD -->
-            
-            <div class="recent-activity">
-                <h2>Grade Table</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Materia</th>
-                            <th>Trabajo Cotidiano</th>
-                            <th>Asistencia</th>
-                            <th>Prueba I</th>
-                            <th>Prueba II</th>
-                            <th>Tarea</th>
-                            <th>Nota</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- JS  -->
-                    </tbody>
-                </table>
-                <a class="show-all" href="#">Show All</a>
-            </div>
+            <!-- ─── SCHEDULE VIEW ─── -->
+            <section class="view-section" id="view-schedule">
+                <h1>Weekly Schedule</h1>
+                <div class="schedule-wrapper">
+                    <div class="schedule-grid" id="schedule-grid">
+                        <div class="loading-cell">Loading schedule...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── TEACHERS VIEW ─── -->
+            <section class="view-section" id="view-teachers">
+                <h1>Teachers</h1>
+                <div class="teacher-cards" id="teacher-cards">
+                    <div class="loading-cell">Loading teachers...</div>
+                </div>
+            </section>
+
+            <!-- ─── ATTENDANCE VIEW ─── -->
+            <section class="view-section" id="view-attendance">
+                <h1>Attendance</h1>
+                <div class="attendance-summary" id="attendance-summary">
+                    <!-- Stat pills populated by JS -->
+                </div>
+                <div class="recent-activity">
+                    <table id="attendance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Class</th>
+                                <th>Status</th>
+                                <th>Recorded By</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-body">
+                            <tr><td colspan="5" class="loading-cell">Loading attendance...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ─── EVENTS VIEW ─── -->
+            <section class="view-section" id="view-events">
+                <h1>School Events</h1>
+                <div class="events-timeline" id="events-timeline">
+                    <div class="loading-cell">Loading events...</div>
+                </div>
+            </section>
+
+            <!-- ─── SETTINGS VIEW (placeholder) ─── -->
+            <section class="view-section" id="view-settings">
+                <h1>Settings</h1>
+                <div class="settings-placeholder">
+                    <span class="material-symbols-outlined">construction</span>
+                    <p>Settings coming soon.</p>
+                </div>
+            </section>
+
         </main>
-                        <!-- END OF RECENT-ACTIVITY -->
-                        <!-- END OF MAIN -->
-        
+        <!-- END OF MAIN -->
+
+        <!-- ═══ RIGHT PANEL ═══ -->
         <div class="right">
             <div class="top">
                 <button id="menu-btn">
@@ -159,101 +253,42 @@
                 </button>
                 <div class="theme-toggler">
                     <span class="material-symbols-outlined active">light_mode</span>
-                    <span class="material-symbols-outlined ">dark_mode</span>
+                    <span class="material-symbols-outlined">dark_mode</span>
                 </div>
                 <div class="profile">
                     <div class="info">
-                        <p>Bienvenido, <b> Gabriel</b></p>
+                        <p>Bienvenido, <b id="welcome-name">...</b></p>
                     </div>
                     <div class="profile-photo">
                         <span class="material-symbols-outlined">person</span>
                     </div>
                 </div>
-                
             </div>
-            
-                    <!-- END OF TOP -->
+            <!-- END OF TOP -->
 
             <div class="recent-updates">
-                <h2>Recent Updates</h2>
-
-                <div class="updates-card">
+                <h2>Upcoming Events</h2>
+                <div class="updates-card" id="upcoming-events-card">
                     <div class="update">
                         <div class="profile-photo">
                             <span class="material-symbols-outlined">smart_toy</span>
                         </div>
                         <div class="message">
-                            <p>Mañana tendrás clases con el profesor <b>Brayan Vega</b> 7:00am to 11:20am</p>
-                            <small class="text-muted">2 Minutes Ago</small>
+                            <p>Loading events...</p>
                         </div>
                     </div>
-
-                    <div class="update">
-                        <div class="profile-photo">
-                            <span class="material-symbols-outlined">smart_toy</span>
-                        </div>
-                        <div class="message">
-                            <p>Mañana tendrás clases con el profesor <b>Luis Picado</b> 7:00am to 11:20am</p>
-                            <small class="text-muted">2 Minutes Ago</small>
-                        </div>
-                    </div>
-
-
                 </div>
             </div>
 
             <div class="subjects-analytics">
-                <h2>Subjets Analytics</h2>
-
-                <!-- <div class="item subject1">
-                    <div class="icon">
-                        <span class="material-symbols-outlined">engineering</span>
-                    </div>
-                    <div class="right-content">
-                        <div class="info">
-                            <h3>Soporte de PC</h3>
-                            <small class="text-muted">Last Class</small>
-                        </div>
-                        <h3>Nota</h3>
-                        <h5 class="status success">+0,10%</h5>
-                    </div>
-                </div> -->
-
-                <div class="item subject2">
-                    <div class="icon">
-                        <span class="material-symbols-outlined">code</span>
-                    </div>
-                    <div class="right-content">
-                        <div class="info">
-                            <h3>Programación</h3>
-                            <small class="text-muted">Last Class</small>
-                        </div>
-                        <h3 class="grade-title">Nota</h3>
-                        <h5 class="status success">+0,10%</h5>
-                    </div>
+                <h2>Subject Performance</h2>
+                <div id="subject-analytics-list">
+                    <!-- Populated by JS -->
                 </div>
-
-                <!-- <div class="item subject3">
-                    <div class="icon">
-                        <span class="material-symbols-outlined">communication</span>
-                    </div>
-                    <div class="right-content">
-                        <div class="info">
-                            <h3>Inglés Técnico</h3>
-                            <small class="text-muted">Last Class</small>
-                        </div>
-                        <h3>Nota</h3>
-                        <h5 class="status success">+2%</h5>
-                    </div>
-                </div> -->
-
             </div>
 
-
         </div>
-                    
+
     </div>
-
-
 </body>
 </html>

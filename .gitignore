@@ -1,0 +1,86 @@
+# ==========================================
+# DEPENDENCIAS
+# ==========================================
+node_modules/
+.pnpm-store/
+
+# ==========================================
+# BUILDS Y PRODUCCIÓN
+# ==========================================
+dist/
+build/
+.vercel/
+
+# ==========================================
+# SEGURIDAD, SECRETOS Y VARIABLES DE ENTORNO
+# (¡NUNCA SUBIR ESTOS ARCHIVOS!)
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.env
+# Claves criptográficas y certificados
+*.pem
+*.key
+*.cert
+*.crt
+
+# ==========================================
+# LOGS Y DEBUGGING
+# (Pueden filtrar tokens, rutas de tu PC o IPs)
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ==========================================
+# BASES DE DATOS LOCALES
+# (Evita subir datos de usuarios por error)
+# ==========================================
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# ==========================================
+# CACHÉ Y ARCHIVOS TEMPORALES
+# ==========================================
+.vite/
+.eslintcache
+.temp/
+tmp/
+
+# ==========================================
+# ARCHIVOS DE IDE Y EDITORES DE CÓDIGO
+# (Rutas absolutas y configuraciones locales)
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================================
+# SISTEMA OPERATIVO
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# COBERTURA DE PRUEBAS
+# ==========================================
+coverage/
+.nyc_output/
