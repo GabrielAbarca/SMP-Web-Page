@@ -84,3 +84,5 @@ Desktop.ini
 # ==========================================
 coverage/
 .nyc_output/
+.vercel
+.env*
