@@ -1,5 +1,5 @@
 <div align="center">
-  img
+  <img width="715" height="206" alt="SMP-dashboard-logo" src="https://github.com/user-attachments/assets/f16f1a37-397e-4341-ae79-e2bc69ba6c7a" />
   <h1>SMP Dashboard</h1>
   <p><strong>A full-featured school management dashboard for Latin American institutions —<br/>built on a 18-table PostgreSQL schema with real-time data via Supabase.</strong></p>
 
@@ -11,7 +11,7 @@
   &nbsp;
   <img src="https://img.shields.io/badge/Status-In%20Progress-f59e0b?style=for-the-badge" alt="Status"/>
   &nbsp;
-  <img src="https://img.shields.io/badge/Database-PostgreSQL%2016-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   &nbsp;
   <img src="https://img.shields.io/badge/Backend-Supabase-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
 </div>
@@ -20,7 +20,11 @@
 
 ## 📸 Preview
 
-img
+<div align="center">
+  <img width="1440" height="900" alt="Dashboard-Preview" src="https://github.com/user-attachments/assets/b3edce7f-c4f9-41f3-927e-f573df4a5770" />
+
+</div>
+
 ---
 
 ## 🧩 What is SMP?
@@ -46,13 +50,19 @@ The project targets real data complexity: the underlying PostgreSQL schema spans
 
 ## 🛠 Tech Stack
 
+<div align="center">
+  <img src="https://skillicons.dev/icons?i=js,html,css,vite,postgres,supabase,vercel&theme=dark" />
+</div>
+
+<br/>
+
 | Layer | Technology |
 |---|---|
-| **Frontend** | Vanilla JavaScript · HTML5 · CSS3 |
-| **Build Tool** | Vite |
-| **Database** | PostgreSQL 18 (hosted on Supabase) |
-| **Backend / Auth** | Supabase (RLS policies · Auth · Realtime) |
-| **Deployment** | Vercel |
+| **Frontend** | ![JS](https://img.shields.io/badge/JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black) ![HTML](https://img.shields.io/badge/HTML5-e34f26?style=flat-square&logo=html5&logoColor=white) ![CSS](https://img.shields.io/badge/CSS3-1572b6?style=flat-square&logo=css3&logoColor=white) |
+| **Build Tool** | ![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white) |
+| **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) hosted on Supabase |
+| **Backend / Auth** | ![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?style=flat-square&logo=supabase&logoColor=white) RLS · Auth · Realtime |
+| **Deployment** | ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white) |
 
 ---
 
@@ -60,7 +70,20 @@ The project targets real data complexity: the underlying PostgreSQL schema spans
 
 The schema is designed around the structure of a Latin American school system, separating concerns across academic, administrative, and scheduling domains.
 
-Img
+```
+Core entities (partial):
+├── institutions
+├── academic_periods
+├── grade_levels
+├── sections
+├── subjects
+├── enrollments          ← students ↔ sections
+├── teacher_assignments  ← teachers ↔ subjects ↔ sections
+├── attendance_records
+├── grade_records
+├── events
+└── ... (18 tables total)
+```
 
 > 💡 **Design decision:** Row Level Security (RLS) policies are enforced at the database level — not just the application layer — so each role (admin, teacher, student) can only read and write the rows they own, regardless of how the frontend queries Supabase.
 
@@ -104,7 +127,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 - **RLS policy conflicts** — early schema versions had overlapping policies causing silent read failures; resolved by auditing policy targets per role and table combination
 - **IPv6 connection errors on Vercel** — Supabase's direct connection doesn't support IPv6; fixed by switching to the Session Mode pooler URL
-- **18-table relational schema** — modeling Latin American school structures (multi-period, multi-section, multi-role) without redundant data required several rounds of table-structuring before the schema stabilized.
+- **18-table relational schema** — modeling Latin American school structures (multi-period, multi-section, multi-role) without redundant data required several rounds of table-structuring before the schema stabilized
 
 ---
 
