@@ -1,3 +1,4 @@
+import { getSession, signOut } from './auth.js';
 import { supabase } from './supabaseClient.js';
 import {
   fetchStudentProfile,
@@ -10,17 +11,70 @@ import {
   fetchDashboardStats,
 } from './supabaseQueries.js';
 
-// ═══════════════════════════════════════════════════════════════
-//  CONFIG — change this to switch the viewed student
-// ═══════════════════════════════════════════════════════════════
-const STUDENT_ID = 1;
 
-// ═══════════════════════════════════════════════════════════════
-//  UI CONTROLS
-// ═══════════════════════════════════════════════════════════════
-const sideMenu   = document.querySelector('aside');
-const menuBtn    = document.querySelector('#menu-btn');
-const closeBtn   = document.querySelector('#close-btn');
+
+
+const session = await getSession();
+if (!session) {
+  window.location.replace('/login.html');
+  throw new Error('Unauthenticated');
+}
+const user = session?.user;
+
+if (!user) {
+  window.location.replace('/login.html');
+  throw new Error('Unauthenticated'); 
+}
+
+
+
+
+const { data: studentRow, error: studentError } = await supabase
+  .from('students')
+  .select('id')
+  .eq('auth_user_id', user.id)
+  .single();
+
+let STUDENT_ID;
+
+if (studentRow?.id) {
+  STUDENT_ID = studentRow.id;
+} else {
+  if (import.meta.env.DEV) {
+    console.warn(
+      '[SMP] No student found for auth user id', user.id,
+      '— falling back to STUDENT_ID=1 (dev only).'
+    );
+    STUDENT_ID = 1;
+  } else {
+    
+    console.error('[SMP] No student profile linked to this account.', studentError?.message);
+    await signOut();
+    window.location.replace('/login.html');
+    throw new Error('No student profile linked.');
+  }
+}
+
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT') {
+    window.location.replace('/login.html');
+  }
+});
+
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
+
+
+
+const sideMenu = document.querySelector('aside');
+const menuBtn = document.querySelector('#menu-btn');
+const closeBtn = document.querySelector('#close-btn');
 const themeToggler = document.querySelector('.theme-toggler');
 
 menuBtn.addEventListener('click', () => { sideMenu.style.display = 'block'; });
@@ -32,31 +86,31 @@ themeToggler.addEventListener('click', () => {
   themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  SPA ROUTER
-// ═══════════════════════════════════════════════════════════════
+
+
+
 const sidebarLinks = document.querySelectorAll('aside .sidebar a[data-page]');
 const viewSections = document.querySelectorAll('.view-section');
-const viewCache    = {};   // Track which views have been initialized
+const viewCache = {};   
 
 function navigateTo(page) {
-  // Update sidebar
+  
   sidebarLinks.forEach(link => {
     link.classList.toggle('active', link.dataset.page === page);
   });
 
-  // Show the correct view section
+  
   viewSections.forEach(section => {
     section.classList.toggle('active', section.id === `view-${page}`);
   });
 
-  // Initialize view data on first visit
+  
   if (!viewCache[page]) {
     viewCache[page] = true;
     initView(page);
   }
 
-  // On mobile close sidebar after nav
+  
   if (window.innerWidth <= 768) {
     sideMenu.style.display = 'none';
   }
@@ -69,31 +123,41 @@ sidebarLinks.forEach(link => {
   });
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  VIEW INITIALIZERS
-// ═══════════════════════════════════════════════════════════════
+
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await signOut();
+    window.location.replace('/login.html');
+  });
+}
+
+
+
+
 async function initView(page) {
   switch (page) {
-    case 'dashboard':  return initDashboard();
-    case 'grades':     return initGrades();
-    case 'schedule':   return initSchedule();
-    case 'teachers':   return initTeachersView();
+    case 'dashboard': return initDashboard();
+    case 'grades': return initGrades();
+    case 'schedule': return initSchedule();
+    case 'teachers': return initTeachersView();
     case 'attendance': return initAttendanceView();
-    case 'events':     return initEventsView();
+    case 'events': return initEventsView();
     default: break;
   }
 }
 
-// ─── Shared state ──────────────────────────────────────────────
-let studentProfile = null;
-let schoolYearId   = null;
-let classId        = null;
 
-// ═══════════════════════════════════════════════════════════════
-//  DASHBOARD
-// ═══════════════════════════════════════════════════════════════
+let studentProfile = null;
+let schoolYearId = null;
+let classId = null;
+
+
+
+
 async function initDashboard() {
-  // 1) Load student profile
+  
   studentProfile = await fetchStudentProfile(STUDENT_ID);
   if (!studentProfile) {
     document.getElementById('student-name').textContent = 'Error loading profile';
@@ -104,7 +168,7 @@ async function initDashboard() {
   schoolYearId = cls?.school_years?.id;
   classId = cls?.id;
 
-  // Student info bar
+  
   document.getElementById('student-name').textContent =
     `${studentProfile.first_name} ${studentProfile.last_name}`;
   document.getElementById('student-class').textContent =
@@ -114,26 +178,26 @@ async function initDashboard() {
   document.getElementById('student-status').textContent =
     capitalize(studentProfile.status);
 
-  // Welcome text
+  
   document.getElementById('welcome-name').textContent =
     studentProfile.first_name;
 
-  // 2) Dashboard stats
+  
   const stats = await fetchDashboardStats(STUDENT_ID, classId);
 
-  // Attendance card
+  
   document.getElementById('attendance-fraction').textContent =
     `${stats.attendance.present}/${stats.attendance.total}`;
   document.getElementById('attendance-pct').textContent =
     `${stats.attendance.percentage}%`;
   setCircleProgress('circle-attendance', stats.attendance.percentage);
 
-  // Grade card
+  
   document.getElementById('grade-avg').textContent = stats.grades.average;
   document.getElementById('grade-pct').textContent = `${Math.round(stats.grades.average)}%`;
   setCircleProgress('circle-grade', stats.grades.average);
 
-  // Next class card
+  
   if (stats.nextClass) {
     document.getElementById('next-class-subject').textContent =
       stats.nextClass.subjects?.name ?? '—';
@@ -151,17 +215,17 @@ async function initDashboard() {
     document.getElementById('next-class-day').textContent = 'Enjoy your break!';
   }
 
-  // 3) Dashboard grade overview table
+  
   renderDashboardGradeTable(stats.allGrades);
 
-  // 4) Right panel: upcoming events
+  
   await renderUpcomingEvents();
 
-  // 5) Right panel: subject analytics
+  
   renderSubjectAnalytics(stats.allGrades);
 }
 
-// ─── Dashboard Grade Table ─────────────────────────────────────
+
 function renderDashboardGradeTable(grades) {
   const tbody = document.getElementById('dashboard-grades-body');
 
@@ -170,7 +234,7 @@ function renderDashboardGradeTable(grades) {
     return;
   }
 
-  // Group by subject
+  
   const bySubject = {};
   grades.forEach(g => {
     const subj = g.class_subject_teachers?.subjects;
@@ -203,16 +267,16 @@ function renderDashboardGradeTable(grades) {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  GRADES VIEW
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function initGrades() {
   if (!schoolYearId) {
     const profile = await fetchStudentProfile(STUDENT_ID);
     schoolYearId = profile?.classes?.school_years?.id;
   }
 
-  // Populate period selector
+  
   const periods = await fetchGradingPeriods(schoolYearId);
   const select = document.getElementById('period-select');
   periods.forEach(p => {
@@ -222,10 +286,10 @@ async function initGrades() {
     select.appendChild(opt);
   });
 
-  // Load all grades initially
+  
   await loadGradesTable();
 
-  // Listen for period changes
+  
   select.addEventListener('change', () => loadGradesTable());
 }
 
@@ -261,7 +325,7 @@ async function loadGradesTable() {
     </tr>`;
   }).join('');
 
-  // Footer with average
+  
   const scores = grades.filter(g => g.score !== null).map(g => Number(g.score));
   const avg = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : '—';
   tfoot.innerHTML = `<tr>
@@ -271,9 +335,9 @@ async function loadGradesTable() {
   </tr>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  SCHEDULE VIEW
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function initSchedule() {
   if (!classId) {
     const profile = await fetchStudentProfile(STUDENT_ID);
@@ -288,21 +352,21 @@ async function initSchedule() {
     return;
   }
 
-  // Collect unique time slots
+  
   const timeSlots = [...new Map(
     schedule.map(s => [`${s.start_time}-${s.end_time}`, { start: s.start_time, end: s.end_time }])
   ).values()].sort((a, b) => a.start.localeCompare(b.start));
 
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-  // Build grid: header row + one row per time slot
+  
   let html = '';
 
-  // Header row
+  
   html += '<div class="sch-header">Time</div>';
   dayNames.forEach(d => { html += `<div class="sch-header">${d}</div>`; });
 
-  // Data rows
+  
   timeSlots.forEach(slot => {
     html += `<div class="sch-time">${formatTime(slot.start)}<br>${formatTime(slot.end)}</div>`;
 
@@ -328,9 +392,9 @@ async function initSchedule() {
   grid.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  TEACHERS VIEW
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function initTeachersView() {
   const teachers = await fetchTeachers();
   const container = document.getElementById('teacher-cards');
@@ -342,7 +406,7 @@ async function initTeachersView() {
 
   container.innerHTML = teachers.map(t => {
     const statusClass = t.status === 'active' ? 'badge-success' :
-                        t.status === 'on_leave' ? 'badge-warning' : 'badge-danger';
+      t.status === 'on_leave' ? 'badge-warning' : 'badge-danger';
     return `<div class="teacher-card">
       <div class="teacher-avatar">
         <span class="material-symbols-outlined">person</span>
@@ -357,13 +421,13 @@ async function initTeachersView() {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ATTENDANCE VIEW
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function initAttendanceView() {
   const records = await fetchStudentAttendance(STUDENT_ID);
 
-  // Summary stats
+  
   const summary = document.getElementById('attendance-summary');
   const total = records.length;
   const counts = { present: 0, absent: 0, late: 0, excused: 0 };
@@ -371,8 +435,8 @@ async function initAttendanceView() {
 
   summary.innerHTML = [
     { label: 'Present', val: counts.present, cls: 'stat-present' },
-    { label: 'Absent',  val: counts.absent,  cls: 'stat-absent' },
-    { label: 'Late',    val: counts.late,    cls: 'stat-late' },
+    { label: 'Absent', val: counts.absent, cls: 'stat-absent' },
+    { label: 'Late', val: counts.late, cls: 'stat-late' },
     { label: 'Excused', val: counts.excused, cls: 'stat-excused' },
   ].map(s => `
     <div class="att-stat ${s.cls}">
@@ -381,7 +445,7 @@ async function initAttendanceView() {
     </div>
   `).join('');
 
-  // Table
+  
   const tbody = document.getElementById('attendance-body');
 
   if (total === 0) {
@@ -402,9 +466,9 @@ async function initAttendanceView() {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  EVENTS VIEW
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function initEventsView() {
   const events = await fetchEvents();
   const container = document.getElementById('events-timeline');
@@ -446,12 +510,12 @@ async function initEventsView() {
   }).join('');
 }
 
-// ─── Right Panel: Upcoming Events ──────────────────────────────
+
 async function renderUpcomingEvents() {
   const events = await fetchEvents();
   const card = document.getElementById('upcoming-events-card');
 
-  // Show the next 3 events
+  
   const upcoming = events.slice(0, 4);
 
   if (upcoming.length === 0) {
@@ -475,7 +539,7 @@ async function renderUpcomingEvents() {
   `).join('');
 }
 
-// ─── Right Panel: Subject Analytics ────────────────────────────
+
 function renderSubjectAnalytics(grades) {
   const container = document.getElementById('subject-analytics-list');
 
@@ -484,7 +548,7 @@ function renderSubjectAnalytics(grades) {
     return;
   }
 
-  // Group by subject, compute average
+  
   const bySubject = {};
   grades.forEach(g => {
     const subj = g.class_subject_teachers?.subjects;
@@ -532,21 +596,21 @@ function renderSubjectAnalytics(grades) {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════════════
 
-/** Set SVG circle progress (0–100). */
+
+
+
+
 function setCircleProgress(circleId, pct) {
   const circle = document.getElementById(circleId);
   if (!circle) return;
-  const circumference = 2 * Math.PI * 37; // r=37 → ~232.5
+  const circumference = 2 * Math.PI * 37; 
   const offset = circumference - (pct / 100) * circumference;
   circle.style.strokeDasharray = `${circumference}`;
   circle.style.strokeDashoffset = `${offset}`;
 }
 
-/** Format "HH:MM:SS" → "7:00 AM" */
+
 function formatTime(t) {
   if (!t) return '';
   const [h, m] = t.split(':').map(Number);
@@ -555,26 +619,26 @@ function formatTime(t) {
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-/** Format "YYYY-MM-DD" → "Dec 13, 2024" */
+
 function formatDate(d) {
   if (!d) return '';
   const date = new Date(d + 'T00:00:00');
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** Capitalize first letter */
+
 function capitalize(s) {
   if (!s) return '';
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Score → colored HTML */
+
 function scoreHtml(score) {
   const cls = score >= 70 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
   return `<span class="${cls}">${score}</span>`;
 }
 
-/** Event type → badge variant */
+
 function eventTypeBadge(type) {
   const map = {
     holiday: 'danger',
@@ -587,7 +651,7 @@ function eventTypeBadge(type) {
   return map[type] ?? 'info';
 }
 
-/** Event type → human label */
+
 function formatEventType(type) {
   const map = {
     holiday: 'Holiday',
@@ -600,9 +664,9 @@ function formatEventType(type) {
   return map[type] ?? type;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  INITIALIZE
-// ═══════════════════════════════════════════════════════════════
+
+
+
 async function init() {
   navigateTo('dashboard');
 }

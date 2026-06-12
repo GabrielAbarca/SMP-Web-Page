@@ -1,11 +1,9 @@
 import { supabase } from './supabaseClient.js';
 
-// ─── Student Profile ────────────────────────────────────────────
-/**
- * Fetch a student with their class, grade level, and school year info.
- */
+
+
 export async function fetchStudentProfile(studentId) {
-  // Fetch student with class info (flat embeds to avoid PostgREST ambiguity)
+  
   const { data, error } = await supabase
     .from('students')
     .select(`
@@ -22,7 +20,7 @@ export async function fetchStudentProfile(studentId) {
   if (error) { console.error('fetchStudentProfile:', error.message); return null; }
   if (!data) { console.error('fetchStudentProfile: no student found with id', studentId); return null; }
 
-  // Fetch homeroom teacher separately if needed
+  
   const cls = data.classes;
   if (cls && cls.homeroom_teacher_id) {
     const { data: teacher } = await supabase
@@ -33,7 +31,7 @@ export async function fetchStudentProfile(studentId) {
     cls.homeroom_teacher = teacher;
   }
 
-  // Fetch room separately if needed
+  
   if (cls && cls.room_id) {
     const { data: room } = await supabase
       .from('rooms')
@@ -46,10 +44,8 @@ export async function fetchStudentProfile(studentId) {
   return data;
 }
 
-// ─── Grading Periods ────────────────────────────────────────────
-/**
- * Fetch all grading periods for a school year, ordered by period_order.
- */
+
+
 export async function fetchGradingPeriods(schoolYearId) {
   const { data, error } = await supabase
     .from('grading_periods')
@@ -61,11 +57,8 @@ export async function fetchGradingPeriods(schoolYearId) {
   return data;
 }
 
-// ─── Student Grades ─────────────────────────────────────────────
-/**
- * Fetch all grades for a student, optionally filtered by grading period.
- * Returns rows with subject name, teacher name, score, period info.
- */
+
+
 export async function fetchStudentGrades(studentId, gradingPeriodId = null) {
   let query = supabase
     .from('student_grades')
@@ -90,10 +83,8 @@ export async function fetchStudentGrades(studentId, gradingPeriodId = null) {
   return data;
 }
 
-// ─── Attendance ─────────────────────────────────────────────────
-/**
- * Fetch attendance records for a student, newest first.
- */
+
+
 export async function fetchStudentAttendance(studentId) {
   const { data, error } = await supabase
     .from('attendance')
@@ -106,7 +97,7 @@ export async function fetchStudentAttendance(studentId) {
 
   if (error) { console.error('fetchStudentAttendance:', error.message); return []; }
 
-  // Fetch teacher names for recorded_by
+  
   for (const record of data) {
     if (record.recorded_by) {
       const { data: teacher } = await supabase
@@ -121,11 +112,8 @@ export async function fetchStudentAttendance(studentId) {
   return data;
 }
 
-// ─── Class Schedule ─────────────────────────────────────────────
-/**
- * Fetch the weekly schedule for a class.
- * Returns rows sorted by day_of_week then start_time.
- */
+
+
 export async function fetchClassSchedule(classId) {
   const { data, error } = await supabase
     .from('schedules')
@@ -143,10 +131,8 @@ export async function fetchClassSchedule(classId) {
   return data;
 }
 
-// ─── Teachers ───────────────────────────────────────────────────
-/**
- * Fetch all teachers, ordered by last name.
- */
+
+
 export async function fetchTeachers() {
   const { data, error } = await supabase
     .from('teachers')
@@ -157,10 +143,8 @@ export async function fetchTeachers() {
   return data;
 }
 
-// ─── Events ─────────────────────────────────────────────────────
-/**
- * Fetch school events, newest first.
- */
+
+
 export async function fetchEvents() {
   const { data, error } = await supabase
     .from('events')
@@ -171,38 +155,33 @@ export async function fetchEvents() {
   return data;
 }
 
-// ─── Dashboard Stats (computed) ─────────────────────────────────
-/**
- * Compute dashboard summary stats for a student:
- * - attendance percentage
- * - overall grade average
- * - next upcoming class (based on current day/time)
- */
+
+
 export async function fetchDashboardStats(studentId, classId) {
-  // Attendance stats
+  
   const attendance = await fetchStudentAttendance(studentId);
   const totalDays = attendance.length;
   const presentDays = attendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const attendancePct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
-  // Grade average (all periods)
+  
   const grades = await fetchStudentGrades(studentId);
   const scores = grades.filter(g => g.score !== null).map(g => Number(g.score));
   const gradeAvg = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
 
-  // Next class from schedule
+  
   const schedule = await fetchClassSchedule(classId);
   const now = new Date();
-  const currentDay = now.getDay(); // 0=Sun … 6=Sat
+  const currentDay = now.getDay(); 
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   let nextClass = null;
-  // Find next class today or next weekday
+  
   for (let offset = 0; offset < 7; offset++) {
-    const checkDay = ((currentDay + offset - 1) % 5) + 1; // 1=Mon…5=Fri
+    const checkDay = ((currentDay + offset - 1) % 5) + 1; 
     const daySchedule = schedule.filter(s => s.day_of_week === checkDay);
     if (offset === 0) {
-      // Today: find next class after current time
+      
       const upcoming = daySchedule.filter(s => s.start_time > currentTime);
       if (upcoming.length > 0) { nextClass = upcoming[0]; break; }
     } else {
@@ -220,10 +199,8 @@ export async function fetchDashboardStats(studentId, classId) {
   };
 }
 
-// ─── Discipline Records ─────────────────────────────────────────
-/**
- * Fetch discipline records for a student.
- */
+
+
 export async function fetchDisciplineRecords(studentId) {
   const { data, error } = await supabase
     .from('discipline_records')

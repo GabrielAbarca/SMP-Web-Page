@@ -1,8 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
-/* ═══════════════════════════════════════════════════════════════
-   ROOT & THEME
-   ═══════════════════════════════════════════════════════════════ */
+
 :root {
     --color-primary: #7380ec;
     --color-primary-light: rgba(115, 128, 236, 0.15);
@@ -43,9 +41,7 @@
     --box-shadow: 0 2rem 3rem var(--color-light);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   RESET & BASE
-   ═══════════════════════════════════════════════════════════════ */
+
 * {
     margin: 0;
     padding: 0;
@@ -109,9 +105,7 @@ b { color: var(--color-dark); }
 .success { color: var(--color-success); }
 .warning { color: var(--color-warning); }
 
-/* ═══════════════════════════════════════════════════════════════
-   ASIDE / SIDEBAR
-   ═══════════════════════════════════════════════════════════════ */
+
 aside {
     height: 100vh;
 }
@@ -198,14 +192,12 @@ aside .sidebar a:hover span {
     margin-left: 1rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MAIN
-   ═══════════════════════════════════════════════════════════════ */
+
 main {
     margin-top: 3rem;
 }
 
-/* ─── View Sections (SPA) ─── */
+
 .view-section {
     display: none;
     animation: fadeIn 350ms ease;
@@ -220,7 +212,7 @@ main {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Student Info Bar ─── */
+
 .student-info-bar {
     display: flex;
     align-items: center;
@@ -263,7 +255,7 @@ main {
     gap: .5rem;
 }
 
-/* Badges */
+
 .badge {
     padding: .25rem .75rem;
     border-radius: 2rem;
@@ -297,7 +289,7 @@ main {
     color: #0891b2;
 }
 
-/* ─── Dashboard KPI Cards ─── */
+
 main .dashboard {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -355,7 +347,7 @@ main .dashboard svg circle {
     stroke-width: 14;
     stroke-linecap: round;
     transform: translate(7px, 7px);
-    stroke-dasharray: 232; /* 2 * PI * 37 ≈ 232 */
+    stroke-dasharray: 232; 
     stroke-dashoffset: 232;
     transition: stroke-dashoffset 1s ease;
 }
@@ -380,7 +372,7 @@ main .dashboard small {
     margin-top: 1.6rem;
 }
 
-/* Next-class card specifics */
+
 .next-class-card .next-class-info {
     text-align: right;
 }
@@ -390,7 +382,7 @@ main .dashboard small {
     line-height: 1.6;
 }
 
-/* ─── Grade Table (Shared) ─── */
+
 main .recent-activity {
     margin-top: 2rem;
 }
@@ -455,12 +447,12 @@ main .show-all {
     color: var(--color-primary);
 }
 
-/* ─── Score Cell Styling ─── */
+
 .score-high { color: #0d9668; font-weight: 600; }
 .score-mid  { color: #b97a1e; font-weight: 600; }
 .score-low  { color: var(--color-danger); font-weight: 600; }
 
-/* Status badges in tables */
+
 .status-badge {
     display: inline-block;
     padding: .2rem .7rem;
@@ -476,7 +468,7 @@ main .show-all {
 .status-late    { background: var(--color-warning-light); color: #b97a1e; }
 .status-excused { background: var(--color-primary-light); color: var(--color-primary); }
 
-/* Subject color dot */
+
 .subject-dot {
     display: inline-block;
     width: 10px;
@@ -486,7 +478,7 @@ main .show-all {
     vertical-align: middle;
 }
 
-/* ─── View Toolbar (period selector etc.) ─── */
+
 .view-toolbar {
     display: flex;
     align-items: center;
@@ -524,9 +516,7 @@ main .show-all {
     border-color: var(--color-primary);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SCHEDULE GRID
-   ═══════════════════════════════════════════════════════════════ */
+
 .schedule-wrapper {
     margin-top: 1rem;
     overflow-x: auto;
@@ -614,9 +604,7 @@ main .show-all {
     margin-bottom: .25rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TEACHER CARDS
-   ═══════════════════════════════════════════════════════════════ */
+
 .teacher-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -688,9 +676,7 @@ main .show-all {
     margin-top: .3rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ATTENDANCE SUMMARY
-   ═══════════════════════════════════════════════════════════════ */
+
 .attendance-summary {
     display: flex;
     gap: 1rem;
@@ -727,9 +713,7 @@ main .show-all {
 .att-stat.stat-late h2    { color: #b97a1e; }
 .att-stat.stat-excused h2 { color: var(--color-primary); }
 
-/* ═══════════════════════════════════════════════════════════════
-   EVENTS TIMELINE
-   ═══════════════════════════════════════════════════════════════ */
+
 .events-timeline {
     margin-top: 1rem;
     display: flex;
@@ -804,7 +788,7 @@ main .show-all {
     color: var(--color-info-dark);
 }
 
-/* ─── Settings Placeholder ─── */
+
 .settings-placeholder {
     display: flex;
     flex-direction: column;
@@ -823,9 +807,7 @@ main .show-all {
     font-size: 1rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   RIGHT PANEL
-   ═══════════════════════════════════════════════════════════════ */
+
 .right {
     margin-top: 2rem;
 }
@@ -909,7 +891,7 @@ main .show-all {
     justify-content: center;
 }
 
-/* ─── Subject Analytics (right panel) ─── */
+
 .right .subjects-analytics {
     margin-top: 2rem;
 }
@@ -953,7 +935,7 @@ main .show-all {
     font-weight: 700;
 }
 
-/* ─── Grade bar (mini progress) ─── */
+
 .grade-bar {
     width: 60px;
     height: 6px;
@@ -969,9 +951,7 @@ main .show-all {
     transition: width 800ms ease;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LOADING SKELETON
-   ═══════════════════════════════════════════════════════════════ */
+
 @keyframes shimmer {
     0%   { background-position: -200px 0; }
     100% { background-position: 200px 0; }
@@ -984,9 +964,7 @@ main .show-all {
     border-radius: var(--border-radius-1);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MEDIA QUERIES — TABLET
-   ═══════════════════════════════════════════════════════════════ */
+
 @media screen and (max-width: 1200px) {
 
     .container {
@@ -1030,9 +1008,7 @@ main .show-all {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MEDIA QUERIES — MOBILE
-   ═══════════════════════════════════════════════════════════════ */
+
 @media screen and (max-width: 768px) {
 
     .container {
@@ -1134,7 +1110,7 @@ main .show-all {
 
     .right .top button span { font-size: 2rem; }
 
-    /* Student info bar */
+    
     .student-info-bar {
         flex-wrap: wrap;
     }
@@ -1145,13 +1121,13 @@ main .show-all {
         justify-content: flex-start;
     }
 
-    /* Dashboard cards */
+    
     main .dashboard {
         grid-template-columns: 1fr;
         gap: .5rem;
     }
 
-    /* Schedule */
+    
     .schedule-wrapper {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -1159,17 +1135,17 @@ main .show-all {
 
     .schedule-grid { min-width: 550px; }
 
-    /* Teacher cards */
+    
     .teacher-cards {
         grid-template-columns: 1fr;
     }
 
-    /* Attendance summary */
+    
     .attendance-summary {
         flex-direction: column;
     }
 
-    /* Table overflow */
+    
     .recent-activity {
         overflow-x: auto;
     }
@@ -1180,9 +1156,7 @@ main .show-all {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SCROLLBAR STYLING
-   ═══════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
     width: 6px;
 }
