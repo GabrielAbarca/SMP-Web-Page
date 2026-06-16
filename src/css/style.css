@@ -373,10 +373,6 @@ main .dashboard small {
 }
 
 
-.next-class-card .next-class-info {
-    text-align: right;
-}
-
 .next-class-card .next-class-info p {
     font-size: .82rem;
     line-height: 1.6;
