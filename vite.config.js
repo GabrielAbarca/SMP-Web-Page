@@ -1,21 +1,21 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
   server: {
     port: 3000,
-    open: true
+    open: true,
   },
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     emptyOutDir: true,
-    target: 'esnext',
+    target: "esnext",
     rollupOptions: {
       input: {
-        main:  resolve(__dirname, 'index.html'),
-        login: resolve(__dirname, 'login.html'),
-        login: resolve(__dirname, 'admin.html'),
-      }
-    }
-  }
+        main: resolve(__dirname, "index.html"),
+        login: resolve(__dirname, "login.html"),
+        login: resolve(__dirname, "admin.html"),
+      },
+    },
+  },
 });

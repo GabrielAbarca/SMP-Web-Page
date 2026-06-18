@@ -1,310 +1,293 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Simple Manage Pro — Student portal for grades, attendance, schedule, and class information.">
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Simple Manage Pro — Student portal for grades, attendance, schedule, and class information."
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script src="/src/js/main.js" type="module" defer></script>
     <title>Simple Manage Pro</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
+      <aside>
+        <div class="top">
+          <div class="logo">
+            <img src="/src/assets/img/logo.jpg" alt="logo" />
+            <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
+          </div>
+          <div class="close" id="close-btn">
+            <span class="material-symbols-outlined">close</span>
+          </div>
+        </div>
+        <div class="sidebar">
+          <a href="/" data-page="dashboard" class="active">
+            <span class="material-symbols-outlined">dashboard</span>
+            <h3>Dashboard</h3>
+          </a>
+          <a href="/" data-page="grades">
+            <span class="material-symbols-outlined">school</span>
+            <h3>Grades</h3>
+          </a>
+          <a href="/" data-page="schedule">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <h3>Schedule</h3>
+          </a>
+          <a href="/" data-page="teachers">
+            <span class="material-symbols-outlined">groups</span>
+            <h3>Teachers</h3>
+          </a>
+          <a href="/" data-page="attendance">
+            <span class="material-symbols-outlined">fact_check</span>
+            <h3>Attendance</h3>
+          </a>
+          <a href="/" data-page="events">
+            <span class="material-symbols-outlined">event</span>
+            <h3>Events</h3>
+          </a>
+          <a href="/" data-page="settings">
+            <span class="material-symbols-outlined">settings</span>
+            <h3>Settings</h3>
+          </a>
+          <a href="/" id="logout-btn">
+            <span class="material-symbols-outlined">logout</span>
+            <h3>Logout</h3>
+          </a>
+        </div>
+      </aside>
 
-        
-        <aside>
-            <div class="top">
-                <div class="logo">
-                    <img src="/src/assets/img/logo.jpg" alt="logo">
-                    <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
-                </div>
-                <div class="close" id="close-btn">
-                    <span class="material-symbols-outlined">close</span>
-                </div>
+      <main>
+        <section class="view-section active" id="view-dashboard">
+          <h1>Dashboard</h1>
+
+          <div class="student-info-bar" id="student-info-bar">
+            <div class="student-avatar">
+              <span class="material-symbols-outlined">person</span>
             </div>
-            <div class="sidebar">
-                <a href="/" data-page="dashboard" class="active">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <h3>Dashboard</h3>
-                </a>
-                <a href="/" data-page="grades">
-                    <span class="material-symbols-outlined">school</span>
-                    <h3>Grades</h3>
-                </a>
-                <a href="/" data-page="schedule">
-                    <span class="material-symbols-outlined">calendar_month</span>
-                    <h3>Schedule</h3>
-                </a>
-                <a href="/" data-page="teachers">
-                    <span class="material-symbols-outlined">groups</span>
-                    <h3>Teachers</h3>
-                </a>
-                <a href="/" data-page="attendance">
-                    <span class="material-symbols-outlined">fact_check</span>
-                    <h3>Attendance</h3>
-                </a>
-                <a href="/" data-page="events">
-                    <span class="material-symbols-outlined">event</span>
-                    <h3>Events</h3>
-                </a>
-                <a href="/" data-page="settings">
-                    <span class="material-symbols-outlined">settings</span>
-                    <h3>Settings</h3>
-                </a>
-                <a href="/" id="logout-btn">
-                    <span class="material-symbols-outlined">logout</span>
-                    <h3>Logout</h3>
-                </a>
+            <div class="student-details">
+              <h3 id="student-name">Loading...</h3>
+              <p id="student-class">—</p>
             </div>
-        </aside>
-        
-
-        
-        <main>
-
-            
-            <section class="view-section active" id="view-dashboard">
-                <h1>Dashboard</h1>
-
-                
-                <div class="student-info-bar" id="student-info-bar">
-                    <div class="student-avatar">
-                        <span class="material-symbols-outlined">person</span>
-                    </div>
-                    <div class="student-details">
-                        <h3 id="student-name">Loading...</h3>
-                        <p id="student-class">—</p>
-                    </div>
-                    <div class="student-meta">
-                        <span class="badge badge-primary" id="student-year">—</span>
-                        <span class="badge badge-success" id="student-status">—</span>
-                    </div>
-                </div>
-
-                
-                <div class="dashboard">
-                    <div class="assistance" id="card-attendance">
-                        <span class="material-symbols-outlined">handshake</span>
-                        <div class="middle">
-                            <div class="left">
-                                <h3>Attendance</h3>
-                                <h1 id="attendance-fraction">—/—</h1>
-                            </div>
-                            <div class="progress">
-                                <svg>
-                                    <circle cx="38" cy="38" r="37" id="circle-attendance"></circle>
-                                </svg>
-                                <div class="number">
-                                    <p id="attendance-pct">—</p>
-                                </div>
-                            </div>
-                        </div>
-                        <small class="text-muted">current school year</small>
-                    </div>
-
-                    <div class="grade" id="card-grade">
-                        <span class="material-symbols-outlined">grade</span>
-                        <div class="middle">
-                            <div class="left">
-                                <h3>Grade Average</h3>
-                                <h1 id="grade-avg">—</h1>
-                            </div>
-                            <div class="progress">
-                                <svg>
-                                    <circle cx="38" cy="38" r="37" id="circle-grade"></circle>
-                                </svg>
-                                <div class="number">
-                                    <p id="grade-pct">—</p>
-                                </div>
-                            </div>
-                        </div>
-                        <small class="text-muted">current school year</small>
-                    </div>
-
-                    <div class="next-class-card" id="card-next-class">
-                        <span class="material-symbols-outlined">schedule</span>
-                        <div class="middle">
-                            <div class="left">
-                                <h3>Next Class</h3>
-                                <h1 id="next-class-subject">—</h1>
-                            </div>
-                            <div class="next-class-info">
-                            </div>
-                        </div>
-                        <small class="text-muted" id="next-class-day">—</small>
-                    </div>
-                </div>
-
-                
-                <div class="recent-activity">
-                    <h2>Grade Overview</h2>
-                    <table id="dashboard-grade-table">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>1er Lapso</th>
-                                <th>2do Lapso</th>
-                                <th>3er Lapso</th>
-                                <th>Average</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dashboard-grades-body">
-                            <tr>
-                                <td colspan="5" class="loading-cell">Loading grades...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-grades">
-                <h1>Grades</h1>
-                <div class="view-toolbar">
-                    <div class="period-selector">
-                        <label for="period-select">Grading Period:</label>
-                        <select id="period-select">
-                            <option value="all">All Periods</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="recent-activity">
-                    <table id="grades-table">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Code</th>
-                                <th>Teacher</th>
-                                <th>Score</th>
-                                <th>Status</th>
-                                <th>Period</th>
-                            </tr>
-                        </thead>
-                        <tbody id="grades-body">
-                            <tr>
-                                <td colspan="6" class="loading-cell">Loading grades...</td>
-                            </tr>
-                        </tbody>
-                        <tfoot id="grades-footer"></tfoot>
-                    </table>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-schedule">
-                <h1>Weekly Schedule</h1>
-                <div class="schedule-wrapper">
-                    <div class="schedule-grid" id="schedule-grid">
-                        <div class="loading-cell">Loading schedule...</div>
-                    </div>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-teachers">
-                <h1>Teachers</h1>
-                <div class="teacher-cards" id="teacher-cards">
-                    <div class="loading-cell">Loading teachers...</div>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-attendance">
-                <h1>Attendance</h1>
-                <div class="attendance-summary" id="attendance-summary">
-                    
-                </div>
-                <div class="recent-activity">
-                    <table id="attendance-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Class</th>
-                                <th>Status</th>
-                                <th>Recorded By</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendance-body">
-                            <tr>
-                                <td colspan="5" class="loading-cell">Loading attendance...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-events">
-                <h1>School Events</h1>
-                <div class="events-timeline" id="events-timeline">
-                    <div class="loading-cell">Loading events...</div>
-                </div>
-            </section>
-
-            
-            <section class="view-section" id="view-settings">
-                <h1>Settings</h1>
-                <div class="settings-placeholder">
-                    <span class="material-symbols-outlined">construction</span>
-                    <p>Settings coming soon.</p>
-                </div>
-            </section>
-
-        </main>
-        
-
-        
-        <div class="right">
-            <div class="top">
-                <button id="menu-btn">
-                    <span class="material-symbols-outlined">menu</span>
-                </button>
-                <div class="theme-toggler">
-                    <span class="material-symbols-outlined active">light_mode</span>
-                    <span class="material-symbols-outlined">dark_mode</span>
-                </div>
-                <div class="profile">
-                    <div class="info">
-                        <p>Bienvenido, <b id="welcome-name">...</b></p>
-                    </div>
-                    <div class="profile-photo">
-                        <span class="material-symbols-outlined">person</span>
-                    </div>
-                </div>
+            <div class="student-meta">
+              <span class="badge badge-primary" id="student-year">—</span>
+              <span class="badge badge-success" id="student-status">—</span>
             </div>
-            
+          </div>
 
-            <div class="recent-updates">
-                <h2>Upcoming Events</h2>
-                <div class="updates-card" id="upcoming-events-card">
-                    <div class="update">
-                        <div class="profile-photo">
-                            <span class="material-symbols-outlined">smart_toy</span>
-                        </div>
-                        <div class="message">
-                            <p>Loading events...</p>
-                        </div>
-                    </div>
+          <div class="dashboard">
+            <div class="assistance" id="card-attendance">
+              <span class="material-symbols-outlined">handshake</span>
+              <div class="middle">
+                <div class="left">
+                  <h3>Attendance</h3>
+                  <h1 id="attendance-fraction">—/—</h1>
                 </div>
+                <div class="progress">
+                  <svg>
+                    <circle
+                      cx="38"
+                      cy="38"
+                      r="37"
+                      id="circle-attendance"
+                    ></circle>
+                  </svg>
+                  <div class="number">
+                    <p id="attendance-pct">—</p>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted">current school year</small>
             </div>
 
-            <div class="subjects-analytics">
-                <h2>Subject Performance</h2>
-                <div id="subject-analytics-list">
-                    
+            <div class="grade" id="card-grade">
+              <span class="material-symbols-outlined">grade</span>
+              <div class="middle">
+                <div class="left">
+                  <h3>Grade Average</h3>
+                  <h1 id="grade-avg">—</h1>
                 </div>
+                <div class="progress">
+                  <svg>
+                    <circle cx="38" cy="38" r="37" id="circle-grade"></circle>
+                  </svg>
+                  <div class="number">
+                    <p id="grade-pct">—</p>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted">current school year</small>
             </div>
 
+            <div class="next-class-card" id="card-next-class">
+              <span class="material-symbols-outlined">schedule</span>
+              <div class="middle">
+                <div class="left">
+                  <h3>Next Class</h3>
+                  <h1 id="next-class-subject">—</h1>
+                </div>
+                <div class="next-class-info"></div>
+              </div>
+              <small class="text-muted" id="next-class-day">—</small>
+            </div>
+          </div>
+
+          <div class="recent-activity">
+            <h2>Grade Overview</h2>
+            <table id="dashboard-grade-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>1er Lapso</th>
+                  <th>2do Lapso</th>
+                  <th>3er Lapso</th>
+                  <th>Average</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-grades-body">
+                <tr>
+                  <td colspan="5" class="loading-cell">Loading grades...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-grades">
+          <h1>Grades</h1>
+          <div class="view-toolbar">
+            <div class="period-selector">
+              <label for="period-select">Grading Period:</label>
+              <select id="period-select">
+                <option value="all">All Periods</option>
+              </select>
+            </div>
+          </div>
+          <div class="recent-activity">
+            <table id="grades-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Code</th>
+                  <th>Teacher</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                  <th>Period</th>
+                </tr>
+              </thead>
+              <tbody id="grades-body">
+                <tr>
+                  <td colspan="6" class="loading-cell">Loading grades...</td>
+                </tr>
+              </tbody>
+              <tfoot id="grades-footer"></tfoot>
+            </table>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-schedule">
+          <h1>Weekly Schedule</h1>
+          <div class="schedule-wrapper">
+            <div class="schedule-grid" id="schedule-grid">
+              <div class="loading-cell">Loading schedule...</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-teachers">
+          <h1>Teachers</h1>
+          <div class="teacher-cards" id="teacher-cards">
+            <div class="loading-cell">Loading teachers...</div>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-attendance">
+          <h1>Attendance</h1>
+          <div class="attendance-summary" id="attendance-summary"></div>
+          <div class="recent-activity">
+            <table id="attendance-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Class</th>
+                  <th>Status</th>
+                  <th>Recorded By</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-body">
+                <tr>
+                  <td colspan="5" class="loading-cell">
+                    Loading attendance...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-events">
+          <h1>School Events</h1>
+          <div class="events-timeline" id="events-timeline">
+            <div class="loading-cell">Loading events...</div>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-settings">
+          <h1>Settings</h1>
+          <div class="settings-placeholder">
+            <span class="material-symbols-outlined">construction</span>
+            <p>Settings coming soon.</p>
+          </div>
+        </section>
+      </main>
+
+      <div class="right">
+        <div class="top">
+          <button id="menu-btn">
+            <span class="material-symbols-outlined">menu</span>
+          </button>
+          <div class="theme-toggler">
+            <span class="material-symbols-outlined active">light_mode</span>
+            <span class="material-symbols-outlined">dark_mode</span>
+          </div>
+          <div class="profile">
+            <div class="info">
+              <p>Bienvenido, <b id="welcome-name">...</b></p>
+            </div>
+            <div class="profile-photo">
+              <span class="material-symbols-outlined">person</span>
+            </div>
+          </div>
         </div>
 
-    </div>
-</body>
+        <div class="recent-updates">
+          <h2>Upcoming Events</h2>
+          <div class="updates-card" id="upcoming-events-card">
+            <div class="update">
+              <div class="profile-photo">
+                <span class="material-symbols-outlined">smart_toy</span>
+              </div>
+              <div class="message">
+                <p>Loading events...</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        <div class="subjects-analytics">
+          <h2>Subject Performance</h2>
+          <div id="subject-analytics-list"></div>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>
