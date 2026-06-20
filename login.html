@@ -81,72 +81,66 @@
             <p id="auth-subtitle">Sign in to your account to continue</p>
           </div>
 
-          <div
-            class="auth-toast"
-            id="auth-toast"
-            role="alert"
-            aria-live="polite"
-          ></div>
+                
+                <div class="auth-toast" id="auth-toast" role="alert" aria-live="polite"></div>
 
-          <form id="auth-form" novalidate>
-            <div class="form-group" id="group-name" style="display: none">
-              <label for="input-name">Full Name</label>
-              <div class="input-wrapper">
-                <span class="material-symbols-outlined input-icon">person</span>
-                <input
-                  type="text"
-                  id="input-name"
-                  name="name"
-                  placeholder="Maria García"
-                  autocomplete="name"
-                />
-              </div>
-              <span class="field-error" id="error-name"></span>
-            </div>
+                
+                <form id="auth-form" novalidate>
 
-            <div class="form-group" id="group-email">
-              <label for="input-email">Email Address</label>
-              <div class="input-wrapper">
-                <span class="material-symbols-outlined input-icon">mail</span>
-                <input
-                  type="email"
-                  id="input-email"
-                  name="email"
-                  placeholder="you@example.com"
-                  autocomplete="email"
-                  required
-                />
-              </div>
-              <span class="field-error" id="error-email"></span>
-            </div>
+                    
+                    <div class="form-group" id="group-name" style="display:none;">
+                        <label for="input-name">Full Name</label>
+                        <div class="input-wrapper">
+                            <span class="material-symbols-outlined input-icon">person</span>
+                            <input
+                                type="text"
+                                id="input-name"
+                                name="name"
+                                placeholder="Maria García"
+                                autocomplete="name"
+                            >
+                        </div>
+                        <span class="field-error" id="error-name"></span>
+                    </div>
 
-            <div class="form-group" id="group-password">
-              <label for="input-password">Password</label>
-              <div class="input-wrapper">
-                <span class="material-symbols-outlined input-icon">lock</span>
-                <input
-                  type="password"
-                  id="input-password"
-                  name="password"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="toggle-password"
-                  id="toggle-password"
-                  aria-label="Show password"
-                >
-                  <span
-                    class="material-symbols-outlined"
-                    id="toggle-password-icon"
-                    >visibility</span
-                  >
-                </button>
-              </div>
-              <span class="field-error" id="error-password"></span>
-            </div>
+                    
+                    <div class="form-group" id="group-email">
+                        <label for="input-email">Email Address</label>
+                        <div class="input-wrapper">
+                            <span class="material-symbols-outlined input-icon">mail</span>
+                            <input
+                                type="email"
+                                id="input-email"
+                                name="email"
+                                placeholder="you@example.com"
+                                autocomplete="email"
+                                required
+                                value="gzelaya0404@gmail.com"
+                            >
+                        </div>
+                        <span class="field-error" id="error-email"></span>
+                    </div>
+
+                    
+                    <div class="form-group" id="group-password">
+                        <label for="input-password">Password</label>
+                        <div class="input-wrapper">
+                            <span class="material-symbols-outlined input-icon">lock</span>
+                            <input
+                                type="password"
+                                id="input-password"
+                                name="password"
+                                placeholder="••••••••"
+                                autocomplete="current-password"
+                                required
+                                value="Dev123"
+                            >
+                            <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password">
+                                <span class="material-symbols-outlined" id="toggle-password-icon">visibility</span>
+                            </button>
+                        </div>
+                        <span class="field-error" id="error-password"></span>
+                    </div>
 
             <div class="form-group" id="group-confirm" style="display: none">
               <label for="input-confirm">Confirm Password</label>
