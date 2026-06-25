@@ -121,6 +121,21 @@ if (logoutBtn) {
   });
 }
 
+// Cross-link to the admin dashboard. Route through the same session check the
+// admin guard begins with; admin.js's on-load guard then enforces the admin role.
+const adminPortalLink = document.getElementById("admin-portal-link");
+if (adminPortalLink) {
+  adminPortalLink.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const session = await getSession();
+    if (!session) {
+      window.location.replace("/login.html");
+      return;
+    }
+    window.location.href = "/admin";
+  });
+}
+
 async function initView(page) {
   switch (page) {
     case "dashboard":

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Simple Manage Pro — Admin console for managing students, classes, subjects, schedules, grades and attendance."
+      content="Simple Manage Pro — Teacher console: your classes, gradebook, attendance and schedule."
     />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/admin.css" />
@@ -15,7 +15,7 @@
     />
     <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script src="/src/js/admin.js" type="module" defer></script>
-    <title>Simple Manage Pro — Admin</title>
+    <title>Simple Manage Pro — Teacher</title>
   </head>
 
   <body>
@@ -35,38 +35,22 @@
         </div>
 
         <div class="sidebar">
-          <a href="/admin" data-page="overview" class="active">
-            <span class="material-symbols-outlined">space_dashboard</span>
-            <h3>Overview</h3>
+          <a href="/admin" data-page="today" class="active">
+            <span class="material-symbols-outlined">today</span>
+            <h3>Today</h3>
           </a>
-          <a href="/admin" data-page="students">
-            <span class="material-symbols-outlined">groups</span>
-            <h3>Students</h3>
-          </a>
-          <a href="/admin" data-page="classes">
-            <span class="material-symbols-outlined">meeting_room</span>
-            <h3>Classes &amp; Sections</h3>
+          <a href="/admin" data-page="myclasses">
+            <span class="material-symbols-outlined">co_present</span>
+            <h3>My Classes</h3>
           </a>
           <a href="/admin" data-page="subjects">
             <span class="material-symbols-outlined">menu_book</span>
             <h3>Subjects</h3>
           </a>
-          <a href="/admin" data-page="schedules">
-            <span class="material-symbols-outlined">calendar_month</span>
-            <h3>Schedules</h3>
-          </a>
-          <a href="/admin" data-page="grades">
-            <span class="material-symbols-outlined">school</span>
-            <h3>Grades</h3>
-          </a>
-          <a href="/admin" data-page="attendance">
-            <span class="material-symbols-outlined">fact_check</span>
-            <h3>Attendance</h3>
-          </a>
 
           <div class="sidebar-divider"></div>
 
-          <a href="/">
+          <a href="/" class="nav-cta">
             <span class="material-symbols-outlined">visibility</span>
             <h3>View Student Portal</h3>
           </a>
@@ -81,169 +65,64 @@
              MAIN
         ═══════════════════════════════════════════════════════ -->
       <main>
-        <!-- ─── OVERVIEW ─────────────────────────────────────── -->
-        <section class="view-section active" id="view-overview">
-          <h1>Overview</h1>
+        <!-- ─── TODAY (landing) ──────────────────────────────── -->
+        <section class="view-section active" id="view-today">
+          <h1>Today</h1>
+          <p class="view-subtitle" id="today-subtitle">Loading your day…</p>
+          <div id="today-grid">
+            <div class="loading-cell">Loading today's classes…</div>
+          </div>
+        </section>
 
-          <div class="admin-stats">
-            <div class="stat-card" id="stat-students">
-              <span class="material-symbols-outlined">groups</span>
-              <h3>Total Students</h3>
-              <h1 id="stat-students-value">—</h1>
-              <small class="text-muted" id="stat-students-sub"
-                >active enrollments</small
-              >
+        <!-- ─── MY CLASSES ───────────────────────────────────── -->
+        <section class="view-section" id="view-myclasses">
+          <h1>My Classes</h1>
+          <p class="view-subtitle" id="myclasses-subtitle">
+            Loading your assignments…
+          </p>
+          <div class="myclasses-grid" id="myclasses-grid">
+            <div class="loading-cell">Loading your classes…</div>
+          </div>
+        </section>
+
+        <!-- ─── CLASS WORKSPACE (entered from a card) ────────── -->
+        <section class="view-section" id="view-class">
+          <button class="breadcrumb-back" id="class-back-btn" type="button">
+            <span class="material-symbols-outlined">arrow_back</span>
+            My Classes
+          </button>
+
+          <div class="class-ws-header">
+            <span class="class-ws-dot" id="class-ws-dot"></span>
+            <div>
+              <h1 id="class-ws-title">—</h1>
+              <p class="view-subtitle" id="class-ws-subtitle">—</p>
             </div>
+          </div>
 
-            <div class="stat-card" id="stat-teachers">
-              <span class="material-symbols-outlined">person</span>
-              <h3>Teaching Staff</h3>
-              <h1 id="stat-teachers-value">—</h1>
-              <small class="text-muted" id="stat-teachers-sub"
-                >across all subjects</small
-              >
-            </div>
-
-            <div class="stat-card" id="stat-classes">
-              <span class="material-symbols-outlined">meeting_room</span>
-              <h3>Active Classes</h3>
-              <h1 id="stat-classes-value">—</h1>
-              <small class="text-muted" id="stat-classes-sub"
-                >current school year</small
-              >
-            </div>
-
-            <div class="stat-card" id="stat-attendance">
+          <nav class="class-subtabs" id="class-subtabs">
+            <button class="class-subtab active" data-tab="roster" type="button">
+              <span class="material-symbols-outlined">groups</span> Roster
+            </button>
+            <button class="class-subtab" data-tab="gradebook" type="button">
+              <span class="material-symbols-outlined">school</span> Gradebook
+            </button>
+            <button class="class-subtab" data-tab="attendance" type="button">
               <span class="material-symbols-outlined">fact_check</span>
-              <h3>Attendance Today</h3>
-              <h1 id="stat-attendance-value">—%</h1>
-              <small class="text-muted" id="stat-attendance-sub"
-                >school-wide</small
-              >
-            </div>
-          </div>
-
-          <div class="recent-activity">
-            <h2>Recent Enrollments</h2>
-            <table id="recent-enrollments-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Class</th>
-                  <th>Grade Level</th>
-                  <th>Enrolled On</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="recent-enrollments-body">
-                <tr>
-                  <td colspan="5" class="loading-cell">
-                    Loading enrollments...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- ─── STUDENTS ─────────────────────────────────────── -->
-        <section class="view-section" id="view-students">
-          <h1>Students</h1>
-
-          <div class="view-toolbar">
-            <div class="search-bar">
-              <span class="material-symbols-outlined">search</span>
-              <input
-                type="search"
-                id="students-search"
-                placeholder="Search by name or email..."
-              />
-            </div>
-            <div class="toolbar-filters">
-              <select id="students-filter-class">
-                <option value="">All Classes</option>
-              </select>
-              <select id="students-filter-status">
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <button class="btn btn-primary" id="btn-add-student">
-              <span class="material-symbols-outlined">person_add</span>
-              Add Student
+              Attendance
             </button>
-          </div>
-
-          <div class="recent-activity">
-            <table class="data-table" id="students-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Grade Level</th>
-                  <th>Class</th>
-                  <th>Status</th>
-                  <th class="actions-col">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="students-body">
-                <tr>
-                  <td colspan="6" class="loading-cell">Loading students...</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="table-pagination" id="students-pagination"></div>
-          </div>
-        </section>
-
-        <!-- ─── CLASSES & SECTIONS ───────────────────────────── -->
-        <section class="view-section" id="view-classes">
-          <h1>Classes &amp; Sections</h1>
-
-          <div class="view-toolbar">
-            <div class="search-bar">
-              <span class="material-symbols-outlined">search</span>
-              <input
-                type="search"
-                id="classes-search"
-                placeholder="Search by section or teacher..."
-              />
-            </div>
-            <div class="toolbar-filters">
-              <select id="classes-filter-year">
-                <option value="">All School Years</option>
-              </select>
-            </div>
-            <button class="btn btn-primary" id="btn-add-class">
-              <span class="material-symbols-outlined">add</span>
-              Add Class
+            <button class="class-subtab" data-tab="schedule" type="button">
+              <span class="material-symbols-outlined">calendar_month</span>
+              Schedule
             </button>
-          </div>
+          </nav>
 
-          <div class="recent-activity">
-            <table class="data-table" id="classes-table">
-              <thead>
-                <tr>
-                  <th>Section</th>
-                  <th>Grade Level</th>
-                  <th>School Year</th>
-                  <th>Homeroom Teacher</th>
-                  <th>Room</th>
-                  <th>Enrolled / Capacity</th>
-                  <th class="actions-col">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="classes-body">
-                <tr>
-                  <td colspan="7" class="loading-cell">Loading classes...</td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="class-tab-content">
+            <div class="loading-cell">Loading…</div>
           </div>
         </section>
 
-        <!-- ─── SUBJECTS ─────────────────────────────────────── -->
+        <!-- ─── SUBJECTS (global catalog — retained) ─────────── -->
         <section class="view-section" id="view-subjects">
           <h1>Subjects</h1>
 
@@ -256,10 +135,10 @@
                 placeholder="Search by name or code..."
               />
             </div>
-            <button class="btn btn-primary" id="btn-add-subject">
-              <span class="material-symbols-outlined">add</span>
-              Add Subject
-            </button>
+            <span class="readonly-note">
+              <span class="material-symbols-outlined">lock</span>
+              Read-only reference
+            </span>
           </div>
 
           <div class="recent-activity">
@@ -270,118 +149,11 @@
                   <th>Name</th>
                   <th>Color</th>
                   <th>Grade Levels</th>
-                  <th class="actions-col">Actions</th>
                 </tr>
               </thead>
               <tbody id="subjects-body">
                 <tr>
-                  <td colspan="5" class="loading-cell">Loading subjects...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- ─── SCHEDULES ────────────────────────────────────── -->
-        <section class="view-section" id="view-schedules">
-          <h1>Schedules</h1>
-
-          <div class="view-toolbar">
-            <div class="toolbar-filters">
-              <label for="schedules-class-select">Class:</label>
-              <select id="schedules-class-select">
-                <option value="">Select a class...</option>
-              </select>
-            </div>
-            <button class="btn btn-primary" id="btn-add-schedule">
-              <span class="material-symbols-outlined">add</span>
-              Add Schedule Entry
-            </button>
-          </div>
-
-          <div class="recent-activity">
-            <div id="admin-schedule-grid">
-              <div class="loading-cell">
-                Select a class to view its schedule.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── GRADES ───────────────────────────────────────── -->
-        <section class="view-section" id="view-grades">
-          <h1>Grades</h1>
-
-          <div class="view-toolbar">
-            <div class="toolbar-filters">
-              <label for="grades-class-select">Class:</label>
-              <select id="grades-class-select">
-                <option value="">Select a class...</option>
-              </select>
-
-              <label for="grades-period-select">Period:</label>
-              <select id="grades-period-select">
-                <option value="">Select a period...</option>
-              </select>
-            </div>
-            <button class="btn btn-secondary" id="btn-save-grades">
-              <span class="material-symbols-outlined">save</span>
-              Save Changes
-            </button>
-          </div>
-
-          <div class="recent-activity">
-            <table class="data-table" id="grades-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                </tr>
-              </thead>
-              <tbody id="grades-matrix-body">
-                <tr>
-                  <td class="loading-cell">
-                    Select a class and period to load grades.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- ─── ATTENDANCE ───────────────────────────────────── -->
-        <section class="view-section" id="view-attendance">
-          <h1>Attendance</h1>
-
-          <div class="view-toolbar">
-            <div class="toolbar-filters">
-              <label for="attendance-class-select">Class:</label>
-              <select id="attendance-class-select">
-                <option value="">Select a class...</option>
-              </select>
-
-              <label for="attendance-date">Date:</label>
-              <input type="date" id="attendance-date" />
-            </div>
-            <button class="btn btn-secondary" id="btn-save-attendance">
-              <span class="material-symbols-outlined">save</span>
-              Save Attendance
-            </button>
-          </div>
-
-          <div class="recent-activity">
-            <table class="data-table" id="attendance-admin-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody id="attendance-admin-body">
-                <tr>
-                  <td colspan="3" class="loading-cell">
-                    Select a class and date to take attendance.
-                  </td>
+                  <td colspan="4" class="loading-cell">Loading subjects...</td>
                 </tr>
               </tbody>
             </table>
@@ -393,6 +165,7 @@
              RIGHT PANEL
         ═══════════════════════════════════════════════════════ -->
       <div class="right">
+        <div class="quickbar" id="quick-stats-list"></div>
         <div class="top">
           <button id="menu-btn">
             <span class="material-symbols-outlined">menu</span>
@@ -403,48 +176,47 @@
           </div>
           <div class="profile">
             <div class="info">
-              <p>Signed in as <b id="admin-name">Admin</b></p>
-              <span class="badge badge-primary">Administrator</span>
+              <p>Signed in as <b id="teacher-name">Teacher</b></p>
+              <span class="badge badge-primary">Teacher</span>
             </div>
             <div class="profile-photo">
-              <span class="material-symbols-outlined"
-                >admin_panel_settings</span
-              >
+              <span class="material-symbols-outlined">co_present</span>
             </div>
-          </div>
-        </div>
-
-        <div class="recent-updates">
-          <h2>Activity Log</h2>
-          <div class="updates-card" id="activity-log">
-            <div class="panel-empty">
-              <span class="material-symbols-outlined">history</span>
-              <p>No recent activity yet</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="subjects-analytics">
-          <h2>Quick Stats</h2>
-          <div id="quick-stats-list">
-            <div class="updates-card">
-              <div class="panel-empty">
-                <span class="material-symbols-outlined">bar_chart</span>
-                <p>No stats to show yet</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="pending-actions">
-          <h2>Pending Actions</h2>
-          <div class="updates-card">
-            <ul class="pending-list" id="pending-actions-list">
-              <li class="loading-cell">Loading...</li>
-            </ul>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STUDENT DETAIL DRAWER — read-only contact + guardians
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="drawer-overlay" id="drawer-overlay">
+      <aside
+        class="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drawer-title"
+      >
+        <div class="drawer-header">
+          <h2 id="drawer-title">Student</h2>
+          <div class="drawer-header-actions">
+            <button
+              class="btn-icon"
+              id="drawer-print"
+              title="Print progress report"
+              aria-label="Print progress report"
+            >
+              <span class="material-symbols-outlined">print</span>
+            </button>
+            <button class="modal-close" id="drawer-close" aria-label="Close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+        <div class="drawer-body" id="drawer-body">
+          <!-- Filled dynamically by admin.js -->
+        </div>
+      </aside>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════
@@ -504,6 +276,147 @@
           </button>
           <button type="button" class="btn btn-danger" id="confirm-delete">
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MANAGE ASSIGNMENTS MODAL — gradebook assignment add/edit/delete
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="assignments-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-title"
+      >
+        <div class="modal-header">
+          <h2 id="manage-title">Assignments</h2>
+          <button class="modal-close" id="manage-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="manage-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="manage-done">
+            Done
+          </button>
+          <button type="button" class="btn btn-primary" id="manage-add">
+            <span class="material-symbols-outlined">add</span> Add Assignment
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STUDENT GRADES MODAL — per-student detail + grade entry (wide)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="student-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sg-title"
+      >
+        <div class="modal-header">
+          <h2 id="sg-title">Grades</h2>
+          <button class="modal-close" id="sg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="sg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="sg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="sg-save">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         GRADE CATEGORIES MODAL — weighting buckets per class (item 8)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="categories-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="categories-title"
+      >
+        <div class="modal-header">
+          <h2 id="categories-title">Grade categories</h2>
+          <button class="modal-close" id="categories-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="categories-body"></div>
+        <div class="modal-footer">
+          <span class="cat-total" id="categories-total"></span>
+          <button type="button" class="btn btn-ghost" id="categories-done">
+            Done
+          </button>
+          <button type="button" class="btn btn-primary" id="categories-add">
+            <span class="material-symbols-outlined">add</span> Add category
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         POST GRADES MODAL — finalize period averages to the report card (item 1)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="post-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pg-title"
+      >
+        <div class="modal-header">
+          <h2 id="pg-title">Post grades</h2>
+          <button class="modal-close" id="pg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="pg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="pg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="pg-save">
+            Post grades
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         COLUMN GRADE ENTRY MODAL — one assignment, every student (item 4)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="column-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cg-title"
+      >
+        <div class="modal-header">
+          <h2 id="cg-title">Enter scores</h2>
+          <button class="modal-close" id="cg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="cg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="cg-save">
+            Save scores
           </button>
         </div>
       </div>

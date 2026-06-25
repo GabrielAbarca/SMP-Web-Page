@@ -242,6 +242,43 @@ aside .sidebar a:hover span {
   margin-left: 1rem;
 }
 
+/* ─── Sidebar divider (shared by both surfaces) ───────────────── */
+.sidebar-divider {
+  height: 1px;
+  background: var(--color-light);
+  margin: 1.4rem 1.6rem;
+}
+
+/* ─── Sidebar cross-link CTA (student ⇆ admin) — matched pair ──── */
+aside .sidebar a.nav-cta {
+  margin: 0.5rem 1.2rem;
+  height: auto;
+  padding: 0.9rem 1.1rem;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-radius: var(--border-radius-2);
+  font-weight: 600;
+  transition: all var(--transition-speed) ease;
+}
+
+aside .sidebar a.nav-cta span,
+aside .sidebar a.nav-cta h3 {
+  color: var(--color-white);
+}
+
+aside .sidebar a.nav-cta span {
+  font-size: 1.3rem;
+}
+
+aside .sidebar a.nav-cta:hover {
+  opacity: 0.92;
+  color: var(--color-white);
+}
+
+aside .sidebar a.nav-cta:hover span {
+  margin-left: 0;
+}
+
 main {
   margin-top: 3rem;
 }
