@@ -551,7 +551,6 @@ const db = {
       .eq("day_of_week", dayOfWeek)
       .order("start_time");
     if (error) throw error;
-    console.log("data: ", data);
     return data;
   },
 };
@@ -3149,7 +3148,6 @@ async function loadToday() {
     }
     const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
     renderToday(entries, grid);
-    console.log("Today's schedule entries:", entries);
   } catch (err) {
     grid.innerHTML = `<div class="loading-cell">Failed to load today: ${escapeHtml(err.message)}</div>`;
   }
