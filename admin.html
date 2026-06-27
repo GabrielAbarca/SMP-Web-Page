@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Simple Manage Pro — Teacher console: your classes, gradebook, attendance and schedule."
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <link rel="stylesheet" href="/src/css/admin.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
+    <script src="/src/js/admin.js" type="module" defer></script>
+    <title>Simple Manage Pro — Teacher</title>
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- ═══════════════════════════════════════════════════════
+             SIDEBAR
+        ═══════════════════════════════════════════════════════ -->
+      <aside>
+        <div class="top">
+          <div class="logo">
+            <img src="/src/assets/img/logo.jpg" alt="logo" />
+            <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
+          </div>
+          <div class="close" id="close-btn">
+            <span class="material-symbols-outlined">close</span>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <a href="/admin" data-page="today" class="active">
+            <span class="material-symbols-outlined">today</span>
+            <h3>Today</h3>
+          </a>
+          <a href="/admin" data-page="myclasses">
+            <span class="material-symbols-outlined">co_present</span>
+            <h3>My Classes</h3>
+          </a>
+          <a href="/admin" data-page="subjects">
+            <span class="material-symbols-outlined">menu_book</span>
+            <h3>Subjects</h3>
+          </a>
+
+          <div class="sidebar-divider"></div>
+
+          <a href="/" class="nav-cta">
+            <span class="material-symbols-outlined">visibility</span>
+            <h3>View Student Portal</h3>
+          </a>
+          <a href="/" id="logout-btn">
+            <span class="material-symbols-outlined">logout</span>
+            <h3>Logout</h3>
+          </a>
+        </div>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════════════════
+             MAIN
+        ═══════════════════════════════════════════════════════ -->
+      <main>
+        <!-- ─── TODAY (landing) ──────────────────────────────── -->
+        <section class="view-section active" id="view-today">
+          <h1>Today</h1>
+          <p class="view-subtitle" id="today-subtitle">Loading your day…</p>
+          <div id="today-grid">
+            <div class="loading-cell">Loading today's classes…</div>
+          </div>
+        </section>
+
+        <!-- ─── MY CLASSES ───────────────────────────────────── -->
+        <section class="view-section" id="view-myclasses">
+          <h1>My Classes</h1>
+          <p class="view-subtitle" id="myclasses-subtitle">
+            Loading your assignments…
+          </p>
+          <div class="myclasses-grid" id="myclasses-grid">
+            <div class="loading-cell">Loading your classes…</div>
+          </div>
+        </section>
+
+        <!-- ─── CLASS WORKSPACE (entered from a card) ────────── -->
+        <section class="view-section" id="view-class">
+          <button class="breadcrumb-back" id="class-back-btn" type="button">
+            <span class="material-symbols-outlined">arrow_back</span>
+            My Classes
+          </button>
+
+          <div class="class-ws-header">
+            <span class="class-ws-dot" id="class-ws-dot"></span>
+            <div>
+              <h1 id="class-ws-title">—</h1>
+              <p class="view-subtitle" id="class-ws-subtitle">—</p>
+            </div>
+          </div>
+
+          <nav class="class-subtabs" id="class-subtabs">
+            <button class="class-subtab active" data-tab="roster" type="button">
+              <span class="material-symbols-outlined">groups</span> Roster
+            </button>
+            <button class="class-subtab" data-tab="gradebook" type="button">
+              <span class="material-symbols-outlined">school</span> Gradebook
+            </button>
+            <button class="class-subtab" data-tab="attendance" type="button">
+              <span class="material-symbols-outlined">fact_check</span>
+              Attendance
+            </button>
+            <button class="class-subtab" data-tab="schedule" type="button">
+              <span class="material-symbols-outlined">calendar_month</span>
+              Schedule
+            </button>
+          </nav>
+
+          <div id="class-tab-content">
+            <div class="loading-cell">Loading…</div>
+          </div>
+        </section>
+
+        <!-- ─── SUBJECTS (global catalog — retained) ─────────── -->
+        <section class="view-section" id="view-subjects">
+          <h1>Subjects</h1>
+
+          <div class="view-toolbar">
+            <div class="search-bar">
+              <span class="material-symbols-outlined">search</span>
+              <input
+                type="search"
+                id="subjects-search"
+                placeholder="Search by name or code..."
+              />
+            </div>
+            <span class="readonly-note">
+              <span class="material-symbols-outlined">lock</span>
+              Read-only reference
+            </span>
+          </div>
+
+          <div class="recent-activity">
+            <table class="data-table" id="subjects-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Color</th>
+                  <th>Grade Levels</th>
+                </tr>
+              </thead>
+              <tbody id="subjects-body">
+                <tr>
+                  <td colspan="4" class="loading-cell">Loading subjects...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════
+             RIGHT PANEL
+        ═══════════════════════════════════════════════════════ -->
+      <div class="right">
+        <div class="quickbar" id="quick-stats-list"></div>
+        <div class="top">
+          <button id="menu-btn">
+            <span class="material-symbols-outlined">menu</span>
+          </button>
+          <div class="theme-toggler">
+            <span class="material-symbols-outlined active">light_mode</span>
+            <span class="material-symbols-outlined">dark_mode</span>
+          </div>
+          <div class="profile">
+            <div class="info">
+              <p>Signed in as <b id="teacher-name">Teacher</b></p>
+              <span class="badge badge-primary">Teacher</span>
+            </div>
+            <div class="profile-photo">
+              <span class="material-symbols-outlined">co_present</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STUDENT DETAIL DRAWER — read-only contact + guardians
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="drawer-overlay" id="drawer-overlay">
+      <aside
+        class="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drawer-title"
+      >
+        <div class="drawer-header">
+          <h2 id="drawer-title">Student</h2>
+          <div class="drawer-header-actions">
+            <button
+              class="btn-icon"
+              id="drawer-print"
+              title="Print progress report"
+              aria-label="Print progress report"
+            >
+              <span class="material-symbols-outlined">print</span>
+            </button>
+            <button class="modal-close" id="drawer-close" aria-label="Close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+        <div class="drawer-body" id="drawer-body">
+          <!-- Filled dynamically by admin.js -->
+        </div>
+      </aside>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SHARED MODAL — repurposed by admin.js for all add/edit forms
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <div class="modal-header">
+          <h2 id="modal-title">Title</h2>
+          <button class="modal-close" id="modal-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <form id="modal-form" class="modal-body">
+          <!-- Fields injected dynamically by admin.js -->
+        </form>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="modal-cancel">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="modal-form"
+            class="btn btn-primary"
+            id="modal-submit"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CONFIRM DELETE MODAL
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="confirm-overlay">
+      <div
+        class="modal modal-sm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
+        <div class="modal-header">
+          <h2 id="confirm-title">Delete item?</h2>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-message">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="confirm-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-danger" id="confirm-delete">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MANAGE ASSIGNMENTS MODAL — gradebook assignment add/edit/delete
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="assignments-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-title"
+      >
+        <div class="modal-header">
+          <h2 id="manage-title">Assignments</h2>
+          <button class="modal-close" id="manage-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="manage-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="manage-done">
+            Done
+          </button>
+          <button type="button" class="btn btn-primary" id="manage-add">
+            <span class="material-symbols-outlined">add</span> Add Assignment
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STUDENT GRADES MODAL — per-student detail + grade entry (wide)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="student-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sg-title"
+      >
+        <div class="modal-header">
+          <h2 id="sg-title">Grades</h2>
+          <button class="modal-close" id="sg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="sg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="sg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="sg-save">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         GRADE CATEGORIES MODAL — weighting buckets per class (item 8)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="categories-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="categories-title"
+      >
+        <div class="modal-header">
+          <h2 id="categories-title">Grade categories</h2>
+          <button class="modal-close" id="categories-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="categories-body"></div>
+        <div class="modal-footer">
+          <span class="cat-total" id="categories-total"></span>
+          <button type="button" class="btn btn-ghost" id="categories-done">
+            Done
+          </button>
+          <button type="button" class="btn btn-primary" id="categories-add">
+            <span class="material-symbols-outlined">add</span> Add category
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         POST GRADES MODAL — finalize period averages to the report card (item 1)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="post-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pg-title"
+      >
+        <div class="modal-header">
+          <h2 id="pg-title">Post grades</h2>
+          <button class="modal-close" id="pg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="pg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="pg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="pg-save">
+            Post grades
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         COLUMN GRADE ENTRY MODAL — one assignment, every student (item 4)
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="column-grades-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cg-title"
+      >
+        <div class="modal-header">
+          <h2 id="cg-title">Enter scores</h2>
+          <button class="modal-close" id="cg-close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body" id="cg-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cg-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="cg-save">
+            Save scores
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TOAST CONTAINER
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="toast-container" id="toast-container"></div>
+  </body>
+</html>

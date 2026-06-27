@@ -1,72 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sign in to Simple Manage Pro — your student portal for grades, attendance, schedule, and class information.">
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/login.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Sign in to Simple Manage Pro — your student portal for grades, attendance, schedule, and class information."
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <link rel="stylesheet" href="/src/css/login.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script src="/src/js/login.js" type="module" defer></script>
     <title>Sign In — Simple Manage Pro</title>
-</head>
-<body id="login-body">
-
-    
+  </head>
+  <body id="login-body">
     <div class="login-wrapper">
+      <div class="brand-panel">
+        <div class="brand-bg-shapes">
+          <div class="shape shape-1"></div>
+          <div class="shape shape-2"></div>
+          <div class="shape shape-3"></div>
+        </div>
+        <div class="brand-content">
+          <img
+            src="/src/assets/img/logo.jpg"
+            alt="SMP Logo"
+            class="brand-logo"
+          />
+          <h1 class="brand-title">SIMPLE <span>MANAGE PRO</span></h1>
+          <p class="brand-tagline">
+            Your student portal for grades,<br />attendance, schedule & more.
+          </p>
+          <ul class="brand-features">
+            <li>
+              <span class="material-symbols-outlined">school</span>
+              Real-time academic performance
+            </li>
+            <li>
+              <span class="material-symbols-outlined">calendar_month</span>
+              Weekly class schedule
+            </li>
+            <li>
+              <span class="material-symbols-outlined">fact_check</span>
+              Attendance tracking
+            </li>
+            <li>
+              <span class="material-symbols-outlined">event</span>
+              School events board
+            </li>
+          </ul>
+        </div>
+      </div>
 
-        
-        <div class="brand-panel">
-            <div class="brand-bg-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
-            </div>
-            <div class="brand-content">
-                <img src="/src/assets/img/logo.jpg" alt="SMP Logo" class="brand-logo">
-                <h1 class="brand-title">SIMPLE <span>MANAGE PRO</span></h1>
-                <p class="brand-tagline">Your student portal for grades,<br>attendance, schedule & more.</p>
-                <ul class="brand-features">
-                    <li>
-                        <span class="material-symbols-outlined">school</span>
-                        Real-time academic performance
-                    </li>
-                    <li>
-                        <span class="material-symbols-outlined">calendar_month</span>
-                        Weekly class schedule
-                    </li>
-                    <li>
-                        <span class="material-symbols-outlined">fact_check</span>
-                        Attendance tracking
-                    </li>
-                    <li>
-                        <span class="material-symbols-outlined">event</span>
-                        School events board
-                    </li>
-                </ul>
-            </div>
+      <div class="auth-panel">
+        <div
+          class="login-theme-toggler"
+          id="login-theme-toggler"
+          title="Toggle dark mode"
+        >
+          <span class="material-symbols-outlined active" id="theme-icon-light"
+            >light_mode</span
+          >
+          <span class="material-symbols-outlined" id="theme-icon-dark"
+            >dark_mode</span
+          >
         </div>
 
-        
-        <div class="auth-panel">
-
-            
-            <div class="login-theme-toggler" id="login-theme-toggler" title="Toggle dark mode">
-                <span class="material-symbols-outlined active" id="theme-icon-light">light_mode</span>
-                <span class="material-symbols-outlined" id="theme-icon-dark">dark_mode</span>
+        <div class="auth-card" id="auth-card">
+          <div class="auth-card-header">
+            <div class="auth-avatar">
+              <span class="material-symbols-outlined" id="auth-avatar-icon"
+                >lock</span
+              >
             </div>
-
-            <div class="auth-card" id="auth-card">
-
-                
-                <div class="auth-card-header">
-                    <div class="auth-avatar">
-                        <span class="material-symbols-outlined" id="auth-avatar-icon">lock</span>
-                    </div>
-                    <h2 id="auth-title">Welcome back</h2>
-                    <p id="auth-subtitle">Sign in to your account to continue</p>
-                </div>
+            <h2 id="auth-title">Welcome back</h2>
+            <p id="auth-subtitle">Sign in to your account to continue</p>
+          </div>
 
                 
                 <div class="auth-toast" id="auth-toast" role="alert" aria-live="polite"></div>
@@ -129,40 +142,41 @@
                         <span class="field-error" id="error-password"></span>
                     </div>
 
-                    
-                    <div class="form-group" id="group-confirm" style="display:none;">
-                        <label for="input-confirm">Confirm Password</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">lock_reset</span>
-                            <input
-                                type="password"
-                                id="input-confirm"
-                                name="confirm"
-                                placeholder="••••••••"
-                                autocomplete="new-password"
-                            >
-                        </div>
-                        <span class="field-error" id="error-confirm"></span>
-                    </div>
-
-                    
-                    <button type="submit" class="btn-submit" id="btn-submit">
-                        <span class="btn-text" id="btn-text">Sign In</span>
-                        <span class="btn-spinner" id="btn-spinner" style="display:none;"></span>
-                    </button>
-
-                </form>
-
-                
-                <div class="auth-switch">
-                    <p id="switch-text">Don't have an account?</p>
-                    <button type="button" class="btn-switch" id="btn-switch">Sign Up</button>
-                </div>
-
+            <div class="form-group" id="group-confirm" style="display: none">
+              <label for="input-confirm">Confirm Password</label>
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  >lock_reset</span
+                >
+                <input
+                  type="password"
+                  id="input-confirm"
+                  name="confirm"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                />
+              </div>
+              <span class="field-error" id="error-confirm"></span>
             </div>
+
+            <button type="submit" class="btn-submit" id="btn-submit">
+              <span class="btn-text" id="btn-text">Sign In</span>
+              <span
+                class="btn-spinner"
+                id="btn-spinner"
+                style="display: none"
+              ></span>
+            </button>
+          </form>
+
+          <div class="auth-switch">
+            <p id="switch-text">Don't have an account?</p>
+            <button type="button" class="btn-switch" id="btn-switch">
+              Sign Up
+            </button>
+          </div>
         </div>
-
+      </div>
     </div>
-
-</body>
+  </body>
 </html>
