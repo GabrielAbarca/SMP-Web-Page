@@ -1,5 +1,7 @@
 import { getSession, signOut } from "./auth.js";
 import { supabase } from "./supabaseClient.js";
+import { initTheme, bindThemeToggle } from "./theme.js";
+import { skeletonRows } from "./ui.js";
 import {
   fetchStudentProfile,
   fetchGradingPeriods,
@@ -76,11 +78,8 @@ closeBtn.addEventListener("click", () => {
   sideMenu.style.display = "none";
 });
 
-themeToggler.addEventListener("click", () => {
-  document.body.classList.toggle("dark-theme-variables");
-  themeToggler.querySelector("span:nth-child(1)").classList.toggle("active");
-  themeToggler.querySelector("span:nth-child(2)").classList.toggle("active");
-});
+initTheme();
+bindThemeToggle(themeToggler);
 
 const sidebarLinks = document.querySelectorAll("aside .sidebar a[data-page]");
 const viewSections = document.querySelectorAll(".view-section");
@@ -109,6 +108,27 @@ sidebarLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
     navigateTo(link.dataset.page);
+  });
+});
+
+// Dashboard summary cards double as shortcuts to their full section.
+const dashboardCardLinks = {
+  "student-info-bar": "settings",
+  "card-attendance": "attendance",
+  "card-grade": "grades",
+  "card-next-class": "schedule",
+  "upcoming-events-card": "events",
+};
+
+Object.entries(dashboardCardLinks).forEach(([cardId, page]) => {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  card.addEventListener("click", () => navigateTo(page));
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigateTo(page);
+    }
   });
 });
 
@@ -299,9 +319,12 @@ async function loadGradesTable() {
   const select = document.getElementById("period-select");
   const periodId = select.value === "all" ? null : Number(select.value);
 
-  const grades = await fetchStudentGrades(STUDENT_ID, periodId);
   const tbody = document.getElementById("grades-body");
   const tfoot = document.getElementById("grades-footer");
+  tbody.innerHTML = skeletonRows(4, 6);
+  tfoot.innerHTML = "";
+
+  const grades = await fetchStudentGrades(STUDENT_ID, periodId);
 
   if (!grades || grades.length === 0) {
     tbody.innerHTML =

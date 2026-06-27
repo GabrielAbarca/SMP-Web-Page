@@ -15,7 +15,12 @@
 
 .brand-panel {
   position: relative;
-  background: linear-gradient(135deg, #111e88 0%, #7380ec 55%, #a78bfa 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-variant) 0%,
+    var(--color-primary) 55%,
+    var(--color-primary-accent) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,7 +119,7 @@
 }
 
 .brand-title span {
-  color: #ff7782;
+  color: var(--color-danger);
 }
 
 .brand-tagline {
@@ -138,7 +143,7 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  font-size: 0.83rem;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.88);
   background: rgba(255, 255, 255, 0.1);
   padding: 0.55rem 0.9rem;
@@ -156,7 +161,7 @@
 
 .brand-features li .material-symbols-outlined {
   font-size: 1.15rem;
-  color: #41f1b6;
+  color: var(--color-success);
 }
 
 .auth-panel {
@@ -240,7 +245,7 @@
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), #a78bfa);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -291,7 +296,7 @@
 .auth-toast.toast-success {
   display: block;
   background: var(--color-success-light);
-  color: #0d9668;
+  color: var(--color-success-dark);
   border-left: 3px solid var(--color-success);
 }
 
@@ -422,7 +427,7 @@
   width: 100%;
   padding: 0.85rem 1.5rem;
   margin-top: 0.4rem;
-  background: linear-gradient(135deg, var(--color-primary), #a78bfa);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
   color: #fff;
   font-family: "Poppins", sans-serif;
   font-size: 0.9rem;
@@ -517,6 +522,12 @@
 .btn-switch:hover {
   color: var(--color-primary-variant);
   text-decoration: underline;
+}
+
+/* Deepen the token brand gradient in dark mode so it harmonizes with the
+   dark auth card (gradient itself stays token-based from Batch A). */
+.dark-theme-variables .brand-panel {
+  filter: brightness(0.82) saturate(0.95);
 }
 
 .dark-theme-variables .input-wrapper input {

@@ -33,14 +33,50 @@
   --color-dark-variant: #677483;
   --color-background: #f6f6f9;
 
+  /* Extended palette — brand accent, readable status text, alert fills.
+     The -dark text shades are brightened in dark mode (see below) so badges,
+     scores and event accents stay legible on dark surfaces. */
+  --color-primary-accent: #a78bfa;
+  --color-success-dark: #0d9668;
+  --color-warning-dark: #b97a1e;
+  --color-warning-strong: #f59e0b;
+  --color-info: #0891b2;
+  --color-info-bg: rgba(6, 182, 212, 0.12);
+  --color-suspension: #f97316;
+  --color-suspension-bg: rgba(249, 115, 22, 0.12);
+
   --card-border-radius: 2rem;
   --border-radius-1: 0.4rem;
   --border-radius-2: 0.8rem;
   --border-radius-3: 1.2rem;
 
+  /* Spacing scale */
+  --space-1: 0.4rem;
+  --space-2: 0.8rem;
+  --space-3: 1.2rem;
+  --space-4: 1.6rem;
+  --space-5: 2rem;
+  --space-6: 2.4rem;
+
   --card-padding: 1.8rem;
   --padding-1: 1.2rem;
 
+  /* Typography scale */
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
+  --text-base: 0.92rem;
+  --text-lg: 1rem;
+  --text-xl: 1.2rem;
+  --text-2xl: 1.4rem;
+  --text-3xl: 1.8rem;
+
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Shadow scale — all tint-based so they adapt to the theme via --color-light */
+  --shadow-sm: 0 0.4rem 1rem var(--color-light);
+  --shadow-md: 0 1rem 2rem var(--color-light);
   --box-shadow: 0 2rem 3rem var(--color-light);
 
   --transition-speed: 300ms;
@@ -53,6 +89,12 @@
   --color-dark-variant: #a3bdcc;
   --color-light: rgba(0, 0, 0, 0.4);
   --box-shadow: 0 2rem 3rem var(--color-light);
+
+  /* Brighten readable status shades for dark surfaces (G4) */
+  --color-success-dark: #41f1b6;
+  --color-warning-dark: #ffcf7a;
+  --color-info: #38bdf8;
+  --color-suspension: #fb923c;
 }
 
 * {
@@ -74,7 +116,7 @@ body {
   width: 100vw;
   height: 100vh;
   font-family: "Poppins", sans-serif;
-  font-size: 0.88rem;
+  font-size: var(--text-base);
   background: var(--color-background);
   user-select: none;
   overflow-x: hidden;
@@ -85,7 +127,7 @@ body {
   display: grid;
   width: 96%;
   margin: 0 auto;
-  gap: 1.8rem;
+  gap: var(--space-4);
   grid-template-columns: 14rem auto 23rem;
 }
 
@@ -95,22 +137,26 @@ a {
 
 h1 {
   font-weight: 800;
-  font-size: 1.8rem;
+  font-size: var(--text-3xl);
 }
 h2 {
-  font-size: 1.4rem;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
 }
 h3 {
-  font-size: 0.87rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
 h4 {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
 h5 {
-  font-size: 0.77rem;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 }
 small {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .profile-photo {
@@ -238,10 +284,6 @@ aside .sidebar a:hover {
   color: var(--color-primary);
 }
 
-aside .sidebar a:hover span {
-  margin-left: 1rem;
-}
-
 /* ─── Sidebar divider (shared by both surfaces) ───────────────── */
 .sidebar-divider {
   height: 1px;
@@ -279,6 +321,82 @@ aside .sidebar a.nav-cta:hover span {
   margin-left: 0;
 }
 
+/* ─── Buttons (shared by both surfaces) ───────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.3rem;
+  border: none;
+  border-radius: var(--border-radius-1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+  white-space: nowrap;
+}
+
+.btn .material-symbols-outlined {
+  font-size: 1.2rem;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: var(--color-dark-variant);
+  color: var(--color-white);
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-dark-variant);
+  border: 1px solid var(--color-light);
+}
+
+.btn-ghost:hover {
+  background: var(--color-background);
+}
+
+.btn-icon {
+  padding: 0.4rem;
+  border-radius: var(--border-radius-1);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-dark-variant);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: var(--color-background);
+}
+
+.btn-icon.danger:hover {
+  color: var(--color-danger);
+}
+
 main {
   margin-top: 3rem;
 }
@@ -314,12 +432,12 @@ main {
 .student-info-bar {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-3);
   background: var(--color-white);
-  padding: 1rem 1.5rem;
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--card-border-radius);
   box-shadow: var(--box-shadow);
-  margin: 1rem 0 0.5rem;
+  margin: var(--space-3) 0 var(--space-1);
   transition: all var(--transition-speed) ease;
 }
 
@@ -331,7 +449,7 @@ main {
   width: 3.2rem;
   height: 3.2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), #a78bfa);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,9 +477,9 @@ main {
 }
 
 .badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.72rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--border-radius-3);
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -373,7 +491,7 @@ main {
 
 .badge-success {
   background: var(--color-success-light);
-  color: #0d9668;
+  color: var(--color-success-dark);
 }
 
 .badge-danger {
@@ -383,18 +501,18 @@ main {
 
 .badge-warning {
   background: var(--color-warning-light);
-  color: #b97a1e;
+  color: var(--color-warning-dark);
 }
 
 .badge-info {
-  background: rgba(6, 182, 212, 0.12);
-  color: #0891b2;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 main .dashboard {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.6rem;
+  gap: var(--space-4);
 }
 
 main .dashboard > div {
@@ -408,6 +526,22 @@ main .dashboard > div {
 
 main .dashboard > div:hover {
   box-shadow: none;
+}
+
+/* Dashboard summary cards that double as shortcuts to their full section.
+   Pairs with each card's existing `transition: all var(--transition-speed)`
+   so the lift animates, and keeps a visible focus ring for keyboard users. */
+.clickable-card {
+  cursor: pointer;
+}
+
+.clickable-card:hover {
+  transform: translateY(-3px);
+}
+
+.clickable-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 main .dashboard > div span {
@@ -497,9 +631,14 @@ main .recent-activity table {
   width: 100%;
   border-radius: var(--card-border-radius);
   padding: var(--card-padding);
-  text-align: center;
+  text-align: left;
   box-shadow: var(--box-shadow);
   transition: all var(--transition-speed) ease;
+}
+
+/* Keep status columns centered (badge is a direct child of its cell) */
+main table td:has(> .status-badge) {
+  text-align: center;
 }
 
 main .recent-activity table:hover {
@@ -539,8 +678,11 @@ main table tfoot td {
 
 .loading-cell {
   text-align: center;
-  padding: 2rem !important;
+  padding: var(--space-5) var(--space-3) !important;
   color: var(--color-info-dark) !important;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
 }
 
 main .show-all {
@@ -551,11 +693,11 @@ main .show-all {
 }
 
 .score-high {
-  color: #0d9668;
+  color: var(--color-success-dark);
   font-weight: 600;
 }
 .score-mid {
-  color: #b97a1e;
+  color: var(--color-warning-dark);
   font-weight: 600;
 }
 .score-low {
@@ -565,15 +707,15 @@ main .show-all {
 
 .status-badge {
   display: inline-block;
-  padding: 0.2rem 0.7rem;
-  border-radius: 2rem;
-  font-size: 0.72rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--border-radius-3);
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
 .status-pass {
   background: var(--color-success-light);
-  color: #0d9668;
+  color: var(--color-success-dark);
 }
 .status-fail {
   background: var(--color-danger-light);
@@ -581,7 +723,7 @@ main .show-all {
 }
 .status-present {
   background: var(--color-success-light);
-  color: #0d9668;
+  color: var(--color-success-dark);
 }
 .status-absent {
   background: var(--color-danger-light);
@@ -589,7 +731,7 @@ main .show-all {
 }
 .status-late {
   background: var(--color-warning-light);
-  color: #b97a1e;
+  color: var(--color-warning-dark);
 }
 .status-excused {
   background: var(--color-primary-light);
@@ -629,21 +771,32 @@ main .show-all {
 }
 
 .period-selector select {
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 0.9rem;
   border-radius: var(--border-radius-2);
   background: var(--color-white);
   color: var(--color-dark);
   font-family: inherit;
-  font-size: 0.85rem;
-  border: 1px solid var(--color-info-light);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-light);
   cursor: pointer;
-  box-shadow: var(--box-shadow);
   transition: all var(--transition-speed) ease;
   appearance: auto;
 }
 
-.period-selector select:focus {
+/* ─── Shared focus ring for form controls (mirrors the login input ring) ── */
+.period-selector select:focus-visible,
+.view-toolbar select:focus-visible,
+.view-toolbar input:focus-visible,
+.modal-body input:focus-visible,
+.modal-body select:focus-visible,
+.modal-body textarea:focus-visible,
+.data-table input:focus-visible,
+.data-table select:focus-visible,
+.score-input:focus-visible,
+.search-bar:focus-within {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+  outline: none;
 }
 
 .schedule-wrapper {
@@ -702,7 +855,7 @@ main .show-all {
 .schedule-grid .sch-cell:hover {
   transform: scale(1.02);
   z-index: 1;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .schedule-grid .sch-cell .sch-subject {
@@ -712,7 +865,7 @@ main .show-all {
 }
 
 .schedule-grid .sch-cell .sch-teacher {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--color-dark-variant);
 }
 
@@ -736,8 +889,8 @@ main .show-all {
 .teacher-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.4rem;
-  margin-top: 1rem;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .teacher-card {
@@ -762,7 +915,7 @@ main .show-all {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--color-primary), #a78bfa);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-accent));
 }
 
 .teacher-card:hover {
@@ -774,7 +927,7 @@ main .show-all {
   width: 3.8rem;
   height: 3.8rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), #a78bfa);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -787,7 +940,7 @@ main .show-all {
 }
 
 .teacher-card h3 {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   font-weight: 700;
 }
 
@@ -841,13 +994,13 @@ main .show-all {
 }
 
 .att-stat.stat-present h2 {
-  color: #0d9668;
+  color: var(--color-success-dark);
 }
 .att-stat.stat-absent h2 {
   color: var(--color-danger);
 }
 .att-stat.stat-late h2 {
-  color: #b97a1e;
+  color: var(--color-warning-dark);
 }
 .att-stat.stat-excused h2 {
   color: var(--color-primary);
@@ -895,7 +1048,7 @@ main .show-all {
   background: var(--color-primary);
 }
 .event-card.event-suspension::before {
-  background: #f97316;
+  background: var(--color-suspension);
 }
 .event-card.event-general::before {
   background: var(--color-info-dark);
@@ -922,19 +1075,19 @@ main .show-all {
 }
 .event-exam_period .event-icon {
   background: var(--color-warning-light);
-  color: #b97a1e;
+  color: var(--color-warning-dark);
 }
 .event-activity .event-icon {
   background: var(--color-success-light);
-  color: #0d9668;
+  color: var(--color-success-dark);
 }
 .event-parent_meeting .event-icon {
   background: var(--color-primary-light);
   color: var(--color-primary);
 }
 .event-suspension .event-icon {
-  background: rgba(249, 115, 22, 0.12);
-  color: #f97316;
+  background: var(--color-suspension-bg);
+  color: var(--color-suspension);
 }
 .event-general .event-icon {
   background: var(--color-light);
@@ -942,7 +1095,7 @@ main .show-all {
 }
 
 .event-body h3 {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   font-weight: 700;
   margin-bottom: 0.3rem;
 }
@@ -1144,7 +1297,11 @@ main .show-all {
   }
 }
 
+/* Shimmer placeholder. Ready to use; broad rollout into the data views
+   needs the JS render templates (deferred — no-logic batch). */
 .skeleton {
+  display: block;
+  min-height: 1rem;
   background: linear-gradient(
     90deg,
     var(--color-light) 25%,
@@ -1153,7 +1310,49 @@ main .show-all {
   );
   background-size: 400px 100%;
   animation: shimmer 1.5s infinite;
+  border-radius: var(--border-radius-2);
+}
+
+/* Skeleton variants used by the loading helpers (src/js/ui.js) */
+.skeleton-text {
+  display: inline-block;
+  width: 100%;
+  height: 0.95rem;
   border-radius: var(--border-radius-1);
+}
+
+.skeleton-line {
+  height: 0.95rem;
+  margin-bottom: var(--space-2);
+  border-radius: var(--border-radius-1);
+}
+
+.skeleton-line:last-child {
+  width: 65%;
+}
+
+.skeleton-block {
+  padding: var(--space-3) 0;
+}
+
+.skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.skeleton-card {
+  height: 7rem;
+}
+
+.skeleton-span {
+  grid-column: 1 / -1;
+}
+
+.skeleton-row td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-light);
 }
 
 @media screen and (max-width: 1200px) {
@@ -1195,10 +1394,6 @@ main .show-all {
   main .recent-activity table {
     width: 84vw;
     padding: var(--card-padding) 0;
-  }
-
-  .schedule-grid {
-    min-width: 500px;
   }
 
   .teacher-cards {
@@ -1344,10 +1539,6 @@ main .show-all {
   .schedule-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .schedule-grid {
-    min-width: 550px;
   }
 
   .teacher-cards {

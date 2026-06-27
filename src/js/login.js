@@ -1,4 +1,5 @@
 import { signIn, signUp, getSession } from "./auth.js";
+import { initTheme, bindThemeToggle } from "./theme.js";
 
 const currentUser = await getSession();
 if (currentUser) {
@@ -36,14 +37,9 @@ const togglePassword = document.getElementById("toggle-password");
 const toggleIcon = document.getElementById("toggle-password-icon");
 
 const themeToggler = document.getElementById("login-theme-toggler");
-const themeIconLight = document.getElementById("theme-icon-light");
-const themeIconDark = document.getElementById("theme-icon-dark");
 
-themeToggler.addEventListener("click", () => {
-  document.body.classList.toggle("dark-theme-variables");
-  themeIconLight.classList.toggle("active");
-  themeIconDark.classList.toggle("active");
-});
+initTheme();
+bindThemeToggle(themeToggler);
 
 btnSwitch.addEventListener("click", () => {
   isSignUpMode = !isSignUpMode;
