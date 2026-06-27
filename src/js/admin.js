@@ -21,6 +21,13 @@
 
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
+import { initTheme, bindThemeToggle } from "./theme.js";
+import {
+  skeletonRows,
+  skeletonBlock,
+  skeletonCards,
+  skeletonCardItems,
+} from "./ui.js";
 
 // ───────────────────────────────────────────────────────────────
 //  1. AUTH GUARD + TEACHER IDENTITY
@@ -551,7 +558,6 @@ const db = {
       .eq("day_of_week", dayOfWeek)
       .order("start_time");
     if (error) throw error;
-    console.log("data: ", data);
     return data;
   },
 };
@@ -1037,12 +1043,8 @@ document.getElementById("logout-btn")?.addEventListener("click", async () => {
   await signOut();
   window.location.replace("/login.html");
 });
-document.querySelector(".theme-toggler")?.addEventListener("click", () => {
-  document.body.classList.toggle("dark-theme-variables");
-  document
-    .querySelectorAll(".theme-toggler span")
-    .forEach((s) => s.classList.toggle("active"));
-});
+initTheme();
+bindThemeToggle(document.querySelector(".theme-toggler"));
 
 document.getElementById("class-back-btn")?.addEventListener("click", () => {
   showSection("myclasses");
@@ -1058,7 +1060,7 @@ document.querySelectorAll(".class-subtab").forEach((btn) => {
 async function loadMyClasses() {
   const grid = document.getElementById("myclasses-grid");
   const subtitle = document.getElementById("myclasses-subtitle");
-  grid.innerHTML = '<div class="loading-cell">Loading your classes…</div>';
+  grid.innerHTML = skeletonCardItems(3);
 
   try {
     const [classes, counts] = await Promise.all([
@@ -1192,7 +1194,7 @@ function renderRosterTab(content) {
           </div>
         </div>
         <div id="roster-body">
-          <div class="loading-cell">Loading roster…</div>
+          ${skeletonBlock(5)}
         </div>
       </div>
     </div>`;
@@ -1330,7 +1332,7 @@ let _drawerData = {};
 async function openStudentDrawer(student) {
   _drawerStudent = student;
   drawerTitle.textContent = `${student.first_name} ${student.last_name}`;
-  drawerBody.innerHTML = '<div class="loading-cell">Loading…</div>';
+  drawerBody.innerHTML = skeletonBlock();
   openDrawer();
 
   const periodId = getCurrentPeriodId();
@@ -1683,7 +1685,7 @@ function renderGradebookTab(content) {
       </div>
     </div>
     <div class="recent-activity">
-      <div id="gradebook-grid"><div class="loading-cell">Loading…</div></div>
+      <div id="gradebook-grid">${skeletonBlock(4)}</div>
     </div>`;
 
   const periodSelect = document.getElementById("gradebook-period");
@@ -1710,7 +1712,7 @@ async function loadGradebook() {
   const grid = document.getElementById("gradebook-grid");
   const periodId = Number(document.getElementById("gradebook-period").value);
   const cstId = currentClass.cstId;
-  grid.innerHTML = '<div class="loading-cell">Loading gradebook…</div>';
+  grid.innerHTML = skeletonBlock(4);
 
   try {
     const [assignments, roster, periodGrades, categories] = await Promise.all([
@@ -1973,7 +1975,7 @@ async function openStudentGradesModal(student) {
 
   _studentGradesState = { student, assignments, gradeByAssignment: {} };
   sgTitle.textContent = `${student.first_name} ${student.last_name}`;
-  sgBody.innerHTML = '<div class="loading-cell">Loading…</div>';
+  sgBody.innerHTML = skeletonBlock();
   sgOverlay.classList.add("active");
 
   if (!assignments.length) {
@@ -2139,7 +2141,7 @@ function renderAttendanceTab(content) {
   const today = new Date().toISOString().split("T")[0];
   content.innerHTML = `
     <div class="absence-summary recent-activity" id="absence-summary">
-      <div class="loading-cell">Loading absence summary…</div>
+      ${skeletonBlock(2)}
     </div>
     <div class="view-toolbar">
       <div class="toolbar-filters">
@@ -2156,7 +2158,7 @@ function renderAttendanceTab(content) {
           <tr><th>Student</th><th>Status</th><th>Notes</th></tr>
         </thead>
         <tbody id="attendance-body">
-          <tr><td colspan="3" class="loading-cell">Loading attendance…</td></tr>
+          ${skeletonRows(5, 3)}
         </tbody>
       </table>
     </div>`;
@@ -2194,8 +2196,7 @@ function renderAttendanceTab(content) {
 
 async function loadAttendanceSheet(date) {
   const tbody = document.getElementById("attendance-body");
-  tbody.innerHTML =
-    '<tr><td colspan="3" class="loading-cell">Loading attendance…</td></tr>';
+  tbody.innerHTML = skeletonRows(5, 3);
   try {
     _attendanceRows = await db.fetchAttendanceSheet(currentClass.classId, date);
     _attendanceRows.forEach((row) => {
@@ -2287,7 +2288,7 @@ function renderScheduleTab(content) {
       </button>
     </div>
     <div class="recent-activity">
-      <div id="schedule-grid"><div class="loading-cell">Loading schedule…</div></div>
+      <div id="schedule-grid">${skeletonBlock(4)}</div>
     </div>`;
 
   bindAdminAction(document.getElementById("btn-add-schedule"), openAddSchedule);
@@ -2646,7 +2647,7 @@ async function openPostGrades() {
   const { cstId, periodId, students } = gradebookState;
   const periodName = PERIODS.find((p) => p.id === periodId)?.name ?? "";
   pgTitle.textContent = `Post grades — ${periodName}`;
-  pgBody.innerHTML = '<div class="loading-cell">Loading…</div>';
+  pgBody.innerHTML = skeletonBlock();
   pgOverlay.classList.add("active");
 
   let computed, posted;
@@ -2801,7 +2802,7 @@ async function openColumnGrades(assignment) {
   if (!gradebookState) return;
   const students = gradebookState.students; // active students only
   cgTitle.textContent = `Enter scores — ${assignment.name}`;
-  cgBody.innerHTML = '<div class="loading-cell">Loading…</div>';
+  cgBody.innerHTML = skeletonBlock();
   cgOverlay.classList.add("active");
 
   let existing;
@@ -3140,7 +3141,7 @@ async function loadToday() {
     return;
   }
 
-  grid.innerHTML = '<div class="loading-cell">Loading today\'s classes…</div>';
+  grid.innerHTML = skeletonCards(3);
   try {
     // myClassesCache lets us map a schedule row to its class_subject_teacher so
     // the action buttons can open the class workspace.
@@ -3149,7 +3150,6 @@ async function loadToday() {
     }
     const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
     renderToday(entries, grid);
-    console.log("Today's schedule entries:", entries);
   } catch (err) {
     grid.innerHTML = `<div class="loading-cell">Failed to load today: ${escapeHtml(err.message)}</div>`;
   }
