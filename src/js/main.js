@@ -2,6 +2,7 @@ import { getSession, signOut } from "./auth.js";
 import { supabase } from "./supabaseClient.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { skeletonRows } from "./ui.js";
+import { renderSettings } from "./settings.js";
 import {
   fetchStudentProfile,
   fetchGradingPeriods,
@@ -170,6 +171,8 @@ async function initView(page) {
       return initAttendanceView();
     case "events":
       return initEventsView();
+    case "settings":
+      return initSettings();
     default:
       break;
   }
@@ -551,6 +554,68 @@ async function initEventsView() {
     </div>`;
     })
     .join("");
+}
+
+// Read-only Settings for the student context. Reuses the dashboard's
+// studentProfile when available; otherwise fetches it on demand. Builds the
+// normalized adapter consumed by the shared renderer in settings.js.
+async function initSettings() {
+  if (!studentProfile) {
+    studentProfile = await fetchStudentProfile(STUDENT_ID);
+  }
+
+  const root = document.getElementById("settings-root");
+  if (!root) return;
+
+  if (!studentProfile) {
+    root.innerHTML =
+      '<div class="loading-cell">Could not load your profile.</div>';
+    return;
+  }
+
+  const s = studentProfile;
+  const cls = s.classes;
+  const classLine = cls
+    ? `${cls.grade_levels?.name ?? "—"} — Section ${cls.display_name ?? "—"}`
+    : null;
+
+  const dateOr = (d) => (d ? formatDate(d) : null);
+
+  const adapter = {
+    context: "student",
+    identity: {
+      displayName: `${s.first_name} ${s.last_name}`,
+      subtitle: `Student${cls?.grade_levels?.name ? " · " + cls.grade_levels.name : ""}`,
+      avatarIcon: "person",
+      roleBadge: { text: "Student", className: "badge-primary" },
+    },
+    personal: [
+      { label: "First name", value: s.first_name, icon: "badge" },
+      { label: "Last name", value: s.last_name, icon: "badge" },
+      { label: "Enrollment number", value: s.enrollment_number, icon: "tag" },
+      { label: "National ID", value: s.national_id, icon: "fingerprint" },
+      { label: "Date of birth", value: dateOr(s.date_of_birth), icon: "cake" },
+      { label: "Gender", value: genderLabel(s.gender), icon: "wc" },
+      { label: "Class", value: classLine, icon: "school" },
+      { label: "Email", value: s.email, icon: "mail" },
+      { label: "Phone", value: s.phone, icon: "call" },
+      { label: "Address", value: s.address, icon: "home" },
+      { label: "Status", value: s.status ? capitalize(s.status) : null, icon: "info" },
+      { label: "Enrolled", value: dateOr(s.enrollment_date), icon: "event" },
+    ],
+    username: s.email,
+    email: s.email,
+  };
+
+  renderSettings(root, adapter);
+}
+
+function genderLabel(g) {
+  if (!g) return null;
+  const key = String(g).trim().toUpperCase();
+  if (key === "M") return "Male";
+  if (key === "F") return "Female";
+  return g;
 }
 
 async function renderUpcomingEvents() {
