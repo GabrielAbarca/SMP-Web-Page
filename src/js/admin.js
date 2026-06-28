@@ -28,6 +28,7 @@ import {
   skeletonCards,
   skeletonCardItems,
 } from "./ui.js";
+import { renderSettings } from "./settings.js";
 
 // ───────────────────────────────────────────────────────────────
 //  1. AUTH GUARD + TEACHER IDENTITY
@@ -111,6 +112,20 @@ const db = {
     const { data, error } = await supabase
       .from("teachers")
       .select("id, first_name, last_name, specialization")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Full teacher record for the read-only Settings view (display only).
+  async fetchTeacherFull(id) {
+    const { data, error } = await supabase
+      .from("teachers")
+      .select(
+        "id, first_name, last_name, national_id, email, phone, address, " +
+          "hire_date, specialization, status",
+      )
       .eq("id", id)
       .single();
     if (error) throw error;
@@ -1002,7 +1017,7 @@ const navLinks = document.querySelectorAll(".sidebar a[data-page]");
 
 let myClassesCache = [];
 let currentClass = null; // { cstId, classId, subjectId, names, color }
-const loaded = { subjects: false };
+const loaded = { subjects: false, settings: false };
 
 function showSection(page) {
   sections.forEach((s) => s.classList.remove("active"));
@@ -1023,6 +1038,56 @@ function showSection(page) {
     loaded.subjects = true;
     loadSubjects();
   }
+  if (page === "settings" && !loaded.settings) {
+    loaded.settings = true;
+    loadSettings();
+  }
+}
+
+// Read-only Settings for the teacher context. Resolves the demo teacher record
+// and builds the normalized adapter consumed by the shared renderer.
+async function loadSettings() {
+  const root = document.getElementById("settings-root");
+  if (!root) return;
+
+  let teacher;
+  try {
+    teacher = await db.fetchTeacherFull(TEACHER_ID);
+  } catch (err) {
+    console.error("loadSettings:", err);
+    loaded.settings = false; // allow a retry on next visit
+    root.innerHTML =
+      '<div class="loading-cell">Could not load your profile.</div>';
+    return;
+  }
+
+  const t = teacher;
+  const cap = (v) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : null);
+
+  const adapter = {
+    context: "teacher",
+    identity: {
+      displayName: `${t.first_name} ${t.last_name}`,
+      subtitle: `Teacher${t.specialization ? " · " + t.specialization : ""}`,
+      avatarIcon: "co_present",
+      roleBadge: { text: "Teacher", className: "badge-primary" },
+    },
+    personal: [
+      { label: "First name", value: t.first_name, icon: "badge" },
+      { label: "Last name", value: t.last_name, icon: "badge" },
+      { label: "National ID", value: t.national_id, icon: "fingerprint" },
+      { label: "Specialization", value: t.specialization, icon: "menu_book" },
+      { label: "Email", value: t.email, icon: "mail" },
+      { label: "Phone", value: t.phone, icon: "call" },
+      { label: "Address", value: t.address, icon: "home" },
+      { label: "Hire date", value: t.hire_date ? formatDate(t.hire_date) : null, icon: "event" },
+      { label: "Status", value: cap(t.status), icon: "info" },
+    ],
+    username: t.email,
+    email: t.email,
+  };
+
+  renderSettings(root, adapter);
 }
 
 navLinks.forEach((link) => {

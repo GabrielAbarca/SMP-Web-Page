@@ -1008,6 +1008,12 @@
   .data-table {
     min-width: 560px;
   }
+
+  /* The roster is a CSS-grid list, not a .data-table — give it a min-width too
+     so its columns scroll within .recent-activity instead of cramping. */
+  .roster-list {
+    min-width: 600px;
+  }
 }
 
 /* Mobile slide-in sidebar. admin.js toggles `aside.active`; style.css
