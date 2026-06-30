@@ -1,5 +1,11 @@
 import { signIn, signUp, getSession } from "./auth.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
+import { initI18n, applyTranslations, t } from "./i18n.js";
+
+// Login has no settings panel → detection-only (navigator.language). No stored
+// key; the static markup carries data-i18n and is translated on load below.
+initI18n("login");
+applyTranslations();
 
 const currentUser = await getSession();
 if (currentUser) {
@@ -47,23 +53,23 @@ btnSwitch.addEventListener("click", () => {
   clearToast();
 
   if (isSignUpMode) {
-    authTitle.textContent = "Create an account";
-    authSubtitle.textContent = "Join SMP and access your student portal";
+    authTitle.textContent = t("login.createTitle");
+    authSubtitle.textContent = t("login.createSubtitle");
     authAvatarIcon.textContent = "person_add";
-    btnText.textContent = "Sign Up";
-    switchText.textContent = "Already have an account?";
-    btnSwitch.textContent = "Sign In";
+    btnText.textContent = t("login.signUp");
+    switchText.textContent = t("login.haveAccount");
+    btnSwitch.textContent = t("login.signIn");
 
     showField(groupName);
     showField(groupConfirm);
     inputPassword.setAttribute("autocomplete", "new-password");
   } else {
-    authTitle.textContent = "Welcome back";
-    authSubtitle.textContent = "Sign in to your account to continue";
+    authTitle.textContent = t("login.welcomeTitle");
+    authSubtitle.textContent = t("login.welcomeSubtitle");
     authAvatarIcon.textContent = "lock";
-    btnText.textContent = "Sign In";
-    switchText.textContent = "Don't have an account?";
-    btnSwitch.textContent = "Sign Up";
+    btnText.textContent = t("login.signIn");
+    switchText.textContent = t("login.noAccount");
+    btnSwitch.textContent = t("login.signUp");
 
     hideField(groupName);
     hideField(groupConfirm);
@@ -90,30 +96,26 @@ authForm.addEventListener("submit", async (e) => {
   let valid = true;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setFieldError(
-      errorEmail,
-      inputEmail,
-      "Please enter a valid email address.",
-    );
+    setFieldError(errorEmail, inputEmail, t("login.validation.email"));
     valid = false;
   }
 
   if (!password || password.length < 6) {
-    setFieldError(
-      errorPassword,
-      inputPassword,
-      "Password must be at least 6 characters.",
-    );
+    setFieldError(errorPassword, inputPassword, t("login.validation.password"));
     valid = false;
   }
 
   if (isSignUpMode) {
     if (!name) {
-      setFieldError(errorName, inputName, "Full name is required.");
+      setFieldError(errorName, inputName, t("login.validation.name"));
       valid = false;
     }
     if (password !== confirm) {
-      setFieldError(errorConfirm, inputConfirm, "Passwords do not match.");
+      setFieldError(
+        errorConfirm,
+        inputConfirm,
+        t("login.validation.passwordsMatch"),
+      );
       valid = false;
     }
   }
@@ -180,32 +182,32 @@ function hideField(el) {
 }
 
 function formatAuthError(message) {
-  if (!message) return "An unexpected error occurred. Please try again.";
+  if (!message) return t("login.error.unexpected");
 
   const lower = message.toLowerCase();
   if (
     lower.includes("invalid login credentials") ||
     lower.includes("invalid credentials")
   ) {
-    return "Incorrect email or password. Please try again.";
+    return t("login.error.credentials");
   }
   if (lower.includes("email not confirmed")) {
-    return "Your email is not confirmed. Please check your inbox.";
+    return t("login.error.notConfirmed");
   }
   if (
     lower.includes("user already registered") ||
     lower.includes("already been registered")
   ) {
-    return "An account with this email already exists. Try signing in instead.";
+    return t("login.error.exists");
   }
   if (lower.includes("password should be")) {
-    return "Password must be at least 6 characters long.";
+    return t("login.error.passwordLength");
   }
   if (lower.includes("rate limit")) {
-    return "Too many attempts. Please wait a moment before trying again.";
+    return t("login.error.rateLimit");
   }
   if (lower.includes("network") || lower.includes("fetch")) {
-    return "Network error. Please check your connection and try again.";
+    return t("login.error.network");
   }
   return message;
 }

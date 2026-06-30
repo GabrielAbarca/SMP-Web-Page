@@ -40,24 +40,24 @@
           />
           <h1 class="brand-title">SIMPLE <span>MANAGE PRO</span></h1>
           <p class="brand-tagline">
-            Your student portal for grades,<br />attendance, schedule & more.
+            <span data-i18n="login.tagline1">Your student portal for grades,</span><br /><span data-i18n="login.tagline2">attendance, schedule & more.</span>
           </p>
           <ul class="brand-features">
             <li>
               <span class="material-symbols-outlined">school</span>
-              Real-time academic performance
+              <span data-i18n="login.feature1">Real-time academic performance</span>
             </li>
             <li>
               <span class="material-symbols-outlined">calendar_month</span>
-              Weekly class schedule
+              <span data-i18n="login.feature2">Weekly class schedule</span>
             </li>
             <li>
               <span class="material-symbols-outlined">fact_check</span>
-              Attendance tracking
+              <span data-i18n="login.feature3">Attendance tracking</span>
             </li>
             <li>
               <span class="material-symbols-outlined">event</span>
-              School events board
+              <span data-i18n="login.feature4">School events board</span>
             </li>
           </ul>
         </div>
@@ -68,6 +68,7 @@
           class="login-theme-toggler"
           id="login-theme-toggler"
           title="Toggle dark mode"
+          data-i18n-title="login.toggleTheme"
         >
           <span class="material-symbols-outlined active" id="theme-icon-light"
             >light_mode</span
@@ -84,8 +85,8 @@
                 >lock</span
               >
             </div>
-            <h2 id="auth-title">Welcome back</h2>
-            <p id="auth-subtitle">Sign in to your account to continue</p>
+            <h2 id="auth-title" data-i18n="login.welcomeTitle">Welcome back</h2>
+            <p id="auth-subtitle" data-i18n="login.welcomeSubtitle">Sign in to your account to continue</p>
           </div>
 
                 
@@ -96,7 +97,7 @@
 
                     
                     <div class="form-group" id="group-name" style="display:none;">
-                        <label for="input-name">Full Name</label>
+                        <label for="input-name" data-i18n="login.fullName">Full Name</label>
                         <div class="input-wrapper">
                             <span class="material-symbols-outlined input-icon">person</span>
                             <input
@@ -112,7 +113,7 @@
 
                     
                     <div class="form-group" id="group-email">
-                        <label for="input-email">Email Address</label>
+                        <label for="input-email" data-i18n="login.emailAddress">Email Address</label>
                         <div class="input-wrapper">
                             <span class="material-symbols-outlined input-icon">mail</span>
                             <input
@@ -130,7 +131,7 @@
 
                     
                     <div class="form-group" id="group-password">
-                        <label for="input-password">Password</label>
+                        <label for="input-password" data-i18n="login.password">Password</label>
                         <div class="input-wrapper">
                             <span class="material-symbols-outlined input-icon">lock</span>
                             <input
@@ -142,7 +143,7 @@
                                 required
                                 value="Dev123"
                             >
-                            <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password">
+                            <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password" data-i18n-aria-label="login.showPassword">
                                 <span class="material-symbols-outlined" id="toggle-password-icon">visibility</span>
                             </button>
                         </div>
@@ -150,7 +151,7 @@
                     </div>
 
             <div class="form-group" id="group-confirm" style="display: none">
-              <label for="input-confirm">Confirm Password</label>
+              <label for="input-confirm" data-i18n="login.confirmPassword">Confirm Password</label>
               <div class="input-wrapper">
                 <span class="material-symbols-outlined input-icon"
                   >lock_reset</span
@@ -167,7 +168,7 @@
             </div>
 
             <button type="submit" class="btn-submit" id="btn-submit">
-              <span class="btn-text" id="btn-text">Sign In</span>
+              <span class="btn-text" id="btn-text" data-i18n="login.signIn">Sign In</span>
               <span
                 class="btn-spinner"
                 id="btn-spinner"
@@ -177,8 +178,8 @@
           </form>
 
           <div class="auth-switch">
-            <p id="switch-text">Don't have an account?</p>
-            <button type="button" class="btn-switch" id="btn-switch">
+            <p id="switch-text" data-i18n="login.noAccount">Don't have an account?</p>
+            <button type="button" class="btn-switch" id="btn-switch" data-i18n="login.signUp">
               Sign Up
             </button>
           </div>

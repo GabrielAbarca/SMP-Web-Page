@@ -29,6 +29,13 @@ import {
   skeletonCardItems,
 } from "./ui.js";
 import { renderSettings } from "./settings.js";
+import {
+  initI18n,
+  applyTranslations,
+  t,
+  tn,
+  formatDate as i18nFormatDate,
+} from "./i18n.js";
 
 // ───────────────────────────────────────────────────────────────
 //  1. AUTH GUARD + TEACHER IDENTITY
@@ -62,7 +69,6 @@ let PERIODS = [];
 // the only line a future real auth check would replace. Do not hardcode the
 // disabled state into individual buttons; gate them through this flag instead.
 const IS_ADMIN = false;
-const ADMIN_ONLY_MSG = "Solo un administrador puede realizar esta acción";
 
 // Core, reusable treatment for any admin-restricted control. When IS_ADMIN is
 // false, render the element enabled-but-inert: dimmed, not-allowed, aria-disabled,
@@ -72,7 +78,7 @@ const ADMIN_ONLY_MSG = "Solo un administrador puede realizar esta acción";
 function applyAdminLock(el) {
   el.classList.add("admin-only");
   el.setAttribute("aria-disabled", "true");
-  el.title = ADMIN_ONLY_MSG;
+  el.title = t("common.adminOnly");
   el.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -603,7 +609,7 @@ const modalSubmit = document.getElementById("modal-submit");
 
 let currentSubmitHandler = null;
 
-function openModal({ title, fields, onSubmit, submitLabel = "Save" }) {
+function openModal({ title, fields, onSubmit, submitLabel = t("common.save") }) {
   modalTitle.textContent = title;
   modalSubmit.textContent = submitLabel;
   modalForm.innerHTML = "";
@@ -628,8 +634,8 @@ function openModal({ title, fields, onSubmit, submitLabel = "Save" }) {
       const placeholder = document.createElement("option");
       placeholder.value = "";
       placeholder.textContent = field.required
-        ? `Select ${field.label.toLowerCase()}...`
-        : "— None —";
+        ? t("common.selectPlaceholder", { label: field.label.toLowerCase() })
+        : t("common.none");
       input.appendChild(placeholder);
 
       (field.options ?? []).forEach((opt) => {
@@ -884,14 +890,14 @@ drawerBody.addEventListener("click", (e) => {
 });
 
 // ── Table helpers ──────────────────────────────────────────────
-function renderEmptyRow(tbodyId, colspan, message = "No records found.") {
+function renderEmptyRow(tbodyId, colspan, message = t("common.noRecords")) {
   const tbody = document.getElementById(tbodyId);
   if (tbody)
     tbody.innerHTML = `<tr><td colspan="${colspan}" class="loading-cell">${message}</td></tr>`;
 }
 
 function renderErrorRow(tbodyId, colspan) {
-  renderEmptyRow(tbodyId, colspan, "Failed to load data. Please try again.");
+  renderEmptyRow(tbodyId, colspan, t("common.loadFailed"));
 }
 
 function makeActionBtn(icon, label, onClick, danger = false, adminOnly = false) {
@@ -925,7 +931,17 @@ function escapeHtml(value) {
   );
 }
 
-const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+// Weekday labels indexed by day_of_week (1=Mon … 5=Fri). Resolved at call
+// time so the active language applies (rebuilt fresh on the post-switch reload).
+function dayName(dow) {
+  const keys = ["", "monday", "tuesday", "wednesday", "thursday", "friday"];
+  return keys[dow] ? t(`common.days.${keys[dow]}`) : "";
+}
+function dayOptions() {
+  return ["monday", "tuesday", "wednesday", "thursday", "friday"].map(
+    (k, i) => ({ value: i + 1, label: t(`common.days.${k}`) }),
+  );
+}
 
 // Distinct class options across the teacher's subject-sections.
 function teacherClassOptions() {
@@ -990,23 +1006,16 @@ function weightedOverall(scoreByOrder) {
 // exists in the schema, so "Late" derives from graded_at vs the due_date.
 function gradeStatus(grade, dueDate) {
   if (!grade || grade.score == null)
-    return { label: "Not graded", cls: "badge-neutral" };
+    return { label: t("enums.gradeStatus.notGraded"), cls: "badge-neutral" };
   if (dueDate && grade.graded_at && grade.graded_at.slice(0, 10) > dueDate)
-    return { label: "Late", cls: "badge-warning" };
-  return { label: "Graded", cls: "badge-success" };
+    return { label: t("enums.gradeStatus.late"), cls: "badge-warning" };
+  return { label: t("enums.gradeStatus.graded"), cls: "badge-success" };
 }
 
-// "2024-12-13" / ISO timestamp → friendly date, or "—" when absent.
+// "2024-12-13" / ISO timestamp → locale-aware friendly date, or "—" when absent.
 function formatDate(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime())
-    ? escapeHtml(value)
-    : d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+  return i18nFormatDate(value);
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -1056,35 +1065,35 @@ async function loadSettings() {
   } catch (err) {
     console.error("loadSettings:", err);
     loaded.settings = false; // allow a retry on next visit
-    root.innerHTML =
-      '<div class="loading-cell">Could not load your profile.</div>';
+    root.innerHTML = `<div class="loading-cell">${t("common.couldNotLoadProfile")}</div>`;
     return;
   }
 
-  const t = teacher;
-  const cap = (v) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : null);
+  const tr = teacher;
+  const statusLabel = (v) =>
+    v ? t(`enums.studentStatus.${v}`) : null;
 
   const adapter = {
     context: "teacher",
     identity: {
-      displayName: `${t.first_name} ${t.last_name}`,
-      subtitle: `Teacher${t.specialization ? " · " + t.specialization : ""}`,
+      displayName: `${tr.first_name} ${tr.last_name}`,
+      subtitle: `${t("settings.roleTeacher")}${tr.specialization ? " · " + tr.specialization : ""}`,
       avatarIcon: "co_present",
-      roleBadge: { text: "Teacher", className: "badge-primary" },
+      roleBadge: { text: t("settings.roleTeacher"), className: "badge-primary" },
     },
     personal: [
-      { label: "First name", value: t.first_name, icon: "badge" },
-      { label: "Last name", value: t.last_name, icon: "badge" },
-      { label: "National ID", value: t.national_id, icon: "fingerprint" },
-      { label: "Specialization", value: t.specialization, icon: "menu_book" },
-      { label: "Email", value: t.email, icon: "mail" },
-      { label: "Phone", value: t.phone, icon: "call" },
-      { label: "Address", value: t.address, icon: "home" },
-      { label: "Hire date", value: t.hire_date ? formatDate(t.hire_date) : null, icon: "event" },
-      { label: "Status", value: cap(t.status), icon: "info" },
+      { label: t("settings.fields.firstName"), value: tr.first_name, icon: "badge" },
+      { label: t("settings.fields.lastName"), value: tr.last_name, icon: "badge" },
+      { label: t("settings.fields.nationalId"), value: tr.national_id, icon: "fingerprint" },
+      { label: t("settings.fields.specialization"), value: tr.specialization, icon: "menu_book" },
+      { label: t("settings.fields.email"), value: tr.email, icon: "mail" },
+      { label: t("settings.fields.phone"), value: tr.phone, icon: "call" },
+      { label: t("settings.fields.address"), value: tr.address, icon: "home" },
+      { label: t("settings.fields.hireDate"), value: tr.hire_date ? formatDate(tr.hire_date) : null, icon: "event" },
+      { label: t("settings.fields.status"), value: statusLabel(tr.status), icon: "info" },
     ],
-    username: t.email,
-    email: t.email,
+    username: tr.email,
+    email: tr.email,
   };
 
   renderSettings(root, adapter);
@@ -1110,6 +1119,11 @@ document.getElementById("logout-btn")?.addEventListener("click", async () => {
 });
 initTheme();
 bindThemeToggle(document.querySelector(".theme-toggler"));
+
+// Resolve this view's language (stored "smp-lang-admin" → browser → English)
+// and translate the static markup before any section renders.
+initI18n("teacher");
+applyTranslations();
 
 document.getElementById("class-back-btn")?.addEventListener("click", () => {
   showSection("myclasses");
@@ -1138,24 +1152,24 @@ async function loadMyClasses() {
       (sum, classId) => sum + (counts[classId] ?? 0),
       0,
     );
-    subtitle.textContent = `${ACTIVE_YEAR.name} · ${classes.length} section${
-      classes.length === 1 ? "" : "s"
-    } · ${totalStudents} students`;
+    subtitle.textContent = t("admin.myclasses.summary", {
+      year: ACTIVE_YEAR.name,
+      sections: tn("admin.sections", classes.length),
+      students: tn("admin.students", totalStudents),
+    });
 
     renderQuickStats(classes.length, totalStudents);
     renderMyClasses(classes, counts);
   } catch (err) {
     console.error(err);
-    grid.innerHTML =
-      '<div class="loading-cell">Failed to load your classes.</div>';
+    grid.innerHTML = `<div class="loading-cell">${t("admin.myclasses.loadFailed")}</div>`;
   }
 }
 
 function renderMyClasses(classes, counts) {
   const grid = document.getElementById("myclasses-grid");
   if (!classes.length) {
-    grid.innerHTML =
-      '<div class="loading-cell">You have no classes assigned this school year.</div>';
+    grid.innerHTML = `<div class="loading-cell">${t("admin.myclasses.empty")}</div>`;
     return;
   }
 
@@ -1176,7 +1190,7 @@ function renderMyClasses(classes, counts) {
         )}</p>
         <p class="class-card-count">
           <span class="material-symbols-outlined">group</span>
-          ${count} student${count === 1 ? "" : "s"}
+          ${tn("admin.students", count)}
         </p>
       </div>
       <span class="material-symbols-outlined class-card-arrow">chevron_right</span>
@@ -1189,8 +1203,8 @@ function renderMyClasses(classes, counts) {
 function renderQuickStats(sectionCount, totalStudents) {
   const el = document.getElementById("quick-stats-list");
   el.innerHTML = `
-    <span class="qstat"><span class="material-symbols-outlined">co_present</span>${sectionCount} sections</span>
-    <span class="qstat"><span class="material-symbols-outlined">group</span>${totalStudents} students</span>
+    <span class="qstat"><span class="material-symbols-outlined">co_present</span>${tn("admin.sections", sectionCount)}</span>
+    <span class="qstat"><span class="material-symbols-outlined">group</span>${tn("admin.students", totalStudents)}</span>
     <span class="qstat"><span class="material-symbols-outlined">calendar_today</span>${escapeHtml(ACTIVE_YEAR.name)}</span>`;
 }
 
@@ -1241,21 +1255,21 @@ function renderRosterTab(content) {
     <div class="view-toolbar">
       <div class="search-bar">
         <span class="material-symbols-outlined">search</span>
-        <input type="search" id="roster-search" placeholder="Search this roster…" />
+        <input type="search" id="roster-search" placeholder="${t("admin.roster.searchPlaceholder")}" />
       </div>
       <button class="btn btn-primary" id="btn-add-student">
-        <span class="material-symbols-outlined">person_add</span> Add Student
+        <span class="material-symbols-outlined">person_add</span> ${t("admin.roster.addStudent")}
       </button>
     </div>
     <div class="recent-activity">
       <div class="roster-list" id="roster-list">
         <div class="roster-head">
           <div class="roster-row-cells">
-            <span>Name</span>
-            <span>P1 Grade</span>
-            <span>P2 Grade</span>
-            <span>P3 Grade</span>
-            <span>Overall Grade</span>
+            <span>${t("admin.roster.name")}</span>
+            <span>${t("admin.roster.p1")}</span>
+            <span>${t("admin.roster.p2")}</span>
+            <span>${t("admin.roster.p3")}</span>
+            <span>${t("admin.roster.overall")}</span>
           </div>
         </div>
         <div id="roster-body">
@@ -1302,8 +1316,7 @@ async function loadRoster() {
     console.error(err);
     const body = document.getElementById("roster-body");
     if (body)
-      body.innerHTML =
-        '<div class="loading-cell">Failed to load data. Please try again.</div>';
+      body.innerHTML = `<div class="loading-cell">${t("common.loadFailed")}</div>`;
   }
 }
 
@@ -1322,8 +1335,7 @@ function renderRosterTable(students) {
   const body = document.getElementById("roster-body");
   if (!body) return;
   if (!students.length) {
-    body.innerHTML =
-      '<div class="loading-cell">No students in this section.</div>';
+    body.innerHTML = `<div class="loading-cell">${t("admin.roster.empty")}</div>`;
     return;
   }
 
@@ -1361,7 +1373,7 @@ function renderRosterTable(students) {
     rail.appendChild(
       makeActionBtn(
         "edit",
-        "Edit",
+        t("common.edit"),
         (e) => {
           e.stopPropagation();
           openEditStudent(student);
@@ -1373,7 +1385,7 @@ function renderRosterTable(students) {
     rail.appendChild(
       makeActionBtn(
         "delete",
-        "Delete",
+        t("common.delete"),
         (e) => {
           e.stopPropagation();
           confirmDeleteStudent(
@@ -1431,44 +1443,45 @@ async function openStudentDrawer(student) {
       </ul>
     </div>
     <div class="drawer-section">
-      <h3>Attendance</h3>
+      <h3>${t("admin.drawer.attendance")}</h3>
       ${renderDrawerAttendance(attendance)}
     </div>
     <div class="drawer-section">
-      <h3>Grades${periodName ? ` · ${escapeHtml(periodName)}` : ""}</h3>
+      <h3>${periodName ? t("admin.drawer.gradesWithPeriod", { period: escapeHtml(periodName) }) : t("admin.drawer.grades")}</h3>
       ${renderDrawerSubjectGrades(subjectGrades)}
     </div>
     <div class="drawer-section">
       <div class="drawer-section-head">
-        <h3>Discipline</h3>
-        <button type="button" class="link-btn" data-action="add-discipline">+ Add record</button>
+        <h3>${t("admin.drawer.discipline")}</h3>
+        <button type="button" class="link-btn" data-action="add-discipline">${t("admin.drawer.addRecord")}</button>
       </div>
       ${renderDrawerDiscipline(discipline)}
     </div>
     <div class="drawer-section">
-      <h3>Guardians &amp; contacts</h3>
+      <h3>${t("admin.drawer.guardians")}</h3>
       ${renderDrawerGuardians(contacts)}
     </div>`;
 }
 
 function renderDrawerGuardians(contacts) {
-  if (!contacts.length) return '<p class="drawer-muted">No guardians on file.</p>';
+  if (!contacts.length)
+    return `<p class="drawer-muted">${t("admin.drawer.noGuardians")}</p>`;
   return contacts
     .map((c) => {
       const g = c.guardians ?? {};
       const primary = c.is_primary
-        ? '<span class="badge badge-primary">Primary</span>'
+        ? `<span class="badge badge-primary">${t("admin.drawer.primary")}</span>`
         : "";
       return `
       <div class="drawer-card">
         <div class="drawer-card-head">
           <b>${escapeHtml(g.first_name ?? "")} ${escapeHtml(g.last_name ?? "")}</b>
-          <span class="drawer-rel">${escapeHtml(g.relationship ?? "Guardian")}</span>
+          <span class="drawer-rel">${escapeHtml(g.relationship ?? t("admin.drawer.guardianRel"))}</span>
           ${primary}
         </div>
         <ul class="drawer-contact">
           ${g.phone ? `<li><span class="material-symbols-outlined">call</span> ${escapeHtml(g.phone)}</li>` : ""}
-          ${g.alt_phone ? `<li><span class="material-symbols-outlined">call</span> ${escapeHtml(g.alt_phone)} (alt)</li>` : ""}
+          ${g.alt_phone ? `<li><span class="material-symbols-outlined">call</span> ${escapeHtml(g.alt_phone)} (${t("admin.drawer.alt")})</li>` : ""}
           ${g.email ? `<li><span class="material-symbols-outlined">mail</span> ${escapeHtml(g.email)}</li>` : ""}
         </ul>
       </div>`;
@@ -1477,7 +1490,8 @@ function renderDrawerGuardians(contacts) {
 }
 
 function renderDrawerAttendance(rows) {
-  if (!rows.length) return '<p class="drawer-muted">No attendance recorded.</p>';
+  if (!rows.length)
+    return `<p class="drawer-muted">${t("admin.drawer.noAttendance")}</p>`;
   const counts = { present: 0, absent: 0, late: 0, excused: 0 };
   rows.forEach((r) => {
     if (counts[r.status] != null) counts[r.status] += 1;
@@ -1485,16 +1499,17 @@ function renderDrawerAttendance(rows) {
   const rate = Math.round(((counts.present + counts.late) / rows.length) * 100);
   return `
     <div class="drawer-attendance">
-      <span class="att-chip att-present">${counts.present} present</span>
-      <span class="att-chip att-absent">${counts.absent} absent</span>
-      <span class="att-chip att-late">${counts.late} late</span>
-      <span class="att-chip att-excused">${counts.excused} excused</span>
+      <span class="att-chip att-present">${counts.present} ${t("enums.attendanceWord.present")}</span>
+      <span class="att-chip att-absent">${counts.absent} ${t("enums.attendanceWord.absent")}</span>
+      <span class="att-chip att-late">${counts.late} ${t("enums.attendanceWord.late")}</span>
+      <span class="att-chip att-excused">${counts.excused} ${t("enums.attendanceWord.excused")}</span>
     </div>
-    <p class="drawer-muted">${rate}% attendance across ${rows.length} day${rows.length === 1 ? "" : "s"}.</p>`;
+    <p class="drawer-muted">${tn("admin.drawer.attendanceRate", rows.length, { rate, count: rows.length })}</p>`;
 }
 
 function renderDrawerSubjectGrades(rows) {
-  if (!rows.length) return '<p class="drawer-muted">No grades recorded for this period.</p>';
+  if (!rows.length)
+    return `<p class="drawer-muted">${t("admin.drawer.noGrades")}</p>`;
   return `<ul class="drawer-grades">${rows
     .map((r) => {
       const subject = r.class_subject_teachers?.subjects?.name ?? "—";
@@ -1510,27 +1525,31 @@ function renderDrawerSubjectGrades(rows) {
 }
 
 function renderDrawerDiscipline(rows) {
-  if (!rows.length) return '<p class="drawer-muted">No discipline records. ✔</p>';
+  if (!rows.length)
+    return `<p class="drawer-muted">${t("admin.drawer.noDiscipline")}</p>`;
   const sevBadge = { low: "badge-neutral", medium: "badge-warning", high: "badge-danger" };
   return rows
     .map((r) => {
       const sev = sevBadge[r.severity] ?? "badge-neutral";
+      const sevLabel = r.severity
+        ? t(`enums.disciplineSeverity.${r.severity}`)
+        : "—";
       const state = r.resolved
-        ? '<span class="badge badge-success">Resolved</span>'
-        : '<span class="badge badge-warning">Open</span>';
+        ? `<span class="badge badge-success">${t("enums.disciplineState.resolved")}</span>`
+        : `<span class="badge badge-warning">${t("enums.disciplineState.open")}</span>`;
       return `
       <div class="drawer-card">
         <div class="drawer-card-head">
-          <b>${escapeHtml(r.type ?? "Incident")}</b>
-          <span class="badge ${sev}">${escapeHtml(r.severity ?? "—")}</span>
+          <b>${escapeHtml(r.type ?? t("admin.drawer.incident"))}</b>
+          <span class="badge ${sev}">${escapeHtml(sevLabel)}</span>
           ${state}
-          <button type="button" class="btn-icon drawer-card-edit" title="Edit"
+          <button type="button" class="btn-icon drawer-card-edit" title="${t("common.edit")}"
             data-action="edit-discipline" data-id="${r.id}">
             <span class="material-symbols-outlined">edit</span>
           </button>
         </div>
         <p class="drawer-muted">${escapeHtml(r.date ?? "")}${r.description ? " · " + escapeHtml(r.description) : ""}</p>
-        ${r.resolved && r.resolution ? `<p class="drawer-muted">Resolution: ${escapeHtml(r.resolution)}</p>` : ""}
+        ${r.resolved && r.resolution ? `<p class="drawer-muted">${t("admin.drawer.resolutionPrefix")}${escapeHtml(r.resolution)}</p>` : ""}
       </div>`;
     })
     .join("");
@@ -1538,43 +1557,43 @@ function renderDrawerDiscipline(rows) {
 
 async function openAddStudent() {
   openModal({
-    title: `Add Student — ${currentClass.className}`,
-    submitLabel: "Add Student",
+    title: t("admin.form.addStudentTitle", { class: currentClass.className }),
+    submitLabel: t("admin.roster.addStudent"),
     fields: [
       {
         name: "enrollment_number",
-        label: "Enrollment #",
+        label: t("admin.form.enrollmentShort"),
         type: "text",
         required: true,
-        placeholder: "e.g. 2024-001",
+        placeholder: t("admin.form.enrollmentPlaceholder"),
       },
       {
         name: "first_name",
-        label: "First Name",
+        label: t("admin.form.firstName"),
         type: "text",
         required: true,
       },
-      { name: "last_name", label: "Last Name", type: "text", required: true },
-      { name: "email", label: "Email", type: "email" },
-      { name: "phone", label: "Phone", type: "text" },
-      { name: "date_of_birth", label: "Date of Birth", type: "date" },
+      { name: "last_name", label: t("admin.form.lastName"), type: "text", required: true },
+      { name: "email", label: t("admin.form.email"), type: "email" },
+      { name: "phone", label: t("admin.form.phone"), type: "text" },
+      { name: "date_of_birth", label: t("admin.form.dateOfBirth"), type: "date" },
       {
         name: "gender",
-        label: "Gender",
+        label: t("admin.form.gender"),
         type: "select",
-        options: GENDER_OPTIONS,
+        options: genderOptions(),
       },
       {
         name: "enrollment_date",
-        label: "Enrollment Date",
+        label: t("admin.form.enrollmentDate"),
         type: "date",
         value: new Date().toISOString().split("T")[0],
       },
-      { name: "address", label: "Address", type: "textarea" },
-      { name: "photo_url", label: "Photo URL", type: "url" },
+      { name: "address", label: t("admin.form.address"), type: "textarea" },
+      { name: "photo_url", label: t("admin.form.photoUrl"), type: "url" },
       {
         name: "class_id",
-        label: "Class",
+        label: t("admin.form.class"),
         type: "select",
         required: true,
         value: currentClass.classId,
@@ -1596,7 +1615,11 @@ async function openAddStudent() {
         class_id: Number(formData.class_id),
         status: "active",
       });
-      showToast(`${formData.first_name} ${formData.last_name} added.`);
+      showToast(
+        t("admin.toast.studentAdded", {
+          name: `${formData.first_name} ${formData.last_name}`,
+        }),
+      );
       loadRoster();
     },
   });
@@ -1604,67 +1627,67 @@ async function openAddStudent() {
 
 function openEditStudent(student) {
   openModal({
-    title: "Edit Student",
-    submitLabel: "Save Changes",
+    title: t("admin.form.editStudentTitle"),
+    submitLabel: t("admin.form.saveChanges"),
     fields: [
       {
         name: "first_name",
-        label: "First Name",
+        label: t("admin.form.firstName"),
         type: "text",
         required: true,
         value: student.first_name,
       },
       {
         name: "last_name",
-        label: "Last Name",
+        label: t("admin.form.lastName"),
         type: "text",
         required: true,
         value: student.last_name,
       },
-      { name: "email", label: "Email", type: "email", value: student.email ?? "" },
-      { name: "phone", label: "Phone", type: "text", value: student.phone ?? "" },
+      { name: "email", label: t("admin.form.email"), type: "email", value: student.email ?? "" },
+      { name: "phone", label: t("admin.form.phone"), type: "text", value: student.phone ?? "" },
       {
         name: "national_id",
-        label: "National ID (cédula/DUI)",
+        label: t("admin.form.nationalIdFull"),
         type: "text",
         value: student.national_id ?? "",
         disabled: true,
-        help: "Registrar-managed — read-only here.",
+        help: t("admin.form.nationalIdHelp"),
       },
       {
         name: "date_of_birth",
-        label: "Date of Birth",
+        label: t("admin.form.dateOfBirth"),
         type: "date",
         value: student.date_of_birth ?? "",
       },
       {
         name: "gender",
-        label: "Gender",
+        label: t("admin.form.gender"),
         type: "select",
         value: student.gender ?? "",
-        options: GENDER_OPTIONS,
+        options: genderOptions(),
       },
       {
         name: "enrollment_date",
-        label: "Enrollment Date",
+        label: t("admin.form.enrollmentDate"),
         type: "date",
         value: student.enrollment_date ?? "",
       },
       {
         name: "address",
-        label: "Address",
+        label: t("admin.form.address"),
         type: "textarea",
         value: student.address ?? "",
       },
       {
         name: "photo_url",
-        label: "Photo URL",
+        label: t("admin.form.photoUrl"),
         type: "url",
         value: student.photo_url ?? "",
       },
       {
         name: "class_id",
-        label: "Class",
+        label: t("admin.form.class"),
         type: "select",
         required: true,
         value: currentClass.classId,
@@ -1672,16 +1695,16 @@ function openEditStudent(student) {
       },
       {
         name: "status",
-        label: "Status",
+        label: t("admin.form.status"),
         type: "select",
         required: true,
         value: student.status,
         options: [
-          { value: "active", label: "Active" },
-          { value: "inactive", label: "Inactive" },
-          { value: "graduated", label: "Graduated" },
-          { value: "transferred", label: "Transferred" },
-          { value: "withdrawn", label: "Withdrawn" },
+          { value: "active", label: t("enums.studentStatus.active") },
+          { value: "inactive", label: t("enums.studentStatus.inactive") },
+          { value: "graduated", label: t("enums.studentStatus.graduated") },
+          { value: "transferred", label: t("enums.studentStatus.transferred") },
+          { value: "withdrawn", label: t("enums.studentStatus.withdrawn") },
         ],
       },
     ],
@@ -1700,21 +1723,22 @@ function openEditStudent(student) {
         class_id: Number(formData.class_id),
         status: formData.status,
       });
-      showToast(`${formData.first_name} ${formData.last_name} updated.`);
+      showToast(
+        t("admin.toast.studentUpdated", {
+          name: `${formData.first_name} ${formData.last_name}`,
+        }),
+      );
       loadRoster();
     },
   });
 }
 
 function confirmDeleteStudent(id, name) {
-  openConfirm(
-    `Delete "${name}"? This removes their record permanently and cannot be undone.`,
-    async () => {
-      await db.deleteStudent(id);
-      showToast(`${name} deleted.`);
-      loadRoster();
-    },
-  );
+  openConfirm(t("admin.confirm.deleteStudent", { name }), async () => {
+    await db.deleteStudent(id);
+    showToast(t("admin.toast.studentDeleted", { name }));
+    loadRoster();
+  });
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -1731,21 +1755,21 @@ function renderGradebookTab(content) {
   content.innerHTML = `
     <div class="view-toolbar">
       <div class="toolbar-filters">
-        <label for="gradebook-period">Period:</label>
+        <label for="gradebook-period">${t("admin.gradebook.period")}</label>
         <select id="gradebook-period">${periodOptions}</select>
       </div>
       <div class="toolbar-actions">
         <button class="btn btn-ghost" id="btn-categories">
-          <span class="material-symbols-outlined">category</span> Categories
+          <span class="material-symbols-outlined">category</span> ${t("admin.gradebook.categories")}
         </button>
         <button class="btn btn-secondary" id="btn-manage-assignments">
-          <span class="material-symbols-outlined">list_alt</span> Manage assignments
+          <span class="material-symbols-outlined">list_alt</span> ${t("admin.gradebook.manage")}
         </button>
         <button class="btn btn-primary" id="btn-add-assignment">
-          <span class="material-symbols-outlined">add</span> Add Assignment
+          <span class="material-symbols-outlined">add</span> ${t("admin.gradebook.addAssignment")}
         </button>
         <button class="btn btn-primary" id="btn-post-grades">
-          <span class="material-symbols-outlined">grading</span> Post grades
+          <span class="material-symbols-outlined">grading</span> ${t("admin.gradebook.postGrades")}
         </button>
       </div>
     </div>
@@ -1795,7 +1819,7 @@ async function loadGradebook() {
     if (assignmentsOverlay.classList.contains("active")) renderManageAssignments();
   } catch (err) {
     console.error(err);
-    grid.innerHTML = `<div class="loading-cell">Failed to load gradebook: ${escapeHtml(err.message)}</div>`;
+    grid.innerHTML = `<div class="loading-cell">${t("admin.gradebook.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
 
@@ -1809,14 +1833,13 @@ function renderGradebook(assignments, students, periodGrades) {
     grid.innerHTML = `
       <div class="empty-state">
         <span class="material-symbols-outlined">assignment</span>
-        <p>No assignments yet for this period.</p>
-        <p class="empty-sub">Add an assignment to start grading.</p>
+        <p>${t("admin.gradebook.noAssignments")}</p>
+        <p class="empty-sub">${t("admin.gradebook.noAssignmentsSub")}</p>
       </div>`;
     return;
   }
   if (!students.length) {
-    grid.innerHTML =
-      '<div class="loading-cell">No active students in this section.</div>';
+    grid.innerHTML = `<div class="loading-cell">${t("admin.gradebook.noActiveStudents")}</div>`;
     return;
   }
 
@@ -1834,7 +1857,7 @@ function renderGradebook(assignments, students, periodGrades) {
       return `<tr class="row-clickable" data-student="${s.id}">
         <td>${escapeHtml(s.last_name)}, ${escapeHtml(s.first_name)}</td>
         <td>${gradeCellHtml(score)}</td>
-        <td class="text-muted">${graded}/${total} graded</td>
+        <td class="text-muted">${t("admin.gradebook.gradedCount", { graded, total })}</td>
       </tr>`;
     })
     .join("");
@@ -1842,7 +1865,7 @@ function renderGradebook(assignments, students, periodGrades) {
   grid.innerHTML = `
     <table class="data-table gradebook-table">
       <thead>
-        <tr><th>Student</th><th>Grade</th><th>Completion</th></tr>
+        <tr><th>${t("admin.gradebook.student")}</th><th>${t("admin.gradebook.grade")}</th><th>${t("admin.gradebook.completion")}</th></tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>`;
@@ -1857,20 +1880,23 @@ function renderGradebook(assignments, students, periodGrades) {
 
 function openAddAssignment() {
   openModal({
-    title: `Add Assignment — ${currentClass.subjectName} ${currentClass.className}`,
-    submitLabel: "Add Assignment",
+    title: t("admin.form.addAssignmentTitle", {
+      subject: currentClass.subjectName,
+      class: currentClass.className,
+    }),
+    submitLabel: t("admin.gradebook.addAssignment"),
     fields: [
       {
         name: "name",
-        label: "Name",
+        label: t("admin.form.name"),
         type: "text",
         required: true,
-        placeholder: "e.g. Quiz 1 — Fractions",
+        placeholder: t("admin.form.assignmentNamePlaceholder"),
       },
-      { name: "due_date", label: "Due Date (optional)", type: "date" },
+      { name: "due_date", label: t("admin.form.dueDate"), type: "date" },
       {
         name: "max_score",
-        label: "Max Score",
+        label: t("admin.form.maxScore"),
         type: "number",
         required: true,
         value: "100",
@@ -1879,12 +1905,12 @@ function openAddAssignment() {
       },
       {
         name: "category_id",
-        label: "Category (optional)",
+        label: t("admin.form.category"),
         type: "select",
         options: categoryOptions(),
-        help: "Categories let you weight exams vs. tasks. Manage them from the Categories button.",
+        help: t("admin.form.categoryHelp"),
       },
-      { name: "note", label: "Note (optional)", type: "textarea" },
+      { name: "note", label: t("admin.form.note"), type: "textarea" },
     ],
     onSubmit: async (formData) => {
       await db.insertAssignment({
@@ -1896,7 +1922,7 @@ function openAddAssignment() {
         category_id: formData.category_id ? Number(formData.category_id) : null,
         note: formData.note?.trim() || null,
       });
-      showToast(`Assignment "${formData.name}" created.`);
+      showToast(t("admin.toast.assignmentCreated", { name: formData.name }));
       loadGradebook();
     },
   });
@@ -1904,25 +1930,25 @@ function openAddAssignment() {
 
 function openEditAssignment(assignment) {
   openModal({
-    title: "Edit Assignment",
-    submitLabel: "Save Changes",
+    title: t("admin.form.editAssignmentTitle"),
+    submitLabel: t("admin.form.saveChanges"),
     fields: [
       {
         name: "name",
-        label: "Name",
+        label: t("admin.form.name"),
         type: "text",
         required: true,
         value: assignment.name,
       },
       {
         name: "due_date",
-        label: "Due Date (optional)",
+        label: t("admin.form.dueDate"),
         type: "date",
         value: assignment.due_date ?? "",
       },
       {
         name: "max_score",
-        label: "Max Score",
+        label: t("admin.form.maxScore"),
         type: "number",
         required: true,
         value: assignment.max_score,
@@ -1931,14 +1957,14 @@ function openEditAssignment(assignment) {
       },
       {
         name: "category_id",
-        label: "Category (optional)",
+        label: t("admin.form.category"),
         type: "select",
         value: assignment.category_id ?? "",
         options: categoryOptions(),
       },
       {
         name: "note",
-        label: "Note (optional)",
+        label: t("admin.form.note"),
         type: "textarea",
         value: assignment.note ?? "",
       },
@@ -1951,7 +1977,7 @@ function openEditAssignment(assignment) {
         category_id: formData.category_id ? Number(formData.category_id) : null,
         note: formData.note?.trim() || null,
       });
-      showToast(`Assignment "${formData.name}" updated.`);
+      showToast(t("admin.toast.assignmentUpdated", { name: formData.name }));
       loadGradebook();
     },
   });
@@ -1959,10 +1985,10 @@ function openEditAssignment(assignment) {
 
 function confirmDeleteAssignment(assignment) {
   openConfirm(
-    `Delete assignment "${assignment.name}"? All student scores for it will also be removed. This cannot be undone.`,
+    t("admin.confirm.deleteAssignment", { name: assignment.name }),
     async () => {
       await db.deleteAssignment(assignment.id);
-      showToast(`Assignment "${assignment.name}" deleted.`);
+      showToast(t("admin.toast.assignmentDeleted", { name: assignment.name }));
       loadGradebook();
     },
   );
@@ -1985,11 +2011,10 @@ function renderManageAssignments() {
   const assignments = gradebookState?.assignments ?? [];
   const periodName =
     PERIODS.find((p) => p.id === gradebookState?.periodId)?.name ?? "";
-  manageTitle.textContent = `Assignments — ${periodName}`;
+  manageTitle.textContent = t("admin.manage.title", { period: periodName });
 
   if (!assignments.length) {
-    manageBody.innerHTML =
-      '<p class="drawer-muted">No assignments yet for this period. Add one to start grading.</p>';
+    manageBody.innerHTML = `<p class="drawer-muted">${t("admin.manage.empty")}</p>`;
     return;
   }
 
@@ -2014,15 +2039,15 @@ function renderManageAssignments() {
     const actions = document.createElement("div");
     actions.className = "manage-item-actions";
     actions.appendChild(
-      makeActionBtn("edit_note", "Enter scores for all students", () =>
+      makeActionBtn("edit_note", t("admin.manage.enterScores"), () =>
         openColumnGrades(a),
       ),
     );
     actions.appendChild(
-      makeActionBtn("edit", "Edit", () => openEditAssignment(a)),
+      makeActionBtn("edit", t("common.edit"), () => openEditAssignment(a)),
     );
     actions.appendChild(
-      makeActionBtn("delete", "Delete", () => confirmDeleteAssignment(a), true),
+      makeActionBtn("delete", t("common.delete"), () => confirmDeleteAssignment(a), true),
     );
 
     item.append(info, actions);
@@ -2044,7 +2069,7 @@ async function openStudentGradesModal(student) {
   sgOverlay.classList.add("active");
 
   if (!assignments.length) {
-    sgBody.innerHTML = `<p class="drawer-muted">No assignments for ${escapeHtml(periodName)} yet.</p>`;
+    sgBody.innerHTML = `<p class="drawer-muted">${t("admin.sg.noAssignments", { period: escapeHtml(periodName) })}</p>`;
     return;
   }
 
@@ -2055,7 +2080,7 @@ async function openStudentGradesModal(student) {
       student.id,
     );
   } catch (err) {
-    sgBody.innerHTML = `<div class="loading-cell">Failed to load grades: ${escapeHtml(err.message)}</div>`;
+    sgBody.innerHTML = `<div class="loading-cell">${t("admin.sg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
     return;
   }
 
@@ -2077,7 +2102,7 @@ async function openStudentGradesModal(student) {
       const scoreField = graded
         ? `<input class="sg-score sg-locked" type="number" min="0" max="${a.max_score}" step="0.01"
             data-assignment="${a.id}" data-original="${score}" value="${score}" readonly />
-          <button type="button" class="sg-edit-btn" data-assignment="${a.id}" title="Edit score" aria-label="Edit score">
+          <button type="button" class="sg-edit-btn" data-assignment="${a.id}" title="${t("admin.sg.editScore")}" aria-label="${t("admin.sg.editScore")}">
             <span class="material-symbols-outlined">edit</span>
           </button>`
         : `<input class="sg-score" type="number" min="0" max="${a.max_score}" step="0.01"
@@ -2095,25 +2120,25 @@ async function openStudentGradesModal(student) {
         <span class="sg-cell sg-muted">${formatDate(g?.graded_at)}</span>
         <span class="sg-cell">
           <input class="sg-note" type="text" data-assignment="${a.id}"
-            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="Add note…" />
+            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="${t("admin.sg.notePlaceholder")}" />
         </span>
       </div>`;
     })
     .join("");
 
   sgBody.innerHTML = `
-    <p class="sg-period">${escapeHtml(periodName)} · ${assignments.length} assignment${assignments.length === 1 ? "" : "s"}</p>
+    <p class="sg-period">${tn("admin.sg.periodLine", assignments.length, { period: escapeHtml(periodName), count: assignments.length })}</p>
     <div class="sg-scroll">
       <div class="sg-grid">
         <div class="sg-row sg-head">
-          <span class="sg-cell">Assignment</span>
-          <span class="sg-cell sg-num">Max</span>
-          <span class="sg-cell">Due</span>
-          <span class="sg-cell">Score</span>
-          <span class="sg-cell">Status</span>
-          <span class="sg-cell">Date added</span>
-          <span class="sg-cell">Date graded</span>
-          <span class="sg-cell">Note</span>
+          <span class="sg-cell">${t("admin.sg.assignment")}</span>
+          <span class="sg-cell sg-num">${t("admin.sg.max")}</span>
+          <span class="sg-cell">${t("admin.sg.due")}</span>
+          <span class="sg-cell">${t("admin.sg.score")}</span>
+          <span class="sg-cell">${t("admin.sg.status")}</span>
+          <span class="sg-cell">${t("admin.sg.dateAdded")}</span>
+          <span class="sg-cell">${t("admin.sg.dateGraded")}</span>
+          <span class="sg-cell">${t("admin.sg.note")}</span>
         </div>
         ${rows}
       </div>
@@ -2152,7 +2177,7 @@ async function saveStudentGrades() {
       score = Number(scoreVal);
       const max = maxMap[aId];
       if (Number.isNaN(score) || score < 0 || score > max) {
-        errorMsg ??= `Scores must be between 0 and ${max}.`;
+        errorMsg ??= t("admin.validation.scoreRange", { max });
         return;
       }
     }
@@ -2178,7 +2203,7 @@ async function saveStudentGrades() {
     return;
   }
   if (!rows.length) {
-    showToast("No changes to save.", "error");
+    showToast(t("admin.validation.noChanges"), "error");
     return;
   }
 
@@ -2186,7 +2211,10 @@ async function saveStudentGrades() {
   try {
     await db.upsertAssignmentGrades(rows);
     showToast(
-      `Saved ${rows.length} grade${rows.length > 1 ? "s" : ""} for ${student.first_name}.`,
+      tn("admin.toast.gradesSaved", rows.length, {
+        count: rows.length,
+        name: student.first_name,
+      }),
     );
     closeStudentGradesModal();
     loadGradebook(); // refresh current-period grade + completion from the view
@@ -2210,17 +2238,17 @@ function renderAttendanceTab(content) {
     </div>
     <div class="view-toolbar">
       <div class="toolbar-filters">
-        <label for="attendance-date">Date:</label>
+        <label for="attendance-date">${t("admin.attendance.date")}</label>
         <input type="date" id="attendance-date" value="${today}" />
       </div>
       <button class="btn btn-secondary" id="btn-save-attendance">
-        <span class="material-symbols-outlined">save</span> Save Attendance
+        <span class="material-symbols-outlined">save</span> ${t("admin.attendance.save")}
       </button>
     </div>
     <div class="recent-activity">
       <table class="data-table" id="attendance-table">
         <thead>
-          <tr><th>Student</th><th>Status</th><th>Notes</th></tr>
+          <tr><th>${t("admin.attendance.student")}</th><th>${t("admin.attendance.status")}</th><th>${t("admin.attendance.notes")}</th></tr>
         </thead>
         <tbody id="attendance-body">
           ${skeletonRows(5, 3)}
@@ -2269,15 +2297,14 @@ async function loadAttendanceSheet(date) {
     });
     renderAttendanceSheet(_attendanceRows);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="3" class="loading-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="loading-cell">${t("admin.attendance.error", { msg: escapeHtml(err.message) })}</td></tr>`;
   }
 }
 
 function renderAttendanceSheet(rows) {
   const tbody = document.getElementById("attendance-body");
   if (!rows.length) {
-    tbody.innerHTML =
-      '<tr><td colspan="3" class="loading-cell">No active students in this section.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="3" class="loading-cell">${t("admin.gradebook.noActiveStudents")}</td></tr>`;
     return;
   }
 
@@ -2288,14 +2315,14 @@ function renderAttendanceSheet(rows) {
     const statusButtons = STATUSES.map((s) => {
       const active = row.status === s ? " active" : "";
       return `<button type="button" class="btn btn-sm attendance-status-btn${active}"
-        data-idx="${idx}" data-status="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</button>`;
+        data-idx="${idx}" data-status="${s}">${t(`enums.attendance.${s}`)}</button>`;
     }).join("");
 
     tr.innerHTML = `
       <td>${escapeHtml(row.last_name)}, ${escapeHtml(row.first_name)}</td>
       <td><div class="attendance-status-group">${statusButtons}</div></td>
       <td><input type="text" class="attendance-notes-input" data-idx="${idx}"
-        value="${escapeHtml(row.notes ?? "")}" placeholder="Optional note…"></td>`;
+        value="${escapeHtml(row.notes ?? "")}" placeholder="${t("admin.attendance.notePlaceholder")}"></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -2303,11 +2330,11 @@ function renderAttendanceSheet(rows) {
 async function saveAttendance() {
   const date = document.getElementById("attendance-date").value;
   if (!date) {
-    showToast("Pick a date first.", "error");
+    showToast(t("admin.validation.pickDate"), "error");
     return;
   }
   if (!_attendanceRows.length) {
-    showToast("No attendance data to save.", "error");
+    showToast(t("admin.validation.noAttendanceData"), "error");
     return;
   }
 
@@ -2321,7 +2348,7 @@ async function saveAttendance() {
         row._original.notes !== (row.notes ?? "")),
   );
   if (!changed.length) {
-    showToast("No changes to save.", "error");
+    showToast(t("admin.validation.noChanges"), "error");
     return;
   }
 
@@ -2331,7 +2358,7 @@ async function saveAttendance() {
       row._original = { status: row.status, notes: row.notes ?? "" };
     });
     showToast(
-      `Attendance saved for ${changed.length} student${changed.length > 1 ? "s" : ""}.`,
+      tn("admin.toast.attendanceSaved", changed.length, { count: changed.length }),
     );
     loadAbsenceSummary(); // counts may have shifted a student over the threshold
   } catch (err) {
@@ -2346,10 +2373,10 @@ function renderScheduleTab(content) {
   content.innerHTML = `
     <div class="view-toolbar">
       <div class="toolbar-filters">
-        <label>Weekly schedule for ${escapeHtml(currentClass.className)}</label>
+        <label>${t("admin.schedule.weeklyFor", { class: escapeHtml(currentClass.className) })}</label>
       </div>
       <button class="btn btn-primary" id="btn-add-schedule">
-        <span class="material-symbols-outlined">add</span> Add Schedule Entry
+        <span class="material-symbols-outlined">add</span> ${t("admin.schedule.add")}
       </button>
     </div>
     <div class="recent-activity">
@@ -2367,15 +2394,14 @@ async function loadSchedule() {
     const entries = await db.fetchScheduleByClass(currentClass.classId);
     renderScheduleTable(entries);
   } catch (err) {
-    container.innerHTML = `<div class="loading-cell">Failed to load schedule: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-cell">${t("admin.schedule.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
 
 function renderScheduleTable(entries) {
   const container = document.getElementById("schedule-grid");
   if (!entries.length) {
-    container.innerHTML =
-      '<div class="loading-cell">No schedule entries yet. Add one to get started.</div>';
+    container.innerHTML = `<div class="loading-cell">${t("admin.schedule.empty")}</div>`;
     return;
   }
 
@@ -2384,9 +2410,9 @@ function renderScheduleTable(entries) {
   table.innerHTML = `
     <thead>
       <tr>
-        <th>Day</th><th>Start</th><th>End</th>
-        <th>Subject</th><th>Teacher</th><th>Room</th>
-        <th class="actions-col">Actions</th>
+        <th>${t("admin.schedule.day")}</th><th>${t("admin.schedule.start")}</th><th>${t("admin.schedule.end")}</th>
+        <th>${t("admin.schedule.subject")}</th><th>${t("admin.schedule.teacher")}</th><th>${t("admin.schedule.room")}</th>
+        <th class="actions-col">${t("admin.schedule.actions")}</th>
       </tr>
     </thead>`;
   const tbody = document.createElement("tbody");
@@ -2403,11 +2429,11 @@ function renderScheduleTable(entries) {
     actionsCell.appendChild(
       makeActionBtn(
         "delete",
-        "Delete",
+        t("common.delete"),
         () => {
-          openConfirm("Delete this schedule entry?", async () => {
+          openConfirm(t("admin.confirm.deleteSchedule"), async () => {
             await db.deleteSchedule(entry.id);
-            showToast("Schedule entry deleted.");
+            showToast(t("admin.toast.scheduleDeleted"));
             loadSchedule();
           });
         },
@@ -2417,7 +2443,7 @@ function renderScheduleTable(entries) {
     );
 
     tr.innerHTML = `
-      <td>${DAY_NAMES[entry.day_of_week] ?? entry.day_of_week}</td>
+      <td>${dayName(entry.day_of_week) || entry.day_of_week}</td>
       <td>${escapeHtml(entry.start_time)}</td>
       <td>${escapeHtml(entry.end_time)}</td>
       <td>${dot}${escapeHtml(entry.subjects?.name ?? "—")}</td>
@@ -2441,26 +2467,26 @@ async function openAddSchedule() {
       db.fetchRooms(),
     ]);
   } catch (err) {
-    showToast("Failed to load form data: " + err.message, "error");
+    showToast(t("admin.schedule.formDataFailed", { msg: err.message }), "error");
     return;
   }
 
   openModal({
-    title: `Add Schedule Entry — ${currentClass.className}`,
-    submitLabel: "Add Entry",
+    title: t("admin.schedule.addTitle", { class: currentClass.className }),
+    submitLabel: t("admin.schedule.addEntry"),
     fields: [
       {
         name: "day_of_week",
-        label: "Day",
+        label: t("admin.form.day"),
         type: "select",
         required: true,
-        options: DAY_NAMES.slice(1).map((d, i) => ({ value: i + 1, label: d })),
+        options: dayOptions(),
       },
-      { name: "start_time", label: "Start Time", type: "time", required: true },
-      { name: "end_time", label: "End Time", type: "time", required: true },
+      { name: "start_time", label: t("admin.form.startTime"), type: "time", required: true },
+      { name: "end_time", label: t("admin.form.endTime"), type: "time", required: true },
       {
         name: "subject_id",
-        label: "Subject",
+        label: t("admin.form.subject"),
         type: "select",
         required: true,
         value: currentClass.subjectId,
@@ -2468,18 +2494,18 @@ async function openAddSchedule() {
       },
       {
         name: "teacher_id",
-        label: "Teacher",
+        label: t("admin.form.teacher"),
         type: "select",
         required: true,
         value: TEACHER_ID,
-        options: teachers.map((t) => ({
-          value: t.id,
-          label: `${t.last_name}, ${t.first_name}`,
+        options: teachers.map((tc) => ({
+          value: tc.id,
+          label: `${tc.last_name}, ${tc.first_name}`,
         })),
       },
       {
         name: "room_id",
-        label: "Room",
+        label: t("admin.form.room"),
         type: "select",
         options: rooms.map((r) => ({ value: r.id, label: r.name })),
       },
@@ -2494,7 +2520,7 @@ async function openAddSchedule() {
         teacher_id: Number(formData.teacher_id),
         room_id: formData.room_id ? Number(formData.room_id) : null,
       });
-      showToast("Schedule entry added.");
+      showToast(t("admin.toast.scheduleAdded"));
       loadSchedule();
     },
   });
@@ -2507,7 +2533,7 @@ let _cachedSubjects = [];
 let subjectsFilter = { search: "" };
 
 async function loadSubjects() {
-  renderEmptyRow("subjects-body", 4, "Loading subjects...");
+  renderEmptyRow("subjects-body", 4, t("admin.subjects.loading"));
   try {
     _cachedSubjects = await db.fetchSubjectsDetailed();
     renderSubjectsTable();
@@ -2530,7 +2556,7 @@ function renderSubjectsTable() {
   }
 
   if (!filtered.length) {
-    renderEmptyRow("subjects-body", 4, "No subjects match your search.");
+    renderEmptyRow("subjects-body", 4, t("admin.subjects.noMatch"));
     return;
   }
 
@@ -2576,14 +2602,17 @@ document.getElementById("subjects-search")?.addEventListener("input", (e) => {
 // ───────────────────────────────────────────────────────────────
 //  12. SHARED SMALL HELPERS (added features)
 // ───────────────────────────────────────────────────────────────
-const GENDER_OPTIONS = [
-  { value: "M", label: "Male" },
-  { value: "F", label: "Female" },
-  { value: "O", label: "Other" },
-];
+// Gender select options, built at call time so labels follow the active language.
+function genderOptions() {
+  return [
+    { value: "M", label: t("enums.gender.M") },
+    { value: "F", label: t("enums.gender.F") },
+    { value: "O", label: t("enums.gender.O") },
+  ];
+}
 
 function genderLabel(g) {
-  return { M: "Male", F: "Female", O: "Other" }[g] ?? "—";
+  return g === "M" || g === "F" || g === "O" ? t(`enums.gender.${g}`) : "—";
 }
 
 // Category dropdown options for the assignment form, from the loaded gradebook.
@@ -2599,7 +2628,10 @@ function categoryOptions() {
 // ───────────────────────────────────────────────────────────────
 function openCategoriesModal() {
   if (!currentClass) return;
-  categoriesTitle.textContent = `Grade categories — ${currentClass.subjectName} ${currentClass.className}`;
+  categoriesTitle.textContent = t("admin.categories.title", {
+    subject: currentClass.subjectName,
+    class: currentClass.className,
+  });
   renderCategories();
   categoriesOverlay.classList.add("active");
 }
@@ -2611,8 +2643,7 @@ function closeCategoriesModal() {
 function renderCategories() {
   const cats = gradebookState?.categories ?? [];
   if (!cats.length) {
-    categoriesBody.innerHTML =
-      '<p class="drawer-muted">No categories yet. The period grade is a flat points average. Add categories (e.g. Exams 50%, Tasks 30%, Participation 20%) to weight them — assignments you tag with a category are averaged within it, then combined by weight.</p>';
+    categoriesBody.innerHTML = `<p class="drawer-muted">${t("admin.categories.empty")}</p>`;
     categoriesTotal.textContent = "";
     return;
   }
@@ -2623,12 +2654,12 @@ function renderCategories() {
     item.className = "manage-item";
     const info = document.createElement("div");
     info.className = "manage-item-info";
-    info.innerHTML = `<b>${escapeHtml(c.name)}</b><span class="manage-item-meta">Weight: ${Number(c.weight)}%</span>`;
+    info.innerHTML = `<b>${escapeHtml(c.name)}</b><span class="manage-item-meta">${t("admin.categories.weight", { weight: Number(c.weight) })}</span>`;
     const actions = document.createElement("div");
     actions.className = "manage-item-actions";
-    actions.appendChild(makeActionBtn("edit", "Edit", () => openCategoryForm(c)));
+    actions.appendChild(makeActionBtn("edit", t("common.edit"), () => openCategoryForm(c)));
     actions.appendChild(
-      makeActionBtn("delete", "Delete", () => confirmDeleteCategory(c), true),
+      makeActionBtn("delete", t("common.delete"), () => confirmDeleteCategory(c), true),
     );
     item.append(info, actions);
     categoriesBody.appendChild(item);
@@ -2636,28 +2667,28 @@ function renderCategories() {
 
   const total = cats.reduce((s, c) => s + Number(c.weight || 0), 0);
   const off = Math.round(total * 100) / 100 !== 100;
-  categoriesTotal.innerHTML = `Total: <b class="${off ? "score-mid" : "score-high"}">${total}%</b>${
-    off ? " — weights are renormalized, but 100% is clearest." : ""
+  categoriesTotal.innerHTML = `${t("admin.categories.total")}<b class="${off ? "score-mid" : "score-high"}">${total}%</b>${
+    off ? t("admin.categories.totalOff") : ""
   }`;
 }
 
 function openCategoryForm(category = null) {
   const editing = !!category;
   openModal({
-    title: editing ? "Edit category" : "Add category",
-    submitLabel: editing ? "Save" : "Add category",
+    title: editing ? t("admin.categories.editTitle") : t("admin.categories.addTitle"),
+    submitLabel: editing ? t("common.save") : t("admin.categories.add"),
     fields: [
       {
         name: "name",
-        label: "Name",
+        label: t("admin.form.name"),
         type: "text",
         required: true,
         value: category?.name ?? "",
-        placeholder: "e.g. Exams",
+        placeholder: t("admin.categories.namePlaceholder"),
       },
       {
         name: "weight",
-        label: "Weight (%)",
+        label: t("admin.form.weightPct"),
         type: "number",
         required: true,
         value: category?.weight ?? "",
@@ -2678,7 +2709,11 @@ function openCategoryForm(category = null) {
           class_subject_teacher_id: currentClass.cstId,
         });
       }
-      showToast(`Category "${payload.name}" ${editing ? "updated" : "added"}.`);
+      showToast(
+        editing
+          ? t("admin.toast.categoryUpdated", { name: payload.name })
+          : t("admin.toast.categoryAdded", { name: payload.name }),
+      );
       await refreshAfterCategoryChange();
     },
   });
@@ -2686,10 +2721,10 @@ function openCategoryForm(category = null) {
 
 function confirmDeleteCategory(category) {
   openConfirm(
-    `Delete category "${category.name}"? Its assignments stay but become uncategorized (flat weighting).`,
+    t("admin.confirm.deleteCategory", { name: category.name }),
     async () => {
       await db.deleteCategory(category.id);
-      showToast(`Category "${category.name}" deleted.`);
+      showToast(t("admin.toast.categoryDeleted", { name: category.name }));
       await refreshAfterCategoryChange();
     },
   );
@@ -2711,7 +2746,7 @@ async function openPostGrades() {
   if (!gradebookState) return;
   const { cstId, periodId, students } = gradebookState;
   const periodName = PERIODS.find((p) => p.id === periodId)?.name ?? "";
-  pgTitle.textContent = `Post grades — ${periodName}`;
+  pgTitle.textContent = t("admin.pg.title", { period: periodName });
   pgBody.innerHTML = skeletonBlock();
   pgOverlay.classList.add("active");
 
@@ -2722,7 +2757,7 @@ async function openPostGrades() {
       db.fetchPostedGrades(cstId, periodId),
     ]);
   } catch (err) {
-    pgBody.innerHTML = `<div class="loading-cell">Failed to load: ${escapeHtml(err.message)}</div>`;
+    pgBody.innerHTML = `<div class="loading-cell">${t("admin.pg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
     return;
   }
 
@@ -2731,7 +2766,7 @@ async function openPostGrades() {
   _postGradesState = { cstId, periodId };
 
   if (!students.length) {
-    pgBody.innerHTML = '<p class="drawer-muted">No active students.</p>';
+    pgBody.innerHTML = `<p class="drawer-muted">${t("admin.pg.noStudents")}</p>`;
     return;
   }
 
@@ -2765,28 +2800,28 @@ async function openPostGrades() {
         </span>
         <span class="pg-cell">
           <input class="pg-note" type="text" data-student="${s.id}"
-            value="${escapeHtml(note)}" placeholder="Comment (optional)…" />
+            value="${escapeHtml(note)}" placeholder="${t("admin.pg.commentPlaceholder")}" />
         </span>
       </div>`;
     })
     .join("");
 
   pgBody.innerHTML = `
-    <p class="sg-period">${escapeHtml(periodName)} · review each computed average, adjust if needed, then post. Posted grades are what students &amp; parents see on the report card.</p>
+    <p class="sg-period">${t("admin.pg.intro", { period: escapeHtml(periodName) })}</p>
     <div class="sg-scroll">
       <div class="pg-grid">
         <div class="pg-row pg-head">
-          <span class="pg-cell">Student</span>
-          <span class="pg-cell pg-center">Computed</span>
-          <span class="pg-cell pg-center">Posted</span>
-          <span class="pg-cell">Grade to post</span>
-          <span class="pg-cell">Comment</span>
+          <span class="pg-cell">${t("admin.pg.student")}</span>
+          <span class="pg-cell pg-center">${t("admin.pg.computed")}</span>
+          <span class="pg-cell pg-center">${t("admin.pg.posted")}</span>
+          <span class="pg-cell">${t("admin.pg.toPost")}</span>
+          <span class="pg-cell">${t("admin.pg.comment")}</span>
         </div>
         ${rows}
       </div>
     </div>
     <div class="pg-actions">
-      <button type="button" class="link-btn" id="pg-fill-computed">Reset all to computed</button>
+      <button type="button" class="link-btn" id="pg-fill-computed">${t("admin.pg.reset")}</button>
     </div>`;
 
   document.getElementById("pg-fill-computed").addEventListener("click", () => {
@@ -2822,7 +2857,7 @@ async function savePostGrades() {
 
     const score = Number(scoreVal);
     if (Number.isNaN(score) || score < 0 || score > 100) {
-      errorMsg ??= "Posted grades must be between 0 and 100.";
+      errorMsg ??= t("admin.validation.postRange");
       return;
     }
     rows.push({
@@ -2840,16 +2875,14 @@ async function savePostGrades() {
     return;
   }
   if (!rows.length) {
-    showToast("Enter at least one grade to post.", "error");
+    showToast(t("admin.validation.atLeastOne"), "error");
     return;
   }
 
   pgSave.disabled = true;
   try {
     await db.upsertStudentGrades(rows);
-    showToast(
-      `Posted ${rows.length} grade${rows.length > 1 ? "s" : ""} to the report card.`,
-    );
+    showToast(tn("admin.toast.gradesPosted", rows.length, { count: rows.length }));
     closePostGrades();
   } catch (err) {
     showToast(err.message, "error");
@@ -2866,7 +2899,7 @@ let _columnState = null;
 async function openColumnGrades(assignment) {
   if (!gradebookState) return;
   const students = gradebookState.students; // active students only
-  cgTitle.textContent = `Enter scores — ${assignment.name}`;
+  cgTitle.textContent = t("admin.cg.title", { assignment: assignment.name });
   cgBody.innerHTML = skeletonBlock();
   cgOverlay.classList.add("active");
 
@@ -2874,14 +2907,14 @@ async function openColumnGrades(assignment) {
   try {
     existing = await db.fetchAssignmentColumn(assignment.id);
   } catch (err) {
-    cgBody.innerHTML = `<div class="loading-cell">Failed to load: ${escapeHtml(err.message)}</div>`;
+    cgBody.innerHTML = `<div class="loading-cell">${t("admin.pg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
     return;
   }
   const byStudent = Object.fromEntries(existing.map((g) => [g.student_id, g]));
   _columnState = { assignment, byStudent };
 
   if (!students.length) {
-    cgBody.innerHTML = '<p class="drawer-muted">No active students.</p>';
+    cgBody.innerHTML = `<p class="drawer-muted">${t("admin.pg.noStudents")}</p>`;
     return;
   }
 
@@ -2899,22 +2932,22 @@ async function openColumnGrades(assignment) {
         </span>
         <span class="cg-cell">
           <input class="cg-note" type="text" data-student="${s.id}"
-            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="Note…" />
+            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="${t("admin.cg.notePlaceholder")}" />
         </span>
       </div>`;
     })
     .join("");
 
   cgBody.innerHTML = `
-    <p class="sg-period">Out of ${assignment.max_score}${
-      assignment.due_date ? " · due " + formatDate(assignment.due_date) : ""
-    } · ${students.length} student${students.length === 1 ? "" : "s"}</p>
+    <p class="sg-period">${t("admin.cg.outOf", { max: assignment.max_score })}${
+      assignment.due_date ? " · " + t("admin.cg.dueOn", { date: formatDate(assignment.due_date) }) : ""
+    } · ${tn("admin.students", students.length)}</p>
     <div class="sg-scroll">
       <div class="cg-grid">
         <div class="cg-row cg-head">
-          <span class="cg-cell">Student</span>
-          <span class="cg-cell">Score</span>
-          <span class="cg-cell">Note</span>
+          <span class="cg-cell">${t("admin.cg.student")}</span>
+          <span class="cg-cell">${t("admin.cg.score")}</span>
+          <span class="cg-cell">${t("admin.cg.note")}</span>
         </div>
         ${rows}
       </div>
@@ -2950,7 +2983,7 @@ async function saveColumnGrades() {
     if (scoreVal !== "") {
       score = Number(scoreVal);
       if (Number.isNaN(score) || score < 0 || score > max) {
-        errorMsg ??= `Scores must be between 0 and ${max}.`;
+        errorMsg ??= t("admin.validation.scoreRange", { max });
         return;
       }
     }
@@ -2975,14 +3008,14 @@ async function saveColumnGrades() {
     return;
   }
   if (!rows.length) {
-    showToast("No changes to save.", "error");
+    showToast(t("admin.validation.noChanges"), "error");
     return;
   }
 
   cgSave.disabled = true;
   try {
     await db.upsertAssignmentGrades(rows);
-    showToast(`Saved ${rows.length} score${rows.length > 1 ? "s" : ""}.`);
+    showToast(tn("admin.toast.scoresSaved", rows.length, { count: rows.length }));
     closeColumnGrades();
     loadGradebook();
   } catch (err) {
@@ -2995,37 +3028,42 @@ async function saveColumnGrades() {
 // ───────────────────────────────────────────────────────────────
 //  16. DISCIPLINE (item 2) — create/edit from the student drawer
 // ───────────────────────────────────────────────────────────────
-const DISCIPLINE_SEVERITY = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-];
+// Discipline severity options, built at call time so labels follow the language.
+function disciplineSeverityOptions() {
+  return [
+    { value: "low", label: t("enums.disciplineSeverity.low") },
+    { value: "medium", label: t("enums.disciplineSeverity.medium") },
+    { value: "high", label: t("enums.disciplineSeverity.high") },
+  ];
+}
 
 function openAddDiscipline() {
   const student = _drawerStudent;
   if (!student) return;
   const today = new Date().toISOString().split("T")[0];
   openModal({
-    title: `Add record — ${student.first_name} ${student.last_name}`,
-    submitLabel: "Add record",
+    title: t("admin.discipline.addTitle", {
+      name: `${student.first_name} ${student.last_name}`,
+    }),
+    submitLabel: t("admin.discipline.addRecord"),
     fields: [
-      { name: "date", label: "Date", type: "date", required: true, value: today },
+      { name: "date", label: t("admin.form.date"), type: "date", required: true, value: today },
       {
         name: "type",
-        label: "Type",
+        label: t("admin.form.type"),
         type: "text",
         required: true,
-        placeholder: "e.g. Tardiness, Disruption, Uniform",
+        placeholder: t("admin.discipline.typePlaceholder"),
       },
       {
         name: "severity",
-        label: "Severity",
+        label: t("admin.form.severity"),
         type: "select",
         required: true,
         value: "low",
-        options: DISCIPLINE_SEVERITY,
+        options: disciplineSeverityOptions(),
       },
-      { name: "description", label: "Description", type: "textarea" },
+      { name: "description", label: t("admin.form.description"), type: "textarea" },
     ],
     onSubmit: async (formData) => {
       await db.insertDiscipline({
@@ -3036,7 +3074,7 @@ function openAddDiscipline() {
         description: formData.description?.trim() || null,
         reported_by_teacher: TEACHER_ID,
       });
-      showToast("Discipline record added.");
+      showToast(t("admin.toast.disciplineAdded"));
       await refreshDrawer();
     },
   });
@@ -3044,50 +3082,50 @@ function openAddDiscipline() {
 
 function openEditDiscipline(record) {
   openModal({
-    title: "Edit discipline record",
-    submitLabel: "Save",
+    title: t("admin.discipline.editTitle"),
+    submitLabel: t("common.save"),
     fields: [
       {
         name: "date",
-        label: "Date",
+        label: t("admin.form.date"),
         type: "date",
         required: true,
         value: record.date ?? "",
       },
       {
         name: "type",
-        label: "Type",
+        label: t("admin.form.type"),
         type: "text",
         required: true,
         value: record.type ?? "",
       },
       {
         name: "severity",
-        label: "Severity",
+        label: t("admin.form.severity"),
         type: "select",
         required: true,
         value: record.severity ?? "low",
-        options: DISCIPLINE_SEVERITY,
+        options: disciplineSeverityOptions(),
       },
       {
         name: "description",
-        label: "Description",
+        label: t("admin.form.description"),
         type: "textarea",
         value: record.description ?? "",
       },
       {
         name: "resolved",
-        label: "Status",
+        label: t("admin.form.status"),
         type: "select",
         value: record.resolved ? "yes" : "no",
         options: [
-          { value: "no", label: "Open" },
-          { value: "yes", label: "Resolved" },
+          { value: "no", label: t("enums.disciplineState.open") },
+          { value: "yes", label: t("enums.disciplineState.resolved") },
         ],
       },
       {
         name: "resolution",
-        label: "Resolution (if resolved)",
+        label: t("admin.form.resolutionIf"),
         type: "textarea",
         value: record.resolution ?? "",
       },
@@ -3102,7 +3140,7 @@ function openEditDiscipline(record) {
         resolved,
         resolution: resolved ? formData.resolution?.trim() || null : null,
       });
-      showToast("Discipline record updated.");
+      showToast(t("admin.toast.disciplineUpdated"));
       await refreshDrawer();
     },
   });
@@ -3128,7 +3166,7 @@ async function loadAbsenceSummary() {
     ]);
     renderAbsenceSummary(rows, roster, container);
   } catch (err) {
-    container.innerHTML = `<div class="loading-cell">Failed to load absence summary: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = `<div class="loading-cell">${t("admin.absence.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
 
@@ -3155,9 +3193,9 @@ function renderAbsenceSummary(rows, roster, container) {
   if (!flagged.length) {
     container.innerHTML = `
       <div class="absence-summary-head">
-        <h3><span class="material-symbols-outlined">monitoring</span> Absence summary</h3>
+        <h3><span class="material-symbols-outlined">monitoring</span> ${t("admin.absence.title")}</h3>
       </div>
-      <p class="drawer-muted">No student has reached ${ABSENCE_THRESHOLD} absences/lates in this section yet. ✔</p>`;
+      <p class="drawer-muted">${t("admin.absence.empty", { threshold: ABSENCE_THRESHOLD })}</p>`;
     return;
   }
 
@@ -3165,16 +3203,16 @@ function renderAbsenceSummary(rows, roster, container) {
     .map(
       (s) => `
       <div class="absence-chip${s.absent >= ABSENCE_THRESHOLD ? " absence-high" : ""}">
-        <b>${escapeHtml(nameById[s.id] ?? "Student " + s.id)}</b>
-        <span>${s.absent} absent · ${s.late} late${s.excused ? " · " + s.excused + " excused" : ""}</span>
+        <b>${escapeHtml(nameById[s.id] ?? t("admin.absence.studentFallback", { id: s.id }))}</b>
+        <span>${s.absent} ${t("enums.attendanceWord.absent")} · ${s.late} ${t("enums.attendanceWord.late")}${s.excused ? " · " + s.excused + " " + t("enums.attendanceWord.excused") : ""}</span>
       </div>`,
     )
     .join("");
 
   container.innerHTML = `
     <div class="absence-summary-head">
-      <h3><span class="material-symbols-outlined">monitoring</span> Absence summary</h3>
-      <span class="badge badge-warning">${flagged.length} at risk (≥ ${ABSENCE_THRESHOLD})</span>
+      <h3><span class="material-symbols-outlined">monitoring</span> ${t("admin.absence.title")}</h3>
+      <span class="badge badge-warning">${t("admin.absence.atRisk", { count: flagged.length, threshold: ABSENCE_THRESHOLD })}</span>
     </div>
     <div class="absence-grid">${chips}</div>`;
 }
@@ -3187,13 +3225,13 @@ async function loadToday() {
   const subtitle = document.getElementById("today-subtitle");
   if (!grid) return;
   if (!ACTIVE_YEAR || !TEACHER_ID) {
-    grid.innerHTML = '<div class="loading-cell">Teacher context not loaded.</div>';
+    grid.innerHTML = `<div class="loading-cell">${t("admin.today.contextNotLoaded")}</div>`;
     return;
   }
 
   const now = new Date();
   const jsDow = now.getDay(); // 0 Sun … 6 Sat
-  subtitle.textContent = now.toLocaleDateString(undefined, {
+  subtitle.textContent = i18nFormatDate(now, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -3201,8 +3239,7 @@ async function loadToday() {
   });
 
   if (jsDow === 0 || jsDow === 6) {
-    grid.innerHTML =
-      '<div class="empty-state"><span class="material-symbols-outlined">weekend</span><p>No classes today — it\'s the weekend.</p></div>';
+    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined">weekend</span><p>${t("admin.today.weekend")}</p></div>`;
     return;
   }
 
@@ -3216,14 +3253,13 @@ async function loadToday() {
     const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
     renderToday(entries, grid);
   } catch (err) {
-    grid.innerHTML = `<div class="loading-cell">Failed to load today: ${escapeHtml(err.message)}</div>`;
+    grid.innerHTML = `<div class="loading-cell">${t("admin.today.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
 
 function renderToday(entries, grid) {
   if (!entries.length) {
-    grid.innerHTML =
-      '<div class="empty-state"><span class="material-symbols-outlined">event_available</span><p>No classes on your schedule today.</p></div>';
+    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined">event_available</span><p>${t("admin.today.noClasses")}</p></div>`;
     return;
   }
 
@@ -3258,18 +3294,16 @@ function renderToday(entries, grid) {
       const att = document.createElement("button");
       att.type = "button";
       att.className = "btn btn-sm btn-secondary";
-      att.innerHTML =
-        '<span class="material-symbols-outlined">fact_check</span> Attendance';
+      att.innerHTML = `<span class="material-symbols-outlined">fact_check</span> ${t("admin.today.attendance")}`;
       att.addEventListener("click", () => openClassWorkspace(cst, "attendance"));
       const gb = document.createElement("button");
       gb.type = "button";
       gb.className = "btn btn-sm btn-primary";
-      gb.innerHTML = '<span class="material-symbols-outlined">school</span> Gradebook';
+      gb.innerHTML = `<span class="material-symbols-outlined">school</span> ${t("admin.today.gradebook")}`;
       gb.addEventListener("click", () => openClassWorkspace(cst, "gradebook"));
       actions.append(att, gb);
     } else {
-      actions.innerHTML =
-        '<span class="drawer-muted">Not one of your graded sections</span>';
+      actions.innerHTML = `<span class="drawer-muted">${t("admin.today.notGraded")}</span>`;
     }
     list.appendChild(card);
   });
@@ -3295,7 +3329,7 @@ async function printStudentReport() {
 
   const win = window.open("", "_blank");
   if (!win) {
-    showToast("Allow pop-ups to print the report.", "error");
+    showToast(t("admin.toast.popupBlocked"), "error");
     return;
   }
   win.document.write(buildReportHtml(student, grades, attendance, discipline));
@@ -3317,7 +3351,7 @@ function buildReportHtml(student, grades, attendance, discipline) {
   const periodHeads = periods.map((p) => `<th>${esc(p.name)}</th>`).join("");
   const gradeRows =
     Object.keys(bySubject).sort().length === 0
-      ? `<tr><td colspan="${periods.length + 1}">No posted grades yet.</td></tr>`
+      ? `<tr><td colspan="${periods.length + 1}">${t("admin.report.noGrades")}</td></tr>`
       : Object.keys(bySubject)
           .sort()
           .map((subj) => {
@@ -3345,26 +3379,27 @@ function buildReportHtml(student, grades, attendance, discipline) {
     ? discipline
         .map(
           (d) =>
-            `<tr><td>${esc(d.date ?? "")}</td><td>${esc(d.type ?? "")}</td><td>${esc(
-              d.severity ?? "",
-            )}</td><td>${d.resolved ? "Resolved" : "Open"}</td><td>${esc(
+            `<tr><td>${esc(formatDate(d.date))}</td><td>${esc(d.type ?? "")}</td><td>${esc(
+              d.severity ? t(`enums.disciplineSeverity.${d.severity}`) : "",
+            )}</td><td>${d.resolved ? t("enums.disciplineState.resolved") : t("enums.disciplineState.open")}</td><td>${esc(
               d.description ?? "",
             )}</td></tr>`,
         )
         .join("")
-    : `<tr><td colspan="5">No discipline records.</td></tr>`;
+    : `<tr><td colspan="5">${t("admin.report.noDiscipline")}</td></tr>`;
 
   const teacherName =
     document.getElementById("teacher-name")?.textContent ?? "";
-  const printed = new Date().toLocaleDateString(undefined, {
+  const printed = i18nFormatDate(new Date(), {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
+  const fullName = `${student.first_name} ${student.last_name}`;
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<title>Progress report — ${esc(student.first_name)} ${esc(student.last_name)}</title>
+<html lang="${document.documentElement.lang || "en"}"><head><meta charset="utf-8" />
+<title>${esc(t("admin.report.title", { name: fullName }))}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a; margin: 2.2rem; }
@@ -3384,41 +3419,43 @@ function buildReportHtml(student, grades, attendance, discipline) {
 <body>
   <div class="head">
     <div>
-      <h1>${esc(student.first_name)} ${esc(student.last_name)}</h1>
-      <div class="muted">Simple Manage Pro · Progress report${
-        ACTIVE_YEAR?.name ? " · " + esc(ACTIVE_YEAR.name) : ""
-      }</div>
+      <h1>${esc(fullName)}</h1>
+      <div class="muted">${esc(
+        ACTIVE_YEAR?.name
+          ? t("admin.report.headerWithYear", { year: ACTIVE_YEAR.name })
+          : t("admin.report.header"),
+      )}</div>
     </div>
-    <div class="muted">Printed ${esc(printed)}</div>
+    <div class="muted">${esc(t("admin.report.printed", { date: printed }))}</div>
   </div>
 
   <div class="ident">
-    <div><b>Enrollment #:</b> ${esc(student.enrollment_number ?? "—")}</div>
-    <div><b>National ID:</b> ${esc(student.national_id ?? "—")}</div>
-    <div><b>Date of birth:</b> ${esc(formatDate(student.date_of_birth))}</div>
-    <div><b>Gender:</b> ${esc(genderLabel(student.gender))}</div>
-    <div><b>Status:</b> ${esc(student.status ?? "—")}</div>
-    <div><b>Email:</b> ${esc(student.email ?? "—")}</div>
+    <div><b>${t("admin.report.enrollment")}</b> ${esc(student.enrollment_number ?? "—")}</div>
+    <div><b>${t("admin.report.nationalId")}</b> ${esc(student.national_id ?? "—")}</div>
+    <div><b>${t("admin.report.dob")}</b> ${esc(formatDate(student.date_of_birth))}</div>
+    <div><b>${t("admin.report.gender")}</b> ${esc(genderLabel(student.gender))}</div>
+    <div><b>${t("admin.report.status")}</b> ${esc(student.status ? t(`enums.studentStatus.${student.status}`) : "—")}</div>
+    <div><b>${t("admin.report.email")}</b> ${esc(student.email ?? "—")}</div>
   </div>
 
-  <h2>Grades by subject</h2>
-  <table><thead><tr><th>Subject</th>${periodHeads}</tr></thead><tbody>${gradeRows}</tbody></table>
+  <h2>${t("admin.report.gradesBySubject")}</h2>
+  <table><thead><tr><th>${t("admin.report.subject")}</th>${periodHeads}</tr></thead><tbody>${gradeRows}</tbody></table>
 
-  <h2>Attendance</h2>
+  <h2>${t("admin.report.attendance")}</h2>
   <div class="att">
-    <span><b>${ac.present}</b> present</span>
-    <span><b>${ac.absent}</b> absent</span>
-    <span><b>${ac.late}</b> late</span>
-    <span><b>${ac.excused}</b> excused</span>
-    ${rate != null ? `<span><b>${rate}%</b> attendance over ${totalDays} day${totalDays === 1 ? "" : "s"}</span>` : ""}
+    <span><b>${ac.present}</b> ${t("enums.attendanceWord.present")}</span>
+    <span><b>${ac.absent}</b> ${t("enums.attendanceWord.absent")}</span>
+    <span><b>${ac.late}</b> ${t("enums.attendanceWord.late")}</span>
+    <span><b>${ac.excused}</b> ${t("enums.attendanceWord.excused")}</span>
+    ${rate != null ? `<span><b>${rate}%</b> ${tn("admin.report.attendanceRate", totalDays, { count: totalDays })}</span>` : ""}
   </div>
 
-  <h2>Discipline</h2>
-  <table><thead><tr><th>Date</th><th>Type</th><th>Severity</th><th>Status</th><th>Description</th></tr></thead><tbody>${discRows}</tbody></table>
+  <h2>${t("admin.report.discipline")}</h2>
+  <table><thead><tr><th>${t("admin.report.date")}</th><th>${t("admin.report.type")}</th><th>${t("admin.report.severity")}</th><th>${t("admin.report.statusCol")}</th><th>${t("admin.report.description")}</th></tr></thead><tbody>${discRows}</tbody></table>
 
   <footer>
-    <span>Teacher: ${esc(teacherName)}</span>
-    <span>Signature: ______________________</span>
+    <span>${t("admin.report.teacher")} ${esc(teacherName)}</span>
+    <span>${t("admin.report.signature")}</span>
   </footer>
 </body></html>`;
 }
@@ -3439,7 +3476,7 @@ try {
     `${teacher.first_name} ${teacher.last_name}`;
 } catch (err) {
   console.error("Failed to resolve teacher context:", err);
-  showToast("Could not load teacher context.", "error");
+  showToast(t("admin.toast.contextFailed"), "error");
 }
 
 showSection("today");
