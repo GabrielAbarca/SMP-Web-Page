@@ -9,10 +9,6 @@
     />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/admin.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-    />
     <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script>
       // Apply the saved theme before first paint (avoids a light-mode flash).
@@ -36,37 +32,42 @@
             <img src="/src/assets/img/logo.jpg" alt="logo" />
             <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
           </div>
-          <div class="close" id="close-btn">
-            <span class="material-symbols-outlined">close</span>
+          <div
+            class="close"
+            id="close-btn"
+            aria-label="Close menu"
+            data-i18n-aria-label="common.closeMenu"
+          >
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </div>
         </div>
 
         <div class="sidebar">
           <a href="/admin" data-page="today" class="active">
-            <span class="material-symbols-outlined">today</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-today"></use></svg></span>
             <h3 data-i18n="admin.nav.today">Today</h3>
           </a>
           <a href="/admin" data-page="myclasses">
-            <span class="material-symbols-outlined">co_present</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-co_present"></use></svg></span>
             <h3 data-i18n="admin.nav.myclasses">My Classes</h3>
           </a>
           <a href="/admin" data-page="subjects">
-            <span class="material-symbols-outlined">menu_book</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-menu_book"></use></svg></span>
             <h3 data-i18n="admin.nav.subjects">Subjects</h3>
           </a>
           <a href="/admin" data-page="settings">
-            <span class="material-symbols-outlined">settings</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-settings"></use></svg></span>
             <h3 data-i18n="admin.nav.settings">Settings</h3>
           </a>
 
           <div class="sidebar-divider"></div>
 
           <a href="/" class="nav-cta">
-            <span class="material-symbols-outlined">visibility</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-visibility"></use></svg></span>
             <h3 data-i18n="admin.nav.viewStudentPortal">View Student Portal</h3>
           </a>
           <a href="/" id="logout-btn">
-            <span class="material-symbols-outlined">logout</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-logout"></use></svg></span>
             <h3 data-i18n="admin.nav.logout">Logout</h3>
           </a>
         </div>
@@ -105,7 +106,7 @@
         <!-- ─── CLASS WORKSPACE (entered from a card) ────────── -->
         <section class="view-section" id="view-class">
           <button class="breadcrumb-back" id="class-back-btn" type="button">
-            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-arrow_back"></use></svg></span>
             <span data-i18n="admin.classws.back">My Classes</span>
           </button>
 
@@ -119,19 +120,19 @@
 
           <nav class="class-subtabs" id="class-subtabs">
             <button class="class-subtab active" data-tab="roster" type="button">
-              <span class="material-symbols-outlined">groups</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-groups"></use></svg></span>
               <span data-i18n="admin.subtabs.roster">Roster</span>
             </button>
             <button class="class-subtab" data-tab="gradebook" type="button">
-              <span class="material-symbols-outlined">school</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span>
               <span data-i18n="admin.subtabs.gradebook">Gradebook</span>
             </button>
             <button class="class-subtab" data-tab="attendance" type="button">
-              <span class="material-symbols-outlined">fact_check</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span>
               <span data-i18n="admin.subtabs.attendance">Attendance</span>
             </button>
             <button class="class-subtab" data-tab="schedule" type="button">
-              <span class="material-symbols-outlined">calendar_month</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_month"></use></svg></span>
               <span data-i18n="admin.subtabs.schedule">Schedule</span>
             </button>
           </nav>
@@ -151,7 +152,7 @@
 
           <div class="view-toolbar">
             <div class="search-bar">
-              <span class="material-symbols-outlined">search</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-search"></use></svg></span>
               <input
                 type="search"
                 id="subjects-search"
@@ -160,7 +161,7 @@
               />
             </div>
             <span class="readonly-note">
-              <span class="material-symbols-outlined">lock</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
               <span data-i18n="admin.subjects.readonly">Read-only reference</span>
             </span>
           </div>
@@ -198,12 +199,16 @@
       <div class="right">
         <div class="quickbar" id="quick-stats-list"></div>
         <div class="top">
-          <button id="menu-btn">
-            <span class="material-symbols-outlined">menu</span>
+          <button
+            id="menu-btn"
+            aria-label="Open menu"
+            data-i18n-aria-label="common.openMenu"
+          >
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-menu"></use></svg></span>
           </button>
           <div class="theme-toggler">
-            <span class="material-symbols-outlined active">light_mode</span>
-            <span class="material-symbols-outlined">dark_mode</span>
+            <span class="material-symbols-outlined active"><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg></span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg></span>
           </div>
           <div class="profile">
             <div class="info">
@@ -211,7 +216,7 @@
               <span class="badge badge-primary" data-i18n="admin.profile.teacher">Teacher</span>
             </div>
             <div class="profile-photo">
-              <span class="material-symbols-outlined">co_present</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-co_present"></use></svg></span>
             </div>
           </div>
         </div>
@@ -239,10 +244,10 @@
               data-i18n-title="admin.drawer.printReport"
               data-i18n-aria-label="admin.drawer.printReport"
             >
-              <span class="material-symbols-outlined">print</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-print"></use></svg></span>
             </button>
             <button class="modal-close" id="drawer-close" aria-label="Close" data-i18n-aria-label="common.close">
-              <span class="material-symbols-outlined">close</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
             </button>
           </div>
         </div>
@@ -265,7 +270,7 @@
         <div class="modal-header">
           <h2 id="modal-title">Title</h2>
           <button class="modal-close" id="modal-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <form id="modal-form" class="modal-body">
@@ -328,7 +333,7 @@
         <div class="modal-header">
           <h2 id="manage-title">Assignments</h2>
           <button class="modal-close" id="manage-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <div class="modal-body" id="manage-body"></div>
@@ -337,7 +342,7 @@
             Done
           </button>
           <button type="button" class="btn btn-primary" id="manage-add">
-            <span class="material-symbols-outlined">add</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span>
             <span data-i18n="admin.modal.addAssignment">Add Assignment</span>
           </button>
         </div>
@@ -357,7 +362,7 @@
         <div class="modal-header">
           <h2 id="sg-title">Grades</h2>
           <button class="modal-close" id="sg-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <div class="modal-body" id="sg-body"></div>
@@ -385,7 +390,7 @@
         <div class="modal-header">
           <h2 id="categories-title">Grade categories</h2>
           <button class="modal-close" id="categories-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <div class="modal-body" id="categories-body"></div>
@@ -395,7 +400,7 @@
             Done
           </button>
           <button type="button" class="btn btn-primary" id="categories-add">
-            <span class="material-symbols-outlined">add</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span>
             <span data-i18n="admin.modal.addCategory">Add category</span>
           </button>
         </div>
@@ -415,7 +420,7 @@
         <div class="modal-header">
           <h2 id="pg-title">Post grades</h2>
           <button class="modal-close" id="pg-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <div class="modal-body" id="pg-body"></div>
@@ -443,7 +448,7 @@
         <div class="modal-header">
           <h2 id="cg-title">Enter scores</h2>
           <button class="modal-close" id="cg-close" aria-label="Close" data-i18n-aria-label="common.close">
-            <span class="material-symbols-outlined">close</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </button>
         </div>
         <div class="modal-body" id="cg-body"></div>

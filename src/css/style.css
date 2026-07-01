@@ -108,6 +108,37 @@
   box-sizing: border-box;
 }
 
+/* ── Inline SVG icons (replaces the Material Symbols icon font) ──────
+   Each icon is now an inline sprite reference (<svg><use href="#icon-NAME">)
+   nested inside the SAME `.material-symbols-outlined` span that previously held
+   the font ligature. Keeping the span and its classes means every existing
+   size/colour selector still applies to it: the span sets the em-size + colour,
+   while the svg fills 1em and inherits colour through currentColor. */
+.material-symbols-outlined {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+.material-symbols-outlined > svg {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+svg:has(use[href^="#icon-event"]), svg:has(use[href^="#icon-calculate"]), svg:has(use[href^="#icon-menu_book"]), svg:has(use[href^="#icon-history_edu"]), svg:has(use[href^="#icon-translate"]), svg:has(use[href^="#icon-fitness_center"]), svg:has(use[href^="#icon-science"]) {
+  width: 1.6em;
+  height: 1.6em;
+}
+a svg:has(use[href^="#icon-event"]) {
+  width: 1em;
+  height: 1em;
+}
+a svg:has(use[href^="#icon-menu_book"]) {
+  width: 1em;
+  height: 1em;
+}
 html {
   font-size: 14px;
 }
@@ -169,6 +200,7 @@ small {
   justify-content: center;
   background: var(--color-primary-light);
   color: var(--color-primary);
+  cursor: pointer;
 }
 
 /* Scope the large icon to the photo only — otherwise it also enlarges
@@ -577,12 +609,14 @@ main .dashboard .progress {
   border-radius: 50%;
 }
 
-main .dashboard svg {
+/* Scoped to `.progress` (the radial progress ring) so it doesn't hit the
+   inline-SVG icons that now also live inside dashboard cards. */
+main .dashboard .progress svg {
   width: 7rem;
   height: 7rem;
 }
 
-main .dashboard svg circle {
+main .dashboard .progress svg circle {
   fill: none;
   stroke: var(--color-primary);
   stroke-width: 14;
@@ -593,7 +627,7 @@ main .dashboard svg circle {
   transition: stroke-dashoffset 1s ease;
 }
 
-main .dashboard .grade svg circle {
+main .dashboard .grade .progress svg circle {
   stroke: var(--color-danger);
 }
 

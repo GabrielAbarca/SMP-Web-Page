@@ -44,6 +44,13 @@ const toggleIcon = document.getElementById("toggle-password-icon");
 
 const themeToggler = document.getElementById("login-theme-toggler");
 
+// Swap the inline SVG sprite icon inside a `.material-symbols-outlined` span
+// (icons are now <svg><use href="#icon-NAME"> rather than a font ligature).
+function setIcon(spanEl, name) {
+  const use = spanEl.querySelector("use");
+  if (use) use.setAttribute("href", `#icon-${name}`);
+}
+
 initTheme();
 bindThemeToggle(themeToggler);
 
@@ -55,7 +62,7 @@ btnSwitch.addEventListener("click", () => {
   if (isSignUpMode) {
     authTitle.textContent = t("login.createTitle");
     authSubtitle.textContent = t("login.createSubtitle");
-    authAvatarIcon.textContent = "person_add";
+    setIcon(authAvatarIcon, "person_add");
     btnText.textContent = t("login.signUp");
     switchText.textContent = t("login.haveAccount");
     btnSwitch.textContent = t("login.signIn");
@@ -66,7 +73,7 @@ btnSwitch.addEventListener("click", () => {
   } else {
     authTitle.textContent = t("login.welcomeTitle");
     authSubtitle.textContent = t("login.welcomeSubtitle");
-    authAvatarIcon.textContent = "lock";
+    setIcon(authAvatarIcon, "lock");
     btnText.textContent = t("login.signIn");
     switchText.textContent = t("login.noAccount");
     btnSwitch.textContent = t("login.signUp");
@@ -80,7 +87,7 @@ btnSwitch.addEventListener("click", () => {
 togglePassword.addEventListener("click", () => {
   const isHidden = inputPassword.type === "password";
   inputPassword.type = isHidden ? "text" : "password";
-  toggleIcon.textContent = isHidden ? "visibility_off" : "visibility";
+  setIcon(toggleIcon, isHidden ? "visibility_off" : "visibility");
 });
 
 authForm.addEventListener("submit", async (e) => {

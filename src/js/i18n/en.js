@@ -14,6 +14,8 @@ export default {
     edit: "Edit",
     done: "Done",
     close: "Close",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
     none: "— None —",
     selectPlaceholder: "Select {label}...",
     noRecords: "No records found.",

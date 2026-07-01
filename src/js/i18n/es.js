@@ -11,6 +11,8 @@ export default {
     edit: "Editar",
     done: "Listo",
     close: "Cerrar",
+    openMenu: "Abrir menú",
+    closeMenu: "Cerrar menú",
     none: "— Ninguno —",
     selectPlaceholder: "Seleccionar {label}...",
     noRecords: "No se encontraron registros.",

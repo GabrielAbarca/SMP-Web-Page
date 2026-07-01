@@ -594,7 +594,7 @@ function showToast(message, type = "success") {
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
   const icon = type === "success" ? "check_circle" : "error";
-  toast.innerHTML = `<span class="material-symbols-outlined">${icon}</span>${message}`;
+  toast.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>${message}`;
   toastContainer.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
 }
@@ -904,7 +904,7 @@ function makeActionBtn(icon, label, onClick, danger = false, adminOnly = false) 
   const btn = document.createElement("button");
   btn.className = `btn-icon${danger ? " danger" : ""}`;
   btn.type = "button";
-  btn.innerHTML = `<span class="material-symbols-outlined">${icon}</span>`;
+  btn.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>`;
   // Admin-restricted icon buttons reuse the single gate: applyAdminLock sets the
   // tooltip to the Spanish message and makes the click a no-op. Everyone else
   // gets the normal label tooltip + real handler.
@@ -1117,6 +1117,14 @@ document.getElementById("logout-btn")?.addEventListener("click", async () => {
   await signOut();
   window.location.replace("/login.html");
 });
+document.querySelector(".profile-photo")?.addEventListener("click", () => {
+  showSection("settings");
+  // Snap to Account & Profile (default sub-tab on first render; re-select it
+  // when re-opening after the user switched to another settings sub-tab).
+  document
+    .querySelector('#settings-root .settings-rail-item[data-section="account"]')
+    ?.click();
+});
 initTheme();
 bindThemeToggle(document.querySelector(".theme-toggler"));
 
@@ -1189,11 +1197,11 @@ function renderMyClasses(classes, counts) {
           cst.classes?.grade_levels?.name ?? "",
         )}</p>
         <p class="class-card-count">
-          <span class="material-symbols-outlined">group</span>
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-group"></use></svg></span>
           ${tn("admin.students", count)}
         </p>
       </div>
-      <span class="material-symbols-outlined class-card-arrow">chevron_right</span>
+      <span class="material-symbols-outlined class-card-arrow"><svg aria-hidden="true"><use href="#icon-chevron_right"></use></svg></span>
     `;
     card.addEventListener("click", () => openClassWorkspace(cst));
     grid.appendChild(card);
@@ -1203,9 +1211,9 @@ function renderMyClasses(classes, counts) {
 function renderQuickStats(sectionCount, totalStudents) {
   const el = document.getElementById("quick-stats-list");
   el.innerHTML = `
-    <span class="qstat"><span class="material-symbols-outlined">co_present</span>${tn("admin.sections", sectionCount)}</span>
-    <span class="qstat"><span class="material-symbols-outlined">group</span>${tn("admin.students", totalStudents)}</span>
-    <span class="qstat"><span class="material-symbols-outlined">calendar_today</span>${escapeHtml(ACTIVE_YEAR.name)}</span>`;
+    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-co_present"></use></svg></span>${tn("admin.sections", sectionCount)}</span>
+    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-group"></use></svg></span>${tn("admin.students", totalStudents)}</span>
+    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_today"></use></svg></span>${escapeHtml(ACTIVE_YEAR.name)}</span>`;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -1254,11 +1262,11 @@ function renderRosterTab(content) {
   content.innerHTML = `
     <div class="view-toolbar">
       <div class="search-bar">
-        <span class="material-symbols-outlined">search</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-search"></use></svg></span>
         <input type="search" id="roster-search" placeholder="${t("admin.roster.searchPlaceholder")}" />
       </div>
       <button class="btn btn-primary" id="btn-add-student">
-        <span class="material-symbols-outlined">person_add</span> ${t("admin.roster.addStudent")}
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person_add"></use></svg></span> ${t("admin.roster.addStudent")}
       </button>
     </div>
     <div class="recent-activity">
@@ -1426,20 +1434,20 @@ async function openStudentDrawer(student) {
 
   const photo = student.photo_url
     ? `<img class="drawer-photo" src="${escapeHtml(student.photo_url)}" alt="" referrerpolicy="no-referrer" />`
-    : `<div class="drawer-photo drawer-photo-empty"><span class="material-symbols-outlined">person</span></div>`;
+    : `<div class="drawer-photo drawer-photo-empty"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span></div>`;
 
   drawerBody.innerHTML = `
     <div class="drawer-section drawer-identity">
       ${photo}
       <ul class="drawer-contact">
-        <li><span class="material-symbols-outlined">badge</span> ${escapeHtml(student.enrollment_number ?? "—")}</li>
-        <li><span class="material-symbols-outlined">fingerprint</span> ${escapeHtml(student.national_id ?? "—")}</li>
-        <li><span class="material-symbols-outlined">cake</span> ${escapeHtml(formatDate(student.date_of_birth))}</li>
-        <li><span class="material-symbols-outlined">wc</span> ${escapeHtml(genderLabel(student.gender))}</li>
-        <li><span class="material-symbols-outlined">mail</span> ${escapeHtml(student.email ?? "—")}</li>
-        <li><span class="material-symbols-outlined">call</span> ${escapeHtml(student.phone ?? "—")}</li>
-        <li><span class="material-symbols-outlined">home</span> ${escapeHtml(student.address ?? "—")}</li>
-        <li><span class="material-symbols-outlined">info</span> ${escapeHtml(student.status ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-badge"></use></svg></span> ${escapeHtml(student.enrollment_number ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fingerprint"></use></svg></span> ${escapeHtml(student.national_id ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-cake"></use></svg></span> ${escapeHtml(formatDate(student.date_of_birth))}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-wc"></use></svg></span> ${escapeHtml(genderLabel(student.gender))}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span> ${escapeHtml(student.email ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(student.phone ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-home"></use></svg></span> ${escapeHtml(student.address ?? "—")}</li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-info"></use></svg></span> ${escapeHtml(student.status ?? "—")}</li>
       </ul>
     </div>
     <div class="drawer-section">
@@ -1480,9 +1488,9 @@ function renderDrawerGuardians(contacts) {
           ${primary}
         </div>
         <ul class="drawer-contact">
-          ${g.phone ? `<li><span class="material-symbols-outlined">call</span> ${escapeHtml(g.phone)}</li>` : ""}
-          ${g.alt_phone ? `<li><span class="material-symbols-outlined">call</span> ${escapeHtml(g.alt_phone)} (${t("admin.drawer.alt")})</li>` : ""}
-          ${g.email ? `<li><span class="material-symbols-outlined">mail</span> ${escapeHtml(g.email)}</li>` : ""}
+          ${g.phone ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(g.phone)}</li>` : ""}
+          ${g.alt_phone ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(g.alt_phone)} (${t("admin.drawer.alt")})</li>` : ""}
+          ${g.email ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span> ${escapeHtml(g.email)}</li>` : ""}
         </ul>
       </div>`;
     })
@@ -1545,7 +1553,7 @@ function renderDrawerDiscipline(rows) {
           ${state}
           <button type="button" class="btn-icon drawer-card-edit" title="${t("common.edit")}"
             data-action="edit-discipline" data-id="${r.id}">
-            <span class="material-symbols-outlined">edit</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-edit"></use></svg></span>
           </button>
         </div>
         <p class="drawer-muted">${escapeHtml(r.date ?? "")}${r.description ? " · " + escapeHtml(r.description) : ""}</p>
@@ -1760,16 +1768,16 @@ function renderGradebookTab(content) {
       </div>
       <div class="toolbar-actions">
         <button class="btn btn-ghost" id="btn-categories">
-          <span class="material-symbols-outlined">category</span> ${t("admin.gradebook.categories")}
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-category"></use></svg></span> ${t("admin.gradebook.categories")}
         </button>
         <button class="btn btn-secondary" id="btn-manage-assignments">
-          <span class="material-symbols-outlined">list_alt</span> ${t("admin.gradebook.manage")}
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-list_alt"></use></svg></span> ${t("admin.gradebook.manage")}
         </button>
         <button class="btn btn-primary" id="btn-add-assignment">
-          <span class="material-symbols-outlined">add</span> ${t("admin.gradebook.addAssignment")}
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span> ${t("admin.gradebook.addAssignment")}
         </button>
         <button class="btn btn-primary" id="btn-post-grades">
-          <span class="material-symbols-outlined">grading</span> ${t("admin.gradebook.postGrades")}
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-grading"></use></svg></span> ${t("admin.gradebook.postGrades")}
         </button>
       </div>
     </div>
@@ -1832,7 +1840,7 @@ function renderGradebook(assignments, students, periodGrades) {
   if (!assignments.length) {
     grid.innerHTML = `
       <div class="empty-state">
-        <span class="material-symbols-outlined">assignment</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-assignment"></use></svg></span>
         <p>${t("admin.gradebook.noAssignments")}</p>
         <p class="empty-sub">${t("admin.gradebook.noAssignmentsSub")}</p>
       </div>`;
@@ -2103,7 +2111,7 @@ async function openStudentGradesModal(student) {
         ? `<input class="sg-score sg-locked" type="number" min="0" max="${a.max_score}" step="0.01"
             data-assignment="${a.id}" data-original="${score}" value="${score}" readonly />
           <button type="button" class="sg-edit-btn" data-assignment="${a.id}" title="${t("admin.sg.editScore")}" aria-label="${t("admin.sg.editScore")}">
-            <span class="material-symbols-outlined">edit</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-edit"></use></svg></span>
           </button>`
         : `<input class="sg-score" type="number" min="0" max="${a.max_score}" step="0.01"
             data-assignment="${a.id}" data-original="${score}" value="${score}" placeholder="—" />`;
@@ -2242,7 +2250,7 @@ function renderAttendanceTab(content) {
         <input type="date" id="attendance-date" value="${today}" />
       </div>
       <button class="btn btn-secondary" id="btn-save-attendance">
-        <span class="material-symbols-outlined">save</span> ${t("admin.attendance.save")}
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-save"></use></svg></span> ${t("admin.attendance.save")}
       </button>
     </div>
     <div class="recent-activity">
@@ -2376,7 +2384,7 @@ function renderScheduleTab(content) {
         <label>${t("admin.schedule.weeklyFor", { class: escapeHtml(currentClass.className) })}</label>
       </div>
       <button class="btn btn-primary" id="btn-add-schedule">
-        <span class="material-symbols-outlined">add</span> ${t("admin.schedule.add")}
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span> ${t("admin.schedule.add")}
       </button>
     </div>
     <div class="recent-activity">
@@ -3193,7 +3201,7 @@ function renderAbsenceSummary(rows, roster, container) {
   if (!flagged.length) {
     container.innerHTML = `
       <div class="absence-summary-head">
-        <h3><span class="material-symbols-outlined">monitoring</span> ${t("admin.absence.title")}</h3>
+        <h3><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-monitoring"></use></svg></span> ${t("admin.absence.title")}</h3>
       </div>
       <p class="drawer-muted">${t("admin.absence.empty", { threshold: ABSENCE_THRESHOLD })}</p>`;
     return;
@@ -3211,7 +3219,7 @@ function renderAbsenceSummary(rows, roster, container) {
 
   container.innerHTML = `
     <div class="absence-summary-head">
-      <h3><span class="material-symbols-outlined">monitoring</span> ${t("admin.absence.title")}</h3>
+      <h3><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-monitoring"></use></svg></span> ${t("admin.absence.title")}</h3>
       <span class="badge badge-warning">${t("admin.absence.atRisk", { count: flagged.length, threshold: ABSENCE_THRESHOLD })}</span>
     </div>
     <div class="absence-grid">${chips}</div>`;
@@ -3239,7 +3247,7 @@ async function loadToday() {
   });
 
   if (jsDow === 0 || jsDow === 6) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined">weekend</span><p>${t("admin.today.weekend")}</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-weekend"></use></svg></span><p>${t("admin.today.weekend")}</p></div>`;
     return;
   }
 
@@ -3259,7 +3267,7 @@ async function loadToday() {
 
 function renderToday(entries, grid) {
   if (!entries.length) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined">event_available</span><p>${t("admin.today.noClasses")}</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_available"></use></svg></span><p>${t("admin.today.noClasses")}</p></div>`;
     return;
   }
 
@@ -3294,12 +3302,12 @@ function renderToday(entries, grid) {
       const att = document.createElement("button");
       att.type = "button";
       att.className = "btn btn-sm btn-secondary";
-      att.innerHTML = `<span class="material-symbols-outlined">fact_check</span> ${t("admin.today.attendance")}`;
+      att.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span> ${t("admin.today.attendance")}`;
       att.addEventListener("click", () => openClassWorkspace(cst, "attendance"));
       const gb = document.createElement("button");
       gb.type = "button";
       gb.className = "btn btn-sm btn-primary";
-      gb.innerHTML = `<span class="material-symbols-outlined">school</span> ${t("admin.today.gradebook")}`;
+      gb.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span> ${t("admin.today.gradebook")}`;
       gb.addEventListener("click", () => openClassWorkspace(cst, "gradebook"));
       actions.append(att, gb);
     } else {

@@ -8,10 +8,6 @@
       content="Simple Manage Pro — Student portal for grades, attendance, schedule, and class information."
     />
     <link rel="stylesheet" href="/src/css/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-    />
     <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script>
       // Apply the saved theme before first paint (avoids a light-mode flash).
@@ -32,48 +28,53 @@
             <img src="/src/assets/img/logo.jpg" alt="logo" />
             <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
           </div>
-          <div class="close" id="close-btn">
-            <span class="material-symbols-outlined">close</span>
+          <div
+            class="close"
+            id="close-btn"
+            aria-label="Close menu"
+            data-i18n-aria-label="common.closeMenu"
+          >
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-close"></use></svg></span>
           </div>
         </div>
         <div class="sidebar">
           <a href="/" data-page="dashboard" class="active">
-            <span class="material-symbols-outlined">dashboard</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-dashboard"></use></svg></span>
             <h3 data-i18n="student.nav.dashboard">Dashboard</h3>
           </a>
           <a href="/" data-page="grades">
-            <span class="material-symbols-outlined">school</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span>
             <h3 data-i18n="student.nav.grades">Grades</h3>
           </a>
           <a href="/" data-page="schedule">
-            <span class="material-symbols-outlined">calendar_month</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_month"></use></svg></span>
             <h3 data-i18n="student.nav.schedule">Schedule</h3>
           </a>
           <a href="/" data-page="teachers">
-            <span class="material-symbols-outlined">groups</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-groups"></use></svg></span>
             <h3 data-i18n="student.nav.teachers">Teachers</h3>
           </a>
           <a href="/" data-page="attendance">
-            <span class="material-symbols-outlined">fact_check</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span>
             <h3 data-i18n="student.nav.attendance">Attendance</h3>
           </a>
           <a href="/" data-page="events">
-            <span class="material-symbols-outlined">event</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event"></use></svg></span>
             <h3 data-i18n="student.nav.events">Events</h3>
           </a>
           <a href="/" data-page="settings">
-            <span class="material-symbols-outlined">settings</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-settings"></use></svg></span>
             <h3 data-i18n="student.nav.settings">Settings</h3>
           </a>
 
           <div class="sidebar-divider"></div>
 
           <a href="/admin" id="admin-portal-link" class="nav-cta">
-            <span class="material-symbols-outlined">admin_panel_settings</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-admin_panel_settings"></use></svg></span>
             <h3 data-i18n="student.nav.adminDashboard">Admin Dashboard</h3>
           </a>
           <a href="/" id="logout-btn">
-            <span class="material-symbols-outlined">logout</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-logout"></use></svg></span>
             <h3 data-i18n="student.nav.logout">Logout</h3>
           </a>
         </div>
@@ -92,7 +93,7 @@
             data-i18n-aria-label="student.aria.goToSettings"
           >
             <div class="student-avatar">
-              <span class="material-symbols-outlined">person</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
             </div>
             <div class="student-details">
               <h3 id="student-name">Loading...</h3>
@@ -113,7 +114,7 @@
               aria-label="Go to Attendance"
               data-i18n-aria-label="student.aria.goToAttendance"
             >
-              <span class="material-symbols-outlined">handshake</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-handshake"></use></svg></span>
               <div class="middle">
                 <div class="left">
                   <h3 data-i18n="student.cards.attendance">Attendance</h3>
@@ -144,7 +145,7 @@
               aria-label="Go to Grades"
               data-i18n-aria-label="student.aria.goToGrades"
             >
-              <span class="material-symbols-outlined">grade</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-grade"></use></svg></span>
               <div class="middle">
                 <div class="left">
                   <h3 data-i18n="student.cards.gradeAverage">Grade Average</h3>
@@ -170,7 +171,7 @@
               aria-label="Go to Schedule"
               data-i18n-aria-label="student.aria.goToSchedule"
             >
-              <span class="material-symbols-outlined">schedule</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-schedule"></use></svg></span>
               <div class="middle">
                 <div class="left">
                   <h3 data-i18n="student.cards.nextClass">Next Class</h3>
@@ -298,19 +299,23 @@
 
       <div class="right">
         <div class="top">
-          <button id="menu-btn">
-            <span class="material-symbols-outlined">menu</span>
+          <button
+            id="menu-btn"
+            aria-label="Open menu"
+            data-i18n-aria-label="common.openMenu"
+          >
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-menu"></use></svg></span>
           </button>
           <div class="theme-toggler">
-            <span class="material-symbols-outlined active">light_mode</span>
-            <span class="material-symbols-outlined">dark_mode</span>
+            <span class="material-symbols-outlined active"><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg></span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg></span>
           </div>
           <div class="profile">
             <div class="info">
               <p><span data-i18n="student.welcome">Welcome,</span> <b id="welcome-name">...</b></p>
             </div>
             <div class="profile-photo">
-              <span class="material-symbols-outlined">person</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
             </div>
           </div>
         </div>

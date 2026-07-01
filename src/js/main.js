@@ -79,6 +79,18 @@ const menuBtn = document.querySelector("#menu-btn");
 const closeBtn = document.querySelector("#close-btn");
 const themeToggler = document.querySelector(".theme-toggler");
 
+const profilePhotoDiv = document.querySelector(".profile-photo");
+
+profilePhotoDiv.addEventListener("click", () => {
+  navigateTo("settings");
+  // Snap to Account & Profile. On first open the panel isn't rendered yet
+  // (initSettings is async) — but renderSettings already defaults to the
+  // account sub-tab, so this only matters when re-opening after switching tabs.
+  document
+    .querySelector('#settings-root .settings-rail-item[data-section="account"]')
+    ?.click();
+});
+
 menuBtn.addEventListener("click", () => {
   sideMenu.style.display = "block";
 });
@@ -461,7 +473,7 @@ async function initTeachersView() {
             : "badge-danger";
       return `<div class="teacher-card">
       <div class="teacher-avatar">
-        <span class="material-symbols-outlined">person</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
       </div>
       <h3>${tch.first_name} ${tch.last_name}</h3>
       <p class="teacher-spec">${tch.specialization ?? "—"}</p>
@@ -549,13 +561,13 @@ async function initEventsView() {
 
       return `<div class="event-card event-${ev.type}">
       <div class="event-icon">
-        <span class="material-symbols-outlined">${icon}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>
       </div>
       <div class="event-body">
         <h3>${ev.title}</h3>
         <p>${ev.description ?? ""}</p>
         <div class="event-dates">
-          <span class="material-symbols-outlined" style="font-size:.85rem;vertical-align:middle;">calendar_today</span>
+          <span class="material-symbols-outlined" style="font-size:.85rem;vertical-align:middle;"><svg aria-hidden="true"><use href="#icon-calendar_today"></use></svg></span>
           ${dateStr}
           <span class="badge badge-${eventTypeBadge(ev.type)}" style="margin-left:.5rem;">${formatEventType(ev.type)}</span>
         </div>
@@ -656,7 +668,7 @@ async function renderUpcomingEvents() {
 
   if (upcoming.length === 0) {
     card.innerHTML = `<div class="update">
-      <div class="profile-photo"><span class="material-symbols-outlined">event_busy</span></div>
+      <div class="profile-photo"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_busy"></use></svg></span></div>
       <div class="message"><p>${t("student.panel.noUpcomingEvents")}</p></div>
     </div>`;
     return;
@@ -667,7 +679,7 @@ async function renderUpcomingEvents() {
       (ev) => `
     <div class="update">
       <div class="profile-photo">
-        <span class="material-symbols-outlined">event</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event"></use></svg></span>
       </div>
       <div class="message">
         <p><b>${ev.title}</b></p>
@@ -733,7 +745,7 @@ function renderSubjectAnalytics(grades) {
 
       return `<div class="item">
       <div class="icon" style="background:${subj.color}">
-        <span class="material-symbols-outlined">${icon}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>
       </div>
       <div class="right-content">
         <div class="info">
@@ -791,5 +803,6 @@ function formatEventType(type) {
 async function init() {
   navigateTo("dashboard");
 }
+
 
 init();

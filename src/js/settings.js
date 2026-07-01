@@ -66,7 +66,7 @@ export function renderSettings(rootEl, adapter) {
       role="tab"
       aria-selected="${i === 0 ? "true" : "false"}"
     >
-      <span class="material-symbols-outlined">${s.icon}</span>
+      <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${s.icon}"></use></svg></span>
       <span>${t(s.labelKey)}</span>
     </button>`,
   ).join("");
@@ -124,7 +124,7 @@ function renderAccount(adapter) {
       (f) => `
       <label class="settings-field">
         <span class="settings-field-label">
-          ${f.icon ? `<span class="material-symbols-outlined">${f.icon}</span>` : ""}
+          ${f.icon ? `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${f.icon}"></use></svg></span>` : ""}
           ${esc(f.label)}
         </span>
         <input type="text" value="${esc(f.value)}" disabled />
@@ -134,13 +134,13 @@ function renderAccount(adapter) {
 
   return `
     <div class="settings-demo-banner" role="note">
-      <span class="material-symbols-outlined">lock</span>
+      <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
       <span>${t("settings.account.demoBanner")}</span>
     </div>
 
     <div class="settings-identity">
       <div class="settings-avatar">
-        <span class="material-symbols-outlined">${esc(id.avatarIcon ?? "person")}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${esc(id.avatarIcon ?? "person")}"></use></svg></span>
       </div>
       <div class="settings-identity-meta">
         <h3>${esc(id.displayName)}</h3>
@@ -161,7 +161,7 @@ function renderAccount(adapter) {
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">alternate_email</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-alternate_email"></use></svg></span>
             ${t("settings.account.username")}
           </span>
           <input type="text" value="${esc(adapter.username)}" disabled />
@@ -176,7 +176,7 @@ function renderAccount(adapter) {
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">mail</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span>
             ${t("settings.account.email")}
           </span>
           <input type="email" value="${esc(adapter.email)}" disabled />
@@ -185,7 +185,7 @@ function renderAccount(adapter) {
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">password</span>
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-password"></use></svg></span>
             ${t("settings.account.password")}
           </span>
           <input type="password" value="••••••••••" disabled />
@@ -256,7 +256,7 @@ function renderHelp() {
         ${t("settings.help.needHandText")}
       </p>
       <div class="settings-contact">
-        <span class="material-symbols-outlined">support_agent</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-support_agent"></use></svg></span>
         <span>${t("settings.help.contactPrefix")}<span class="settings-muted">gzelaya0404@gmail.com</span></span>
       </div>
     </div>`;
@@ -272,7 +272,7 @@ function renderMoreInfo() {
       </p>
       <div class="settings-meta-row">
         <span class="settings-field-label">
-          <span class="material-symbols-outlined">deployed_code</span>
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-deployed_code"></use></svg></span>
           ${t("settings.about.version")}
         </span>
         <span class="badge badge-info">v${esc(APP_VERSION)} · Demo</span>
@@ -282,9 +282,9 @@ function renderMoreInfo() {
     <div class="settings-card">
       <h4 class="settings-card-title">${t("settings.about.links")}</h4>
       <ul class="settings-links">
-        <li><span class="material-symbols-outlined">description</span> ${t("settings.about.documentation")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
-        <li><span class="material-symbols-outlined">policy</span> ${t("settings.about.privacy")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
-        <li><span class="material-symbols-outlined">gavel</span> ${t("settings.about.terms")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-description"></use></svg></span> ${t("settings.about.documentation")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-policy"></use></svg></span> ${t("settings.about.privacy")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-gavel"></use></svg></span> ${t("settings.about.terms")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
       </ul>
     </div>`;
 }

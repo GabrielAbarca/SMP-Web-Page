@@ -1585,3 +1585,7 @@
 .drawer-card-edit .material-symbols-outlined {
   font-size: 1rem;
 }
+.profile-photo > .material-symbols-outlined {
+  font-size: 2.4rem;
+  color: var(--color-info-dark);
+}

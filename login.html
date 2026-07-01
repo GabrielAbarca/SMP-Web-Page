@@ -9,10 +9,6 @@
     />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/login.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-    />
     <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
     <script>
       // Apply the saved theme before first paint (avoids a light-mode flash).
@@ -44,19 +40,19 @@
           </p>
           <ul class="brand-features">
             <li>
-              <span class="material-symbols-outlined">school</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span>
               <span data-i18n="login.feature1">Real-time academic performance</span>
             </li>
             <li>
-              <span class="material-symbols-outlined">calendar_month</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_month"></use></svg></span>
               <span data-i18n="login.feature2">Weekly class schedule</span>
             </li>
             <li>
-              <span class="material-symbols-outlined">fact_check</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span>
               <span data-i18n="login.feature3">Attendance tracking</span>
             </li>
             <li>
-              <span class="material-symbols-outlined">event</span>
+              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event"></use></svg></span>
               <span data-i18n="login.feature4">School events board</span>
             </li>
           </ul>
@@ -71,19 +67,16 @@
           data-i18n-title="login.toggleTheme"
         >
           <span class="material-symbols-outlined active" id="theme-icon-light"
-            >light_mode</span
-          >
+            ><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg></span>
           <span class="material-symbols-outlined" id="theme-icon-dark"
-            >dark_mode</span
-          >
+            ><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg></span>
         </div>
 
         <div class="auth-card" id="auth-card">
           <div class="auth-card-header">
             <div class="auth-avatar">
               <span class="material-symbols-outlined" id="auth-avatar-icon"
-                >lock</span
-              >
+                ><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
             </div>
             <h2 id="auth-title" data-i18n="login.welcomeTitle">Welcome back</h2>
             <p id="auth-subtitle" data-i18n="login.welcomeSubtitle">Sign in to your account to continue</p>
@@ -99,7 +92,7 @@
                     <div class="form-group" id="group-name" style="display:none;">
                         <label for="input-name" data-i18n="login.fullName">Full Name</label>
                         <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">person</span>
+                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
                             <input
                                 type="text"
                                 id="input-name"
@@ -115,7 +108,7 @@
                     <div class="form-group" id="group-email">
                         <label for="input-email" data-i18n="login.emailAddress">Email Address</label>
                         <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">mail</span>
+                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span>
                             <input
                                 type="email"
                                 id="input-email"
@@ -133,7 +126,7 @@
                     <div class="form-group" id="group-password">
                         <label for="input-password" data-i18n="login.password">Password</label>
                         <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">lock</span>
+                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
                             <input
                                 type="password"
                                 id="input-password"
@@ -144,7 +137,7 @@
                                 value="Dev123"
                             >
                             <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password" data-i18n-aria-label="login.showPassword">
-                                <span class="material-symbols-outlined" id="toggle-password-icon">visibility</span>
+                                <span class="material-symbols-outlined" id="toggle-password-icon"><svg aria-hidden="true"><use href="#icon-visibility"></use></svg></span>
                             </button>
                         </div>
                         <span class="field-error" id="error-password"></span>
@@ -154,8 +147,7 @@
               <label for="input-confirm" data-i18n="login.confirmPassword">Confirm Password</label>
               <div class="input-wrapper">
                 <span class="material-symbols-outlined input-icon"
-                  >lock_reset</span
-                >
+                  ><svg aria-hidden="true"><use href="#icon-lock_reset"></use></svg></span>
                 <input
                   type="password"
                   id="input-confirm"
