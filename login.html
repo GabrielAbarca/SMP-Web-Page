@@ -9,7 +9,7 @@
     />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/login.css" />
-    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <script>
       // Apply the saved theme before first paint (avoids a light-mode flash).
       try {
@@ -29,30 +29,42 @@
           <div class="shape shape-3"></div>
         </div>
         <div class="brand-content">
-          <img
-            src="/src/assets/img/logo.jpg"
-            alt="SMP Logo"
-            class="brand-logo"
-          />
+          <img src="/apple-touch-icon.png" alt="SMP Logo" class="brand-logo" />
           <h1 class="brand-title">SIMPLE <span>MANAGE PRO</span></h1>
           <p class="brand-tagline">
-            <span data-i18n="login.tagline1">Your student portal for grades,</span><br /><span data-i18n="login.tagline2">attendance, schedule & more.</span>
+            <span data-i18n="login.tagline1"
+              >Your student portal for grades,</span
+            ><br /><span data-i18n="login.tagline2"
+              >attendance, schedule & more.</span
+            >
           </p>
           <ul class="brand-features">
             <li>
-              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span>
-              <span data-i18n="login.feature1">Real-time academic performance</span>
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-school"></use></svg
+              ></span>
+              <span data-i18n="login.feature1"
+                >Real-time academic performance</span
+              >
             </li>
             <li>
-              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_month"></use></svg></span>
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true">
+                  <use href="#icon-calendar_month"></use></svg
+              ></span>
               <span data-i18n="login.feature2">Weekly class schedule</span>
             </li>
             <li>
-              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span>
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true">
+                  <use href="#icon-fact_check"></use></svg
+              ></span>
               <span data-i18n="login.feature3">Attendance tracking</span>
             </li>
             <li>
-              <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event"></use></svg></span>
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-event"></use></svg
+              ></span>
               <span data-i18n="login.feature4">School events board</span>
             </li>
           </ul>
@@ -67,87 +79,118 @@
           data-i18n-title="login.toggleTheme"
         >
           <span class="material-symbols-outlined active" id="theme-icon-light"
-            ><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg></span>
+            ><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg
+          ></span>
           <span class="material-symbols-outlined" id="theme-icon-dark"
-            ><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg></span>
+            ><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg
+          ></span>
         </div>
 
         <div class="auth-card" id="auth-card">
           <div class="auth-card-header">
             <div class="auth-avatar">
               <span class="material-symbols-outlined" id="auth-avatar-icon"
-                ><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
+                ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
+              ></span>
             </div>
             <h2 id="auth-title" data-i18n="login.welcomeTitle">Welcome back</h2>
-            <p id="auth-subtitle" data-i18n="login.welcomeSubtitle">Sign in to your account to continue</p>
+            <p id="auth-subtitle" data-i18n="login.welcomeSubtitle">
+              Sign in to your account to continue
+            </p>
           </div>
 
-                
-                <div class="auth-toast" id="auth-toast" role="alert" aria-live="polite"></div>
+          <div
+            class="auth-toast"
+            id="auth-toast"
+            role="alert"
+            aria-live="polite"
+          ></div>
 
-                
-                <form id="auth-form" novalidate>
-
-                    
-                    <div class="form-group" id="group-name" style="display:none;">
-                        <label for="input-name" data-i18n="login.fullName">Full Name</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
-                            <input
-                                type="text"
-                                id="input-name"
-                                name="name"
-                                placeholder="Maria García"
-                                autocomplete="name"
-                            >
-                        </div>
-                        <span class="field-error" id="error-name"></span>
-                    </div>
-
-                    
-                    <div class="form-group" id="group-email">
-                        <label for="input-email" data-i18n="login.emailAddress">Email Address</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span>
-                            <input
-                                type="email"
-                                id="input-email"
-                                name="email"
-                                placeholder="you@example.com"
-                                autocomplete="email"
-                                required
-                                value="gzelaya0404@gmail.com"
-                            >
-                        </div>
-                        <span class="field-error" id="error-email"></span>
-                    </div>
-
-                    
-                    <div class="form-group" id="group-password">
-                        <label for="input-password" data-i18n="login.password">Password</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon"><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
-                            <input
-                                type="password"
-                                id="input-password"
-                                name="password"
-                                placeholder="••••••••"
-                                autocomplete="current-password"
-                                required
-                                value="Dev123"
-                            >
-                            <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password" data-i18n-aria-label="login.showPassword">
-                                <span class="material-symbols-outlined" id="toggle-password-icon"><svg aria-hidden="true"><use href="#icon-visibility"></use></svg></span>
-                            </button>
-                        </div>
-                        <span class="field-error" id="error-password"></span>
-                    </div>
-
-            <div class="form-group" id="group-confirm" style="display: none">
-              <label for="input-confirm" data-i18n="login.confirmPassword">Confirm Password</label>
+          <form id="auth-form" novalidate>
+            <div class="form-group" id="group-name" style="display: none">
+              <label for="input-name" data-i18n="login.fullName"
+                >Full Name</label
+              >
               <div class="input-wrapper">
                 <span class="material-symbols-outlined input-icon"
-                  ><svg aria-hidden="true"><use href="#icon-lock_reset"></use></svg></span>
+                  ><svg aria-hidden="true"><use href="#icon-person"></use></svg
+                ></span>
+                <input
+                  type="text"
+                  id="input-name"
+                  name="name"
+                  placeholder="Maria García"
+                  autocomplete="name"
+                />
+              </div>
+              <span class="field-error" id="error-name"></span>
+            </div>
+
+            <div class="form-group" id="group-email">
+              <label for="input-email" data-i18n="login.emailAddress"
+                >Email Address</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true"><use href="#icon-mail"></use></svg
+                ></span>
+                <input
+                  type="email"
+                  id="input-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  required
+                  value="gzelaya0404@gmail.com"
+                />
+              </div>
+              <span class="field-error" id="error-email"></span>
+            </div>
+
+            <div class="form-group" id="group-password">
+              <label for="input-password" data-i18n="login.password"
+                >Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
+                ></span>
+                <input
+                  type="password"
+                  id="input-password"
+                  name="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                  value="Dev123"
+                />
+                <button
+                  type="button"
+                  class="toggle-password"
+                  id="toggle-password"
+                  aria-label="Show password"
+                  data-i18n-aria-label="login.showPassword"
+                >
+                  <span
+                    class="material-symbols-outlined"
+                    id="toggle-password-icon"
+                    ><svg aria-hidden="true">
+                      <use href="#icon-visibility"></use></svg
+                  ></span>
+                </button>
+              </div>
+              <span class="field-error" id="error-password"></span>
+            </div>
+
+            <div class="form-group" id="group-confirm" style="display: none">
+              <label for="input-confirm" data-i18n="login.confirmPassword"
+                >Confirm Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true">
+                    <use href="#icon-lock_reset"></use></svg
+                ></span>
                 <input
                   type="password"
                   id="input-confirm"
@@ -160,7 +203,9 @@
             </div>
 
             <button type="submit" class="btn-submit" id="btn-submit">
-              <span class="btn-text" id="btn-text" data-i18n="login.signIn">Sign In</span>
+              <span class="btn-text" id="btn-text" data-i18n="login.signIn"
+                >Sign In</span
+              >
               <span
                 class="btn-spinner"
                 id="btn-spinner"
@@ -170,8 +215,15 @@
           </form>
 
           <div class="auth-switch">
-            <p id="switch-text" data-i18n="login.noAccount">Don't have an account?</p>
-            <button type="button" class="btn-switch" id="btn-switch" data-i18n="login.signUp">
+            <p id="switch-text" data-i18n="login.noAccount">
+              Don't have an account?
+            </p>
+            <button
+              type="button"
+              class="btn-switch"
+              id="btn-switch"
+              data-i18n="login.signUp"
+            >
               Sign Up
             </button>
           </div>
