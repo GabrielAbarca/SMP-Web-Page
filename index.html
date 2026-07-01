@@ -7,6 +7,38 @@
       name="description"
       content="Simple Manage Pro — Student portal for grades, attendance, schedule, and class information."
     />
+    <meta name="theme-color" content="#7380ec" />
+    <link rel="canonical" href="https://smp-web-page.vercel.app/" />
+    <!-- Open Graph / social link preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://smp-web-page.vercel.app/" />
+    <meta property="og:site_name" content="Simple Manage Pro" />
+    <meta property="og:title" content="Simple Manage Pro — Student Portal" />
+    <meta
+      property="og:description"
+      content="A clean student portal for grades, attendance, schedule, and class information."
+    />
+    <meta
+      property="og:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Simple Manage Pro — Student Portal" />
+    <meta
+      name="twitter:description"
+      content="A clean student portal for grades, attendance, schedule, and class information."
+    />
+    <meta
+      name="twitter:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <link
+      rel="preload"
+      href="/fonts/poppins-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -28,12 +60,14 @@
       <aside>
         <div class="top">
           <div class="logo">
-            <img src="/favicon.ico" alt="logo icon" />
+            <img src="/favicon.ico" alt="logo icon" width="32" height="32" />
             <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
           </div>
           <div
             class="close"
             id="close-btn"
+            role="button"
+            tabindex="0"
             aria-label="Close menu"
             data-i18n-aria-label="common.closeMenu"
           >

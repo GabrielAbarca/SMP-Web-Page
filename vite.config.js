@@ -32,6 +32,7 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         login: resolve(__dirname, "login.html"),
         admin: resolve(__dirname, "admin.html"),
+        notFound: resolve(__dirname, "404.html"),
       },
     },
   },

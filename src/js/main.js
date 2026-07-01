@@ -94,8 +94,16 @@ profilePhotoDiv.addEventListener("click", () => {
 menuBtn.addEventListener("click", () => {
   sideMenu.style.display = "block";
 });
-closeBtn.addEventListener("click", () => {
+const closeSideMenu = () => {
   sideMenu.style.display = "none";
+};
+closeBtn.addEventListener("click", closeSideMenu);
+// #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
+closeBtn.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    closeSideMenu();
+  }
 });
 
 initTheme();
@@ -108,6 +116,7 @@ applyTranslations();
 
 const sidebarLinks = document.querySelectorAll("aside .sidebar a[data-page]");
 const viewSections = document.querySelectorAll(".view-section");
+const rightPanel = document.querySelector(".right");
 const viewCache = {};
 
 function navigateTo(page) {
@@ -119,6 +128,12 @@ function navigateTo(page) {
     section.classList.toggle("active", section.id === `view-${page}`);
   });
 
+  // The "Upcoming Events" / "Subject Performance" widgets live in `.right`
+  // (a sibling of <main>, outside the view-section toggle). Hide them on every
+  // non-dashboard view so they only appear on the Panel — at all breakpoints.
+  // The `.right .top` bar (menu / theme / profile) is untouched and stays put.
+  rightPanel?.classList.toggle("rail-widgets-hidden", page !== "dashboard");
+
   if (!viewCache[page]) {
     viewCache[page] = true;
     initView(page);
@@ -127,6 +142,11 @@ function navigateTo(page) {
   if (window.innerWidth <= 768) {
     sideMenu.style.display = "none";
   }
+
+  // Return to the top on navigation. On mobile the top bar is fixed and pages
+  // scroll long, so tapping the profile photo (→ Settings) at the bottom would
+  // otherwise appear to do nothing; this makes every section switch land at top.
+  window.scrollTo({ top: 0 });
 }
 
 sidebarLinks.forEach((link) => {

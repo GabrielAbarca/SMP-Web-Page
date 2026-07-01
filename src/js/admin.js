@@ -1110,8 +1110,15 @@ navLinks.forEach((link) => {
 document.getElementById("menu-btn")?.addEventListener("click", () => {
   document.querySelector("aside").classList.toggle("active");
 });
-document.getElementById("close-btn")?.addEventListener("click", () => {
-  document.querySelector("aside").classList.remove("active");
+const closeBtnEl = document.getElementById("close-btn");
+const closeAside = () => document.querySelector("aside").classList.remove("active");
+closeBtnEl?.addEventListener("click", closeAside);
+// #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
+closeBtnEl?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    closeAside();
+  }
 });
 document.getElementById("logout-btn")?.addEventListener("click", async () => {
   await signOut();

@@ -7,6 +7,38 @@
       name="description"
       content="Simple Manage Pro — Teacher console: your classes, gradebook, attendance and schedule."
     />
+    <meta name="theme-color" content="#7380ec" />
+    <link rel="canonical" href="https://smp-web-page.vercel.app/admin" />
+    <!-- Open Graph / social link preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://smp-web-page.vercel.app/admin" />
+    <meta property="og:site_name" content="Simple Manage Pro" />
+    <meta property="og:title" content="Simple Manage Pro — Teacher Console" />
+    <meta
+      property="og:description"
+      content="Teacher console for classes, gradebook, attendance and schedule."
+    />
+    <meta
+      property="og:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Simple Manage Pro — Teacher Console" />
+    <meta
+      name="twitter:description"
+      content="Teacher console for classes, gradebook, attendance and schedule."
+    />
+    <meta
+      name="twitter:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <link
+      rel="preload"
+      href="/fonts/poppins-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/admin.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -32,12 +64,14 @@
       <aside>
         <div class="top">
           <div class="logo">
-            <img src="/apple-touch-icon.png" alt="logo" />
+            <img src="/apple-touch-icon.png" alt="logo" width="180" height="180" />
             <h2>SIMPLE <span class="danger">MANAGE PRO</span></h2>
           </div>
           <div
             class="close"
             id="close-btn"
+            role="button"
+            tabindex="0"
             aria-label="Close menu"
             data-i18n-aria-label="common.closeMenu"
           >

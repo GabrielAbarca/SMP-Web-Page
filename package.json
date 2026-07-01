@@ -12,11 +12,11 @@
   "author": "Gabriel Abarca",
   "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
-    "vercel": "^54.12.2"
+    "@supabase/supabase-js": "^2.106.2"
   },
   "devDependencies": {
     "supabase": "^2.104.0",
+    "vercel": "^54.12.2",
     "vite": "^5.2.11"
   }
 }
