@@ -13,7 +13,113 @@
    [STUDENT] (only the student portal renders these views).
 ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+/* ── Self-hosted Poppins (replaces the Google Fonts @import) ──────────────
+   Ships only the weights the app actually uses (400/500/600/700/800, normal —
+   no italics) and only the latin + latin-ext subsets. The `latin` range
+   (U+0000-00FF) covers every Spanish accent (á é í ó ú ñ ü ¿ ¡), so EN/ES pages
+   download only the latin files; latin-ext is there for completeness and is
+   fetched only if an extended glyph appears. font-display: swap avoids blocking
+   first paint. Files live in /public/fonts (stable path → preload-able). */
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-800-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 :root {
   --color-primary: #7380ec;
@@ -108,6 +214,37 @@
   box-sizing: border-box;
 }
 
+/* ── Inline SVG icons (replaces the Material Symbols icon font) ──────
+   Each icon is now an inline sprite reference (<svg><use href="#icon-NAME">)
+   nested inside the SAME `.material-symbols-outlined` span that previously held
+   the font ligature. Keeping the span and its classes means every existing
+   size/colour selector still applies to it: the span sets the em-size + colour,
+   while the svg fills 1em and inherits colour through currentColor. */
+.material-symbols-outlined {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+.material-symbols-outlined > svg {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+svg:has(use[href^="#icon-event"]), svg:has(use[href^="#icon-calculate"]), svg:has(use[href^="#icon-menu_book"]), svg:has(use[href^="#icon-history_edu"]), svg:has(use[href^="#icon-translate"]), svg:has(use[href^="#icon-fitness_center"]), svg:has(use[href^="#icon-science"]) {
+  width: 1.6em;
+  height: 1.6em;
+}
+a svg:has(use[href^="#icon-event"]) {
+  width: 1em;
+  height: 1em;
+}
+a svg:has(use[href^="#icon-menu_book"]) {
+  width: 1em;
+  height: 1em;
+}
 html {
   font-size: 14px;
 }
@@ -169,6 +306,7 @@ small {
   justify-content: center;
   background: var(--color-primary-light);
   color: var(--color-primary);
+  cursor: pointer;
 }
 
 /* Scope the large icon to the photo only — otherwise it also enlarges
@@ -577,12 +715,14 @@ main .dashboard .progress {
   border-radius: 50%;
 }
 
-main .dashboard svg {
+/* Scoped to `.progress` (the radial progress ring) so it doesn't hit the
+   inline-SVG icons that now also live inside dashboard cards. */
+main .dashboard .progress svg {
   width: 7rem;
   height: 7rem;
 }
 
-main .dashboard svg circle {
+main .dashboard .progress svg circle {
   fill: none;
   stroke: var(--color-primary);
   stroke-width: 14;
@@ -593,7 +733,7 @@ main .dashboard svg circle {
   transition: stroke-dashoffset 1s ease;
 }
 
-main .dashboard .grade svg circle {
+main .dashboard .grade .progress svg circle {
   stroke: var(--color-danger);
 }
 
@@ -1802,7 +1942,11 @@ main .show-all {
   }
 
   aside {
-    position: absolute;
+    /* Fixed (not absolute) so the fly-out opens in the current viewport at any
+       scroll position — absolute anchored it to the document top, pushing the
+       menu off-screen when the page was scrolled down. */
+    position: fixed;
+    top: 0;
     left: -100%;
     background: var(--color-white);
     width: 20rem;
@@ -1972,4 +2116,87 @@ main .show-all {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-info-dark);
+}
+
+/* ── Right-rail widgets scoped to the dashboard (A6) ───────────────
+   `.right` holds the always-visible top bar (menu / theme / profile) AND the
+   dashboard-only widgets. navigateTo() toggles .rail-widgets-hidden on `.right`
+   for every non-dashboard view, so "Upcoming Events" and "Subject Performance"
+   show only on the Panel at all breakpoints, while the top bar stays put. */
+.right.rail-widgets-hidden .recent-updates,
+.right.rail-widgets-hidden .subjects-analytics {
+  display: none;
+}
+
+/* ── 404 page (404.html) ──────────────────────────────────────────
+   Standalone branded not-found page; self-contained so it renders without the
+   app shell, themable through the shared design tokens. */
+.notfound-body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: var(--color-background);
+  color: var(--color-dark);
+  font-family: "Poppins", sans-serif;
+}
+.notfound {
+  text-align: center;
+  max-width: 26rem;
+}
+.notfound-logo {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: var(--border-radius-2);
+  margin-bottom: 1.5rem;
+}
+.notfound-code {
+  font-size: 5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-primary);
+}
+.notfound-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  margin: 0.4rem 0 0.6rem;
+}
+.notfound-text {
+  color: var(--color-info-dark);
+  margin-bottom: 2rem;
+}
+.notfound-btn {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 0.8rem 1.6rem;
+  border-radius: var(--border-radius-2);
+  font-weight: var(--weight-semibold);
+  transition: opacity var(--transition-speed);
+}
+.notfound-btn:hover {
+  opacity: 0.9;
+}
+
+/* ── Reduced motion (A3) ──────────────────────────────────────────
+   Respect the OS "reduce motion" preference. style.css loads on every page
+   (index / admin / login / 404), so this one global damper neutralises the
+   decorative + entrance animations and long transitions across the whole app.
+   Exception: the submit spinner keeps turning — it communicates loading state. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton {
+    animation: none !important;
+  }
+  .btn-spinner {
+    animation-duration: 0.7s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

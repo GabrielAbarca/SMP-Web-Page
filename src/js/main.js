@@ -4,6 +4,13 @@ import { initTheme, bindThemeToggle } from "./theme.js";
 import { skeletonRows } from "./ui.js";
 import { renderSettings } from "./settings.js";
 import {
+  initI18n,
+  applyTranslations,
+  t,
+  formatDate,
+  formatTime,
+} from "./i18n.js";
+import {
   fetchStudentProfile,
   fetchGradingPeriods,
   fetchStudentGrades,
@@ -72,18 +79,44 @@ const menuBtn = document.querySelector("#menu-btn");
 const closeBtn = document.querySelector("#close-btn");
 const themeToggler = document.querySelector(".theme-toggler");
 
+const profilePhotoDiv = document.querySelector(".profile-photo");
+
+profilePhotoDiv.addEventListener("click", () => {
+  navigateTo("settings");
+  // Snap to Account & Profile. On first open the panel isn't rendered yet
+  // (initSettings is async) — but renderSettings already defaults to the
+  // account sub-tab, so this only matters when re-opening after switching tabs.
+  document
+    .querySelector('#settings-root .settings-rail-item[data-section="account"]')
+    ?.click();
+});
+
 menuBtn.addEventListener("click", () => {
   sideMenu.style.display = "block";
 });
-closeBtn.addEventListener("click", () => {
+const closeSideMenu = () => {
   sideMenu.style.display = "none";
+};
+closeBtn.addEventListener("click", closeSideMenu);
+// #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
+closeBtn.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    closeSideMenu();
+  }
 });
 
 initTheme();
 bindThemeToggle(themeToggler);
 
+// Resolve this view's language (stored "smp-lang-student" → browser → English)
+// and translate the static markup before any view renders.
+initI18n("student");
+applyTranslations();
+
 const sidebarLinks = document.querySelectorAll("aside .sidebar a[data-page]");
 const viewSections = document.querySelectorAll(".view-section");
+const rightPanel = document.querySelector(".right");
 const viewCache = {};
 
 function navigateTo(page) {
@@ -95,6 +128,12 @@ function navigateTo(page) {
     section.classList.toggle("active", section.id === `view-${page}`);
   });
 
+  // The "Upcoming Events" / "Subject Performance" widgets live in `.right`
+  // (a sibling of <main>, outside the view-section toggle). Hide them on every
+  // non-dashboard view so they only appear on the Panel — at all breakpoints.
+  // The `.right .top` bar (menu / theme / profile) is untouched and stays put.
+  rightPanel?.classList.toggle("rail-widgets-hidden", page !== "dashboard");
+
   if (!viewCache[page]) {
     viewCache[page] = true;
     initView(page);
@@ -103,6 +142,11 @@ function navigateTo(page) {
   if (window.innerWidth <= 768) {
     sideMenu.style.display = "none";
   }
+
+  // Return to the top on navigation. On mobile the top bar is fixed and pages
+  // scroll long, so tapping the profile photo (→ Settings) at the bottom would
+  // otherwise appear to do nothing; this makes every section switch land at top.
+  window.scrollTo({ top: 0 });
 }
 
 sidebarLinks.forEach((link) => {
@@ -185,8 +229,9 @@ let classId = null;
 async function initDashboard() {
   studentProfile = await fetchStudentProfile(STUDENT_ID);
   if (!studentProfile) {
-    document.getElementById("student-name").textContent =
-      "Error loading profile";
+    document.getElementById("student-name").textContent = t(
+      "student.errorLoadingProfile",
+    );
     return;
   }
 
@@ -196,11 +241,13 @@ async function initDashboard() {
 
   document.getElementById("student-name").textContent =
     `${studentProfile.first_name} ${studentProfile.last_name}`;
-  document.getElementById("student-class").textContent =
-    `${cls?.grade_levels?.name ?? "—"} — Section ${cls?.display_name ?? "—"}`;
+  document.getElementById("student-class").textContent = t("student.classLine", {
+    grade: cls?.grade_levels?.name ?? "—",
+    section: cls?.display_name ?? "—",
+  });
   document.getElementById("student-year").textContent =
     cls?.school_years?.name ?? "—";
-  document.getElementById("student-status").textContent = capitalize(
+  document.getElementById("student-status").textContent = statusLabel(
     studentProfile.status,
   );
 
@@ -223,19 +270,15 @@ async function initDashboard() {
   if (stats.nextClass) {
     document.getElementById("next-class-subject").textContent =
       stats.nextClass.subjects?.name ?? "—";
-    const dayNames = [
-      "",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-    ];
     document.getElementById("next-class-day").textContent =
-      dayNames[stats.nextClass.day_of_week] ?? "";
+      dayNameFull(stats.nextClass.day_of_week);
   } else {
-    document.getElementById("next-class-subject").textContent = "No upcoming";
-    document.getElementById("next-class-day").textContent = "Enjoy your break!";
+    document.getElementById("next-class-subject").textContent = t(
+      "student.next.none",
+    );
+    document.getElementById("next-class-day").textContent = t(
+      "student.next.enjoyBreak",
+    );
   }
 
   renderDashboardGradeTable(stats.allGrades);
@@ -249,8 +292,7 @@ function renderDashboardGradeTable(grades) {
   const tbody = document.getElementById("dashboard-grades-body");
 
   if (!grades || grades.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="5" class="loading-cell">No grades recorded yet.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="loading-cell">${t("student.grades.dashEmpty")}</td></tr>`;
     return;
   }
 
@@ -330,8 +372,7 @@ async function loadGradesTable() {
   const grades = await fetchStudentGrades(STUDENT_ID, periodId);
 
   if (!grades || grades.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="6" class="loading-cell">No grades for this period.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">${t("student.grades.empty")}</td></tr>`;
     tfoot.innerHTML = "";
     return;
   }
@@ -350,7 +391,7 @@ async function loadGradesTable() {
       <td>${subj?.code ?? "—"}</td>
       <td>${teacher ? `${teacher.first_name} ${teacher.last_name}` : "—"}</td>
       <td>${scoreHtml(score)}</td>
-      <td><span class="status-badge ${pass ? "status-pass" : "status-fail"}">${pass ? "Pass" : "Fail"}</span></td>
+      <td><span class="status-badge ${pass ? "status-pass" : "status-fail"}">${pass ? t("enums.pass.pass") : t("enums.pass.fail")}</span></td>
       <td>${g.grading_periods?.name ?? "—"}</td>
     </tr>`;
     })
@@ -365,7 +406,7 @@ async function loadGradesTable() {
         10
       : "—";
   tfoot.innerHTML = `<tr>
-    <td colspan="3" style="text-align:right; font-weight:700;">Period Average</td>
+    <td colspan="3" style="text-align:right; font-weight:700;">${t("student.grades.periodAverage")}</td>
     <td>${typeof avg === "number" ? scoreHtml(avg) : avg}</td>
     <td colspan="2"></td>
   </tr>`;
@@ -381,8 +422,7 @@ async function initSchedule() {
   const grid = document.getElementById("schedule-grid");
 
   if (!schedule || schedule.length === 0) {
-    grid.innerHTML =
-      '<div class="loading-cell">No schedule data available.</div>';
+    grid.innerHTML = `<div class="loading-cell">${t("student.schedule.empty")}</div>`;
     return;
   }
 
@@ -395,11 +435,13 @@ async function initSchedule() {
     ).values(),
   ].sort((a, b) => a.start.localeCompare(b.start));
 
-  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const dayNames = ["mon", "tue", "wed", "thu", "fri"].map((k) =>
+    t(`common.daysShort.${k}`),
+  );
 
   let html = "";
 
-  html += '<div class="sch-header">Time</div>';
+  html += `<div class="sch-header">${t("student.schedule.time")}</div>`;
   dayNames.forEach((d) => {
     html += `<div class="sch-header">${d}</div>`;
   });
@@ -437,27 +479,27 @@ async function initTeachersView() {
   const container = document.getElementById("teacher-cards");
 
   if (!teachers || teachers.length === 0) {
-    container.innerHTML = '<div class="loading-cell">No teachers found.</div>';
+    container.innerHTML = `<div class="loading-cell">${t("student.teachers.empty")}</div>`;
     return;
   }
 
   container.innerHTML = teachers
-    .map((t) => {
+    .map((tch) => {
       const statusClass =
-        t.status === "active"
+        tch.status === "active"
           ? "badge-success"
-          : t.status === "on_leave"
+          : tch.status === "on_leave"
             ? "badge-warning"
             : "badge-danger";
       return `<div class="teacher-card">
       <div class="teacher-avatar">
-        <span class="material-symbols-outlined">person</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span>
       </div>
-      <h3>${t.first_name} ${t.last_name}</h3>
-      <p class="teacher-spec">${t.specialization ?? "—"}</p>
-      <p class="teacher-email">${t.email ?? "—"}</p>
+      <h3>${tch.first_name} ${tch.last_name}</h3>
+      <p class="teacher-spec">${tch.specialization ?? "—"}</p>
+      <p class="teacher-email">${tch.email ?? "—"}</p>
       <div class="teacher-status">
-        <span class="badge ${statusClass}">${capitalize(t.status)}</span>
+        <span class="badge ${statusClass}">${statusLabel(tch.status)}</span>
       </div>
     </div>`;
     })
@@ -475,10 +517,10 @@ async function initAttendanceView() {
   });
 
   summary.innerHTML = [
-    { label: "Present", val: counts.present, cls: "stat-present" },
-    { label: "Absent", val: counts.absent, cls: "stat-absent" },
-    { label: "Late", val: counts.late, cls: "stat-late" },
-    { label: "Excused", val: counts.excused, cls: "stat-excused" },
+    { label: t("enums.attendance.present"), val: counts.present, cls: "stat-present" },
+    { label: t("enums.attendance.absent"), val: counts.absent, cls: "stat-absent" },
+    { label: t("enums.attendance.late"), val: counts.late, cls: "stat-late" },
+    { label: t("enums.attendance.excused"), val: counts.excused, cls: "stat-excused" },
   ]
     .map(
       (s) => `
@@ -493,8 +535,7 @@ async function initAttendanceView() {
   const tbody = document.getElementById("attendance-body");
 
   if (total === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="5" class="loading-cell">No attendance records.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="loading-cell">${t("student.attendance.empty")}</td></tr>`;
     return;
   }
 
@@ -505,7 +546,7 @@ async function initAttendanceView() {
       return `<tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.classes?.display_name ?? "—"}</td>
-      <td><span class="status-badge ${statusCls}">${capitalize(r.status)}</span></td>
+      <td><span class="status-badge ${statusCls}">${attendanceLabel(r.status)}</span></td>
       <td>${teacher ? `${teacher.first_name} ${teacher.last_name}` : "—"}</td>
       <td>${r.notes ?? "—"}</td>
     </tr>`;
@@ -518,7 +559,7 @@ async function initEventsView() {
   const container = document.getElementById("events-timeline");
 
   if (!events || events.length === 0) {
-    container.innerHTML = '<div class="loading-cell">No events found.</div>';
+    container.innerHTML = `<div class="loading-cell">${t("student.events.empty")}</div>`;
     return;
   }
 
@@ -540,13 +581,13 @@ async function initEventsView() {
 
       return `<div class="event-card event-${ev.type}">
       <div class="event-icon">
-        <span class="material-symbols-outlined">${icon}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>
       </div>
       <div class="event-body">
         <h3>${ev.title}</h3>
         <p>${ev.description ?? ""}</p>
         <div class="event-dates">
-          <span class="material-symbols-outlined" style="font-size:.85rem;vertical-align:middle;">calendar_today</span>
+          <span class="material-symbols-outlined" style="font-size:.85rem;vertical-align:middle;"><svg aria-hidden="true"><use href="#icon-calendar_today"></use></svg></span>
           ${dateStr}
           <span class="badge badge-${eventTypeBadge(ev.type)}" style="margin-left:.5rem;">${formatEventType(ev.type)}</span>
         </div>
@@ -568,40 +609,43 @@ async function initSettings() {
   if (!root) return;
 
   if (!studentProfile) {
-    root.innerHTML =
-      '<div class="loading-cell">Could not load your profile.</div>';
+    root.innerHTML = `<div class="loading-cell">${t("common.couldNotLoadProfile")}</div>`;
     return;
   }
 
   const s = studentProfile;
   const cls = s.classes;
   const classLine = cls
-    ? `${cls.grade_levels?.name ?? "—"} — Section ${cls.display_name ?? "—"}`
+    ? t("student.classLine", {
+        grade: cls.grade_levels?.name ?? "—",
+        section: cls.display_name ?? "—",
+      })
     : null;
 
   const dateOr = (d) => (d ? formatDate(d) : null);
+  const gradeName = cls?.grade_levels?.name;
 
   const adapter = {
     context: "student",
     identity: {
       displayName: `${s.first_name} ${s.last_name}`,
-      subtitle: `Student${cls?.grade_levels?.name ? " · " + cls.grade_levels.name : ""}`,
+      subtitle: `${t("settings.roleStudent")}${gradeName ? " · " + gradeName : ""}`,
       avatarIcon: "person",
-      roleBadge: { text: "Student", className: "badge-primary" },
+      roleBadge: { text: t("settings.roleStudent"), className: "badge-primary" },
     },
     personal: [
-      { label: "First name", value: s.first_name, icon: "badge" },
-      { label: "Last name", value: s.last_name, icon: "badge" },
-      { label: "Enrollment number", value: s.enrollment_number, icon: "tag" },
-      { label: "National ID", value: s.national_id, icon: "fingerprint" },
-      { label: "Date of birth", value: dateOr(s.date_of_birth), icon: "cake" },
-      { label: "Gender", value: genderLabel(s.gender), icon: "wc" },
-      { label: "Class", value: classLine, icon: "school" },
-      { label: "Email", value: s.email, icon: "mail" },
-      { label: "Phone", value: s.phone, icon: "call" },
-      { label: "Address", value: s.address, icon: "home" },
-      { label: "Status", value: s.status ? capitalize(s.status) : null, icon: "info" },
-      { label: "Enrolled", value: dateOr(s.enrollment_date), icon: "event" },
+      { label: t("settings.fields.firstName"), value: s.first_name, icon: "badge" },
+      { label: t("settings.fields.lastName"), value: s.last_name, icon: "badge" },
+      { label: t("settings.fields.enrollmentNumber"), value: s.enrollment_number, icon: "tag" },
+      { label: t("settings.fields.nationalId"), value: s.national_id, icon: "fingerprint" },
+      { label: t("settings.fields.dateOfBirth"), value: dateOr(s.date_of_birth), icon: "cake" },
+      { label: t("settings.fields.gender"), value: genderLabel(s.gender), icon: "wc" },
+      { label: t("settings.fields.class"), value: classLine, icon: "school" },
+      { label: t("settings.fields.email"), value: s.email, icon: "mail" },
+      { label: t("settings.fields.phone"), value: s.phone, icon: "call" },
+      { label: t("settings.fields.address"), value: s.address, icon: "home" },
+      { label: t("settings.fields.status"), value: s.status ? statusLabel(s.status) : null, icon: "info" },
+      { label: t("settings.fields.enrolled"), value: dateOr(s.enrollment_date), icon: "event" },
     ],
     username: s.email,
     email: s.email,
@@ -610,12 +654,30 @@ async function initSettings() {
   renderSettings(root, adapter);
 }
 
+// Gender label from the DB code (M/F/O); unknown codes pass through verbatim.
 function genderLabel(g) {
   if (!g) return null;
   const key = String(g).trim().toUpperCase();
-  if (key === "M") return "Male";
-  if (key === "F") return "Female";
+  if (key === "M" || key === "F" || key === "O") {
+    return t(`enums.gender.${key}`);
+  }
   return g;
+}
+
+// Attendance status badge label from the DB status value.
+function attendanceLabel(status) {
+  return t(`enums.attendance.${status}`);
+}
+
+// Student/teacher status label from the DB status value.
+function statusLabel(status) {
+  return status ? t(`enums.studentStatus.${status}`) : "";
+}
+
+// Full weekday name (1=Mon … 5=Fri) for the "next class" card.
+function dayNameFull(dow) {
+  const keys = ["", "monday", "tuesday", "wednesday", "thursday", "friday"];
+  return keys[dow] ? t(`common.days.${keys[dow]}`) : "";
 }
 
 async function renderUpcomingEvents() {
@@ -626,8 +688,8 @@ async function renderUpcomingEvents() {
 
   if (upcoming.length === 0) {
     card.innerHTML = `<div class="update">
-      <div class="profile-photo"><span class="material-symbols-outlined">event_busy</span></div>
-      <div class="message"><p>No upcoming events.</p></div>
+      <div class="profile-photo"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_busy"></use></svg></span></div>
+      <div class="message"><p>${t("student.panel.noUpcomingEvents")}</p></div>
     </div>`;
     return;
   }
@@ -637,7 +699,7 @@ async function renderUpcomingEvents() {
       (ev) => `
     <div class="update">
       <div class="profile-photo">
-        <span class="material-symbols-outlined">event</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event"></use></svg></span>
       </div>
       <div class="message">
         <p><b>${ev.title}</b></p>
@@ -653,8 +715,7 @@ function renderSubjectAnalytics(grades) {
   const container = document.getElementById("subject-analytics-list");
 
   if (!grades || grades.length === 0) {
-    container.innerHTML =
-      '<p class="text-muted" style="padding:1rem;">No data yet.</p>';
+    container.innerHTML = `<p class="text-muted" style="padding:1rem;">${t("student.panel.noData")}</p>`;
     return;
   }
 
@@ -704,7 +765,7 @@ function renderSubjectAnalytics(grades) {
 
       return `<div class="item">
       <div class="icon" style="background:${subj.color}">
-        <span class="material-symbols-outlined">${icon}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>
       </div>
       <div class="right-content">
         <div class="info">
@@ -729,29 +790,6 @@ function setCircleProgress(circleId, pct) {
   circle.style.strokeDashoffset = `${offset}`;
 }
 
-function formatTime(t) {
-  if (!t) return "";
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-function formatDate(d) {
-  if (!d) return "";
-  const date = new Date(d + "T00:00:00");
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function capitalize(s) {
-  if (!s) return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 function scoreHtml(score) {
   const cls =
     score >= 70 ? "score-high" : score >= 50 ? "score-mid" : "score-low";
@@ -771,19 +809,20 @@ function eventTypeBadge(type) {
 }
 
 function formatEventType(type) {
-  const map = {
-    holiday: "Holiday",
-    exam_period: "Exams",
-    activity: "Activity",
-    parent_meeting: "Parent Meeting",
-    suspension: "Suspension",
-    general: "General",
-  };
-  return map[type] ?? type;
+  const known = [
+    "holiday",
+    "exam_period",
+    "activity",
+    "parent_meeting",
+    "suspension",
+    "general",
+  ];
+  return known.includes(type) ? t(`enums.eventType.${type}`) : type;
 }
 
 async function init() {
   navigateTo("dashboard");
 }
+
 
 init();

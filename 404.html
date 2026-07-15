@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Page not found — Simple Manage Pro." />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#7380ec" />
+    <link
+      rel="preload"
+      href="/fonts/poppins-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <script>
+      // Apply the saved theme before first paint (avoids a light-mode flash).
+      try {
+        if (localStorage.getItem("smp-theme") === "dark")
+          document.documentElement.classList.add("dark-theme-variables");
+      } catch (e) {}
+    </script>
+    <title>404 — Page not found · Simple Manage Pro</title>
+  </head>
+  <body class="notfound-body">
+    <main class="notfound">
+      <img
+        src="/apple-touch-icon.png"
+        alt="Simple Manage Pro"
+        class="notfound-logo"
+        width="72"
+        height="72"
+      />
+      <p class="notfound-code">404</p>
+      <h1 class="notfound-title">Page not found</h1>
+      <p class="notfound-text">
+        The page you're looking for doesn't exist or may have moved.
+      </p>
+      <a class="notfound-btn" href="/login">Back to sign in</a>
+    </main>
+  </body>
+</html>

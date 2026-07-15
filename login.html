@@ -7,13 +7,45 @@
       name="description"
       content="Sign in to Simple Manage Pro — your student portal for grades, attendance, schedule, and class information."
     />
+    <meta name="theme-color" content="#7380ec" />
+    <link rel="canonical" href="https://smp-web-page.vercel.app/login" />
+    <!-- Open Graph / social link preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://smp-web-page.vercel.app/login" />
+    <meta property="og:site_name" content="Simple Manage Pro" />
+    <meta property="og:title" content="Sign In — Simple Manage Pro" />
+    <meta
+      property="og:description"
+      content="Sign in to Simple Manage Pro — grades, attendance, schedule, and class information."
+    />
+    <meta
+      property="og:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Sign In — Simple Manage Pro" />
+    <meta
+      name="twitter:description"
+      content="Sign in to Simple Manage Pro — grades, attendance, schedule, and class information."
+    />
+    <meta
+      name="twitter:image"
+      content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
+    />
+    <link
+      rel="preload"
+      href="/fonts/poppins-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="/src/css/style.css" />
     <link rel="stylesheet" href="/src/css/login.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-    />
-    <link rel="icon" type="image/png" href="/src/assets/img/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script>
       // Apply the saved theme before first paint (avoids a light-mode flash).
       try {
@@ -34,30 +66,48 @@
         </div>
         <div class="brand-content">
           <img
-            src="/src/assets/img/logo.jpg"
+            src="/apple-touch-icon.png"
             alt="SMP Logo"
             class="brand-logo"
+            width="180"
+            height="180"
           />
           <h1 class="brand-title">SIMPLE <span>MANAGE PRO</span></h1>
           <p class="brand-tagline">
-            Your student portal for grades,<br />attendance, schedule & more.
+            <span data-i18n="login.tagline1"
+              >Your student portal for grades,</span
+            ><br /><span data-i18n="login.tagline2"
+              >attendance, schedule & more.</span
+            >
           </p>
           <ul class="brand-features">
             <li>
-              <span class="material-symbols-outlined">school</span>
-              Real-time academic performance
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-school"></use></svg
+              ></span>
+              <span data-i18n="login.feature1"
+                >Real-time academic performance</span
+              >
             </li>
             <li>
-              <span class="material-symbols-outlined">calendar_month</span>
-              Weekly class schedule
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true">
+                  <use href="#icon-calendar_month"></use></svg
+              ></span>
+              <span data-i18n="login.feature2">Weekly class schedule</span>
             </li>
             <li>
-              <span class="material-symbols-outlined">fact_check</span>
-              Attendance tracking
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true">
+                  <use href="#icon-fact_check"></use></svg
+              ></span>
+              <span data-i18n="login.feature3">Attendance tracking</span>
             </li>
             <li>
-              <span class="material-symbols-outlined">event</span>
-              School events board
+              <span class="material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-event"></use></svg
+              ></span>
+              <span data-i18n="login.feature4">School events board</span>
             </li>
           </ul>
         </div>
@@ -68,93 +118,128 @@
           class="login-theme-toggler"
           id="login-theme-toggler"
           title="Toggle dark mode"
+          data-i18n-title="login.toggleTheme"
         >
           <span class="material-symbols-outlined active" id="theme-icon-light"
-            >light_mode</span
-          >
+            ><svg aria-hidden="true"><use href="#icon-light_mode"></use></svg
+          ></span>
           <span class="material-symbols-outlined" id="theme-icon-dark"
-            >dark_mode</span
-          >
+            ><svg aria-hidden="true"><use href="#icon-dark_mode"></use></svg
+          ></span>
         </div>
 
         <div class="auth-card" id="auth-card">
           <div class="auth-card-header">
             <div class="auth-avatar">
               <span class="material-symbols-outlined" id="auth-avatar-icon"
-                >lock</span
-              >
+                ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
+              ></span>
             </div>
-            <h2 id="auth-title">Welcome back</h2>
-            <p id="auth-subtitle">Sign in to your account to continue</p>
+            <h2 id="auth-title" data-i18n="login.welcomeTitle">Welcome back</h2>
+            <p id="auth-subtitle" data-i18n="login.welcomeSubtitle">
+              Sign in to your account to continue
+            </p>
           </div>
 
-                
-                <div class="auth-toast" id="auth-toast" role="alert" aria-live="polite"></div>
+          <div
+            class="auth-toast"
+            id="auth-toast"
+            role="alert"
+            aria-live="polite"
+          ></div>
 
-                
-                <form id="auth-form" novalidate>
+          <p
+            class="demo-notice"
+            id="demo-notice"
+            style="display: none"
+            data-i18n="login.demoNotice"
+          >
+            Live demo — credentials are prefilled, just sign in.
+          </p>
 
-                    
-                    <div class="form-group" id="group-name" style="display:none;">
-                        <label for="input-name">Full Name</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">person</span>
-                            <input
-                                type="text"
-                                id="input-name"
-                                name="name"
-                                placeholder="Maria García"
-                                autocomplete="name"
-                            >
-                        </div>
-                        <span class="field-error" id="error-name"></span>
-                    </div>
-
-                    
-                    <div class="form-group" id="group-email">
-                        <label for="input-email">Email Address</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">mail</span>
-                            <input
-                                type="email"
-                                id="input-email"
-                                name="email"
-                                placeholder="you@example.com"
-                                autocomplete="email"
-                                required
-                                value="gzelaya0404@gmail.com"
-                            >
-                        </div>
-                        <span class="field-error" id="error-email"></span>
-                    </div>
-
-                    
-                    <div class="form-group" id="group-password">
-                        <label for="input-password">Password</label>
-                        <div class="input-wrapper">
-                            <span class="material-symbols-outlined input-icon">lock</span>
-                            <input
-                                type="password"
-                                id="input-password"
-                                name="password"
-                                placeholder="••••••••"
-                                autocomplete="current-password"
-                                required
-                                value="Dev123"
-                            >
-                            <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password">
-                                <span class="material-symbols-outlined" id="toggle-password-icon">visibility</span>
-                            </button>
-                        </div>
-                        <span class="field-error" id="error-password"></span>
-                    </div>
-
-            <div class="form-group" id="group-confirm" style="display: none">
-              <label for="input-confirm">Confirm Password</label>
+          <form id="auth-form" novalidate>
+            <div class="form-group" id="group-name" style="display: none">
+              <label for="input-name" data-i18n="login.fullName"
+                >Full Name</label
+              >
               <div class="input-wrapper">
                 <span class="material-symbols-outlined input-icon"
-                  >lock_reset</span
+                  ><svg aria-hidden="true"><use href="#icon-person"></use></svg
+                ></span>
+                <input
+                  type="text"
+                  id="input-name"
+                  name="name"
+                  placeholder="Maria García"
+                  autocomplete="name"
+                />
+              </div>
+              <span class="field-error" id="error-name"></span>
+            </div>
+
+            <div class="form-group" id="group-email">
+              <label for="input-email" data-i18n="login.emailAddress"
+                >Email Address</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true"><use href="#icon-mail"></use></svg
+                ></span>
+                <input
+                  type="email"
+                  id="input-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+              <span class="field-error" id="error-email"></span>
+            </div>
+
+            <div class="form-group" id="group-password">
+              <label for="input-password" data-i18n="login.password"
+                >Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
+                ></span>
+                <input
+                  type="password"
+                  id="input-password"
+                  name="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="toggle-password"
+                  id="toggle-password"
+                  aria-label="Show password"
+                  data-i18n-aria-label="login.showPassword"
                 >
+                  <span
+                    class="material-symbols-outlined"
+                    id="toggle-password-icon"
+                    ><svg aria-hidden="true">
+                      <use href="#icon-visibility"></use></svg
+                  ></span>
+                </button>
+              </div>
+              <span class="field-error" id="error-password"></span>
+            </div>
+
+            <div class="form-group" id="group-confirm" style="display: none">
+              <label for="input-confirm" data-i18n="login.confirmPassword"
+                >Confirm Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true">
+                    <use href="#icon-lock_reset"></use></svg
+                ></span>
                 <input
                   type="password"
                   id="input-confirm"
@@ -167,7 +252,9 @@
             </div>
 
             <button type="submit" class="btn-submit" id="btn-submit">
-              <span class="btn-text" id="btn-text">Sign In</span>
+              <span class="btn-text" id="btn-text" data-i18n="login.signIn"
+                >Sign In</span
+              >
               <span
                 class="btn-spinner"
                 id="btn-spinner"
@@ -177,8 +264,15 @@
           </form>
 
           <div class="auth-switch">
-            <p id="switch-text">Don't have an account?</p>
-            <button type="button" class="btn-switch" id="btn-switch">
+            <p id="switch-text" data-i18n="login.noAccount">
+              Don't have an account?
+            </p>
+            <button
+              type="button"
+              class="btn-switch"
+              id="btn-switch"
+              data-i18n="login.signUp"
+            >
               Sign Up
             </button>
           </div>

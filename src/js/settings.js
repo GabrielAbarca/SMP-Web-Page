@@ -25,6 +25,8 @@
 //    }
 // ─────────────────────────────────────────────────────────────────
 
+import { t, getLang, setLang } from "./i18n.js";
+
 // App version surfaced in "More info". Bump alongside package.json.
 const APP_VERSION = "1.0.0";
 
@@ -40,11 +42,12 @@ function esc(value) {
 }
 
 // Settings sub-sections — the left rail. `render` builds each panel body.
+// `labelKey` resolves through t() at render time (after initI18n).
 const SECTIONS = [
-  { id: "account", label: "Account & Profile", icon: "account_circle", render: renderAccount },
-  { id: "preferences", label: "Preferences", icon: "tune", render: renderPreferences },
-  { id: "help", label: "Help", icon: "help", render: renderHelp },
-  { id: "moreinfo", label: "More info", icon: "info", render: renderMoreInfo },
+  { id: "account", labelKey: "settings.rail.account", icon: "account_circle", render: renderAccount },
+  { id: "preferences", labelKey: "settings.rail.preferences", icon: "tune", render: renderPreferences },
+  { id: "help", labelKey: "settings.rail.help", icon: "help", render: renderHelp },
+  { id: "moreinfo", labelKey: "settings.rail.moreinfo", icon: "info", render: renderMoreInfo },
 ];
 
 /**
@@ -63,8 +66,8 @@ export function renderSettings(rootEl, adapter) {
       role="tab"
       aria-selected="${i === 0 ? "true" : "false"}"
     >
-      <span class="material-symbols-outlined">${s.icon}</span>
-      <span>${esc(s.label)}</span>
+      <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${s.icon}"></use></svg></span>
+      <span>${t(s.labelKey)}</span>
     </button>`,
   ).join("");
 
@@ -102,13 +105,12 @@ export function renderSettings(rootEl, adapter) {
     });
   });
 
-  // Language stub — visual-only toggle so it feels responsive. It deliberately
-  // does NOT persist or call anything; deeper wiring lands in a later prompt.
+  // Language switch — persists this view's choice (namespaced per-view) and
+  // reloads so the entire view re-renders in the new locale. setLang is a no-op
+  // when the clicked language is already active.
   const segments = rootEl.querySelectorAll(".settings-segment");
   segments.forEach((seg) => {
-    seg.addEventListener("click", () => {
-      segments.forEach((s) => s.classList.toggle("active", s === seg));
-    });
+    seg.addEventListener("click", () => setLang(seg.dataset.lang));
   });
 }
 
@@ -122,7 +124,7 @@ function renderAccount(adapter) {
       (f) => `
       <label class="settings-field">
         <span class="settings-field-label">
-          ${f.icon ? `<span class="material-symbols-outlined">${f.icon}</span>` : ""}
+          ${f.icon ? `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${f.icon}"></use></svg></span>` : ""}
           ${esc(f.label)}
         </span>
         <input type="text" value="${esc(f.value)}" disabled />
@@ -132,13 +134,13 @@ function renderAccount(adapter) {
 
   return `
     <div class="settings-demo-banner" role="note">
-      <span class="material-symbols-outlined">lock</span>
-      <span>Editing is disabled in this demo — values are shown read-only.</span>
+      <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-lock"></use></svg></span>
+      <span>${t("settings.account.demoBanner")}</span>
     </div>
 
     <div class="settings-identity">
       <div class="settings-avatar">
-        <span class="material-symbols-outlined">${esc(id.avatarIcon ?? "person")}</span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${esc(id.avatarIcon ?? "person")}"></use></svg></span>
       </div>
       <div class="settings-identity-meta">
         <h3>${esc(id.displayName)}</h3>
@@ -148,34 +150,34 @@ function renderAccount(adapter) {
     </div>
 
     <div class="settings-card">
-      <h4 class="settings-card-title">Personal info</h4>
+      <h4 class="settings-card-title">${t("settings.account.personalInfo")}</h4>
       <div class="settings-grid">
         ${personalFields}
       </div>
     </div>
 
     <div class="settings-card">
-      <h4 class="settings-card-title">Username</h4>
+      <h4 class="settings-card-title">${t("settings.account.username")}</h4>
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">alternate_email</span>
-            Username
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-alternate_email"></use></svg></span>
+            ${t("settings.account.username")}
           </span>
           <input type="text" value="${esc(adapter.username)}" disabled />
         </label>
-        <button type="button" class="btn btn-ghost" disabled>Change username</button>
+        <button type="button" class="btn btn-ghost" disabled>${t("settings.account.changeUsername")}</button>
       </div>
-      <p class="settings-hint">Your username is the email you sign in with.</p>
+      <p class="settings-hint">${t("settings.account.usernameHint")}</p>
     </div>
 
     <div class="settings-card">
-      <h4 class="settings-card-title">Login security</h4>
+      <h4 class="settings-card-title">${t("settings.account.loginSecurity")}</h4>
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">mail</span>
-            Email
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span>
+            ${t("settings.account.email")}
           </span>
           <input type="email" value="${esc(adapter.email)}" disabled />
         </label>
@@ -183,87 +185,79 @@ function renderAccount(adapter) {
       <div class="settings-row">
         <label class="settings-field settings-field-grow">
           <span class="settings-field-label">
-            <span class="material-symbols-outlined">password</span>
-            Password
+            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-password"></use></svg></span>
+            ${t("settings.account.password")}
           </span>
           <input type="password" value="••••••••••" disabled />
         </label>
-        <button type="button" class="btn btn-ghost" disabled>Change password</button>
+        <button type="button" class="btn btn-ghost" disabled>${t("settings.account.changePassword")}</button>
       </div>
       <div class="settings-toggle-row">
         <div class="settings-toggle-text">
-          <span class="settings-toggle-title">Two-factor authentication</span>
-          <span class="settings-hint">Adds a second step at sign-in.</span>
+          <span class="settings-toggle-title">${t("settings.account.twoFactor")}</span>
+          <span class="settings-hint">${t("settings.account.twoFactorHint")}</span>
         </div>
-        <span class="settings-switch" aria-disabled="true" title="Disabled in demo"></span>
+        <span class="settings-switch" aria-disabled="true" title="${t("settings.account.twoFactorDisabled")}"></span>
       </div>
     </div>`;
 }
 
 // ── Preferences (shell only) ─────────────────────────────────────
 function renderPreferences() {
+  // Reflect this view's active language on the segmented control. Language
+  // names stay in their own language (English / Español), never translated.
+  const lang = getLang();
   return `
     <div class="settings-card">
-      <h4 class="settings-card-title">Preferences</h4>
+      <h4 class="settings-card-title">${t("settings.prefs.title")}</h4>
 
       <div class="settings-toggle-row">
         <div class="settings-toggle-text">
-          <span class="settings-toggle-title">Language</span>
-          <span class="settings-hint">Choose the language for the interface.</span>
+          <span class="settings-toggle-title">${t("settings.prefs.language")}</span>
+          <span class="settings-hint">${t("settings.prefs.languageHint")}</span>
         </div>
-        <div class="settings-segmented" role="group" aria-label="Language">
-          <button type="button" class="settings-segment active" data-lang="en">English</button>
-          <button type="button" class="settings-segment" data-lang="es">Español</button>
+        <div class="settings-segmented" role="group" aria-label="${t("settings.prefs.language")}">
+          <button type="button" class="settings-segment${lang === "en" ? " active" : ""}" data-lang="en">English</button>
+          <button type="button" class="settings-segment${lang === "es" ? " active" : ""}" data-lang="es">Español</button>
         </div>
-        <span class="settings-coming-soon">Coming soon</span>
       </div>
 
-      <p class="settings-hint">More preferences will land in a future update.</p>
+      <p class="settings-hint">${t("settings.prefs.moreHint")}</p>
     </div>`;
 }
 
 // ── Help (static) ────────────────────────────────────────────────
 function renderHelp() {
   const faqs = [
-    {
-      q: "How do I view my grades?",
-      a: "Open the Grades section from the sidebar to see scores by subject and grading period.",
-    },
-    {
-      q: "Where do I check attendance?",
-      a: "The Attendance section lists every record with its status and the staff member who logged it.",
-    },
-    {
-      q: "Why can't I edit my profile?",
-      a: "This is a demo build — Account & Profile is read-only so reviewers can explore safely.",
-    },
+    { q: t("settings.help.faq1q"), a: t("settings.help.faq1a") },
+    { q: t("settings.help.faq2q"), a: t("settings.help.faq2a") },
+    { q: t("settings.help.faq3q"), a: t("settings.help.faq3a") },
   ];
 
   const faqHtml = faqs
     .map(
       (f) => `
       <div class="settings-faq-item">
-        <p class="settings-faq-q">${esc(f.q)}</p>
-        <p class="settings-faq-a">${esc(f.a)}</p>
+        <p class="settings-faq-q">${f.q}</p>
+        <p class="settings-faq-a">${f.a}</p>
       </div>`,
     )
     .join("");
 
   return `
     <div class="settings-card">
-      <h4 class="settings-card-title">Frequently asked</h4>
+      <h4 class="settings-card-title">${t("settings.help.faqTitle")}</h4>
       <div class="settings-faq">${faqHtml}</div>
     </div>
 
     <div class="settings-card">
-      <h4 class="settings-card-title">Need a hand?</h4>
+      <h4 class="settings-card-title">${t("settings.help.needHand")}</h4>
       <p class="settings-hint">
-        Use the sidebar to move between sections. Each card on the dashboard is a shortcut to
-        its full view.
+        ${t("settings.help.needHandText")}
       </p>
       <div class="settings-contact">
-        <span class="material-symbols-outlined">support_agent</span>
-        <span>Contact support — <span class="settings-muted">gzelaya0404@gmail.com</span></span>
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-support_agent"></use></svg></span>
+        <span>${t("settings.help.contactPrefix")}<span class="settings-muted">gzelaya0404@gmail.com</span></span>
       </div>
     </div>`;
 }
@@ -272,26 +266,25 @@ function renderHelp() {
 function renderMoreInfo() {
   return `
     <div class="settings-card">
-      <h4 class="settings-card-title">About Simple Manage Pro</h4>
+      <h4 class="settings-card-title">${t("settings.about.title")}</h4>
       <p class="settings-hint">
-        Simple Manage Pro (SMP) is a school-management portal for students, teachers and staff —
-        grades, attendance, schedules and class information in one place.
+        ${t("settings.about.text")}
       </p>
       <div class="settings-meta-row">
         <span class="settings-field-label">
-          <span class="material-symbols-outlined">deployed_code</span>
-          Version
+          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-deployed_code"></use></svg></span>
+          ${t("settings.about.version")}
         </span>
         <span class="badge badge-info">v${esc(APP_VERSION)} · Demo</span>
       </div>
     </div>
 
     <div class="settings-card">
-      <h4 class="settings-card-title">Links</h4>
+      <h4 class="settings-card-title">${t("settings.about.links")}</h4>
       <ul class="settings-links">
-        <li><span class="material-symbols-outlined">description</span> Documentation <span class="settings-coming-soon">Coming soon</span></li>
-        <li><span class="material-symbols-outlined">policy</span> Privacy policy <span class="settings-coming-soon">Coming soon</span></li>
-        <li><span class="material-symbols-outlined">gavel</span> Terms of service <span class="settings-coming-soon">Coming soon</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-description"></use></svg></span> ${t("settings.about.documentation")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-policy"></use></svg></span> ${t("settings.about.privacy")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-gavel"></use></svg></span> ${t("settings.about.terms")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
       </ul>
     </div>`;
 }

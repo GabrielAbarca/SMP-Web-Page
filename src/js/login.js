@@ -1,5 +1,12 @@
 import { signIn, signUp, getSession } from "./auth.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
+import { initI18n, applyTranslations, t } from "./i18n.js";
+import { DEMO_MODE, DEMO_CREDENTIALS } from "./demoMode.js";
+
+// Login has no settings panel → detection-only (navigator.language). No stored
+// key; the static markup carries data-i18n and is translated on load below.
+initI18n("login");
+applyTranslations();
 
 const currentUser = await getSession();
 if (currentUser) {
@@ -38,8 +45,40 @@ const toggleIcon = document.getElementById("toggle-password-icon");
 
 const themeToggler = document.getElementById("login-theme-toggler");
 
+// Swap the inline SVG sprite icon inside a `.material-symbols-outlined` span
+// (icons are now <svg><use href="#icon-NAME"> rather than a font ligature).
+function setIcon(spanEl, name) {
+  const use = spanEl.querySelector("use");
+  if (use) use.setAttribute("href", `#icon-${name}`);
+}
+
 initTheme();
 bindThemeToggle(themeToggler);
+
+// Demo sandbox: this deploy is a single shared profile. Prefill and lock the
+// credentials so visitors sign in with one click, and hide the sign-up path
+// (which only errors anyway). Gated on DEMO_MODE → a real build is untouched.
+if (DEMO_MODE) {
+  inputEmail.value = DEMO_CREDENTIALS.email;
+  inputPassword.value = DEMO_CREDENTIALS.password;
+
+  [inputEmail, inputPassword].forEach((input) => {
+    input.readOnly = true;
+    input.closest(".input-wrapper").classList.add("demo-locked");
+  });
+
+  // Keep the password masked and drop the reveal toggle.
+  togglePassword.style.display = "none";
+
+  // Hide the Sign Up switch (disabled server-side in demo).
+  const authSwitch = document.querySelector(".auth-switch");
+  if (authSwitch) authSwitch.style.display = "none";
+
+  authSubtitle.textContent = t("login.demoSubtitle");
+
+  const demoNotice = document.getElementById("demo-notice");
+  if (demoNotice) demoNotice.style.display = "block";
+}
 
 btnSwitch.addEventListener("click", () => {
   isSignUpMode = !isSignUpMode;
@@ -47,23 +86,23 @@ btnSwitch.addEventListener("click", () => {
   clearToast();
 
   if (isSignUpMode) {
-    authTitle.textContent = "Create an account";
-    authSubtitle.textContent = "Join SMP and access your student portal";
-    authAvatarIcon.textContent = "person_add";
-    btnText.textContent = "Sign Up";
-    switchText.textContent = "Already have an account?";
-    btnSwitch.textContent = "Sign In";
+    authTitle.textContent = t("login.createTitle");
+    authSubtitle.textContent = t("login.createSubtitle");
+    setIcon(authAvatarIcon, "person_add");
+    btnText.textContent = t("login.signUp");
+    switchText.textContent = t("login.haveAccount");
+    btnSwitch.textContent = t("login.signIn");
 
     showField(groupName);
     showField(groupConfirm);
     inputPassword.setAttribute("autocomplete", "new-password");
   } else {
-    authTitle.textContent = "Welcome back";
-    authSubtitle.textContent = "Sign in to your account to continue";
-    authAvatarIcon.textContent = "lock";
-    btnText.textContent = "Sign In";
-    switchText.textContent = "Don't have an account?";
-    btnSwitch.textContent = "Sign Up";
+    authTitle.textContent = t("login.welcomeTitle");
+    authSubtitle.textContent = t("login.welcomeSubtitle");
+    setIcon(authAvatarIcon, "lock");
+    btnText.textContent = t("login.signIn");
+    switchText.textContent = t("login.noAccount");
+    btnSwitch.textContent = t("login.signUp");
 
     hideField(groupName);
     hideField(groupConfirm);
@@ -74,7 +113,7 @@ btnSwitch.addEventListener("click", () => {
 togglePassword.addEventListener("click", () => {
   const isHidden = inputPassword.type === "password";
   inputPassword.type = isHidden ? "text" : "password";
-  toggleIcon.textContent = isHidden ? "visibility_off" : "visibility";
+  setIcon(toggleIcon, isHidden ? "visibility_off" : "visibility");
 });
 
 authForm.addEventListener("submit", async (e) => {
@@ -90,30 +129,26 @@ authForm.addEventListener("submit", async (e) => {
   let valid = true;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setFieldError(
-      errorEmail,
-      inputEmail,
-      "Please enter a valid email address.",
-    );
+    setFieldError(errorEmail, inputEmail, t("login.validation.email"));
     valid = false;
   }
 
   if (!password || password.length < 6) {
-    setFieldError(
-      errorPassword,
-      inputPassword,
-      "Password must be at least 6 characters.",
-    );
+    setFieldError(errorPassword, inputPassword, t("login.validation.password"));
     valid = false;
   }
 
   if (isSignUpMode) {
     if (!name) {
-      setFieldError(errorName, inputName, "Full name is required.");
+      setFieldError(errorName, inputName, t("login.validation.name"));
       valid = false;
     }
     if (password !== confirm) {
-      setFieldError(errorConfirm, inputConfirm, "Passwords do not match.");
+      setFieldError(
+        errorConfirm,
+        inputConfirm,
+        t("login.validation.passwordsMatch"),
+      );
       valid = false;
     }
   }
@@ -133,7 +168,11 @@ authForm.addEventListener("submit", async (e) => {
       window.location.replace("/");
     }
   } catch (err) {
-    showToast(formatAuthError(err.message), "error");
+    const message =
+      err.name === "DemoDisabledError"
+        ? t("login.error.demoSignupDisabled")
+        : formatAuthError(err.message);
+    showToast(message, "error");
   } finally {
     setLoading(false);
   }
@@ -180,32 +219,32 @@ function hideField(el) {
 }
 
 function formatAuthError(message) {
-  if (!message) return "An unexpected error occurred. Please try again.";
+  if (!message) return t("login.error.unexpected");
 
   const lower = message.toLowerCase();
   if (
     lower.includes("invalid login credentials") ||
     lower.includes("invalid credentials")
   ) {
-    return "Incorrect email or password. Please try again.";
+    return t("login.error.credentials");
   }
   if (lower.includes("email not confirmed")) {
-    return "Your email is not confirmed. Please check your inbox.";
+    return t("login.error.notConfirmed");
   }
   if (
     lower.includes("user already registered") ||
     lower.includes("already been registered")
   ) {
-    return "An account with this email already exists. Try signing in instead.";
+    return t("login.error.exists");
   }
   if (lower.includes("password should be")) {
-    return "Password must be at least 6 characters long.";
+    return t("login.error.passwordLength");
   }
   if (lower.includes("rate limit")) {
-    return "Too many attempts. Please wait a moment before trying again.";
+    return t("login.error.rateLimit");
   }
   if (lower.includes("network") || lower.includes("fetch")) {
-    return "Network error. Please check your connection and try again.";
+    return t("login.error.network");
   }
   return message;
 }
