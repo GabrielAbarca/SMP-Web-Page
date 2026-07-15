@@ -1589,3 +1589,16 @@
   font-size: 2.4rem;
   color: var(--color-info-dark);
 }
+/* ── Demo-mode badge (added by admin.js when DEMO_MODE is on) ── */
+.demo-badge {
+  align-self: center;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-white);
+  background: var(--color-danger);
+  cursor: help;
+}

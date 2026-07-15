@@ -1,6 +1,7 @@
 import { signIn, signUp, getSession } from "./auth.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initI18n, applyTranslations, t } from "./i18n.js";
+import { DEMO_MODE, DEMO_CREDENTIALS } from "./demoMode.js";
 
 // Login has no settings panel → detection-only (navigator.language). No stored
 // key; the static markup carries data-i18n and is translated on load below.
@@ -53,6 +54,31 @@ function setIcon(spanEl, name) {
 
 initTheme();
 bindThemeToggle(themeToggler);
+
+// Demo sandbox: this deploy is a single shared profile. Prefill and lock the
+// credentials so visitors sign in with one click, and hide the sign-up path
+// (which only errors anyway). Gated on DEMO_MODE → a real build is untouched.
+if (DEMO_MODE) {
+  inputEmail.value = DEMO_CREDENTIALS.email;
+  inputPassword.value = DEMO_CREDENTIALS.password;
+
+  [inputEmail, inputPassword].forEach((input) => {
+    input.readOnly = true;
+    input.closest(".input-wrapper").classList.add("demo-locked");
+  });
+
+  // Keep the password masked and drop the reveal toggle.
+  togglePassword.style.display = "none";
+
+  // Hide the Sign Up switch (disabled server-side in demo).
+  const authSwitch = document.querySelector(".auth-switch");
+  if (authSwitch) authSwitch.style.display = "none";
+
+  authSubtitle.textContent = t("login.demoSubtitle");
+
+  const demoNotice = document.getElementById("demo-notice");
+  if (demoNotice) demoNotice.style.display = "block";
+}
 
 btnSwitch.addEventListener("click", () => {
   isSignUpMode = !isSignUpMode;
@@ -142,7 +168,11 @@ authForm.addEventListener("submit", async (e) => {
       window.location.replace("/");
     }
   } catch (err) {
-    showToast(formatAuthError(err.message), "error");
+    const message =
+      err.name === "DemoDisabledError"
+        ? t("login.error.demoSignupDisabled")
+        : formatAuthError(err.message);
+    showToast(message, "error");
   } finally {
     setLoading(false);
   }

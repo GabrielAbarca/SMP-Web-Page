@@ -536,6 +536,11 @@ export default {
       postGrades: "Post grades",
       saveScores: "Save scores",
     },
+    demo: {
+      badge: "DEMO",
+      sandboxNotice:
+        "Demo mode — changes are local to your session and reset on refresh.",
+    },
     toast: {
       studentAdded: "{name} added.",
       studentUpdated: "{name} updated.",
@@ -589,6 +594,8 @@ export default {
     feature4: "School events board",
     welcomeTitle: "Welcome back",
     welcomeSubtitle: "Sign in to your account to continue",
+    demoSubtitle: "You're signing in with the shared demo account",
+    demoNotice: "Live demo | Non-real credentials are prefilled, just sign in!",
     createTitle: "Create an account",
     createSubtitle: "Join SMP and access your student portal",
     fullName: "Full Name",
@@ -608,6 +615,8 @@ export default {
       passwordsMatch: "Passwords do not match.",
     },
     error: {
+      demoSignupDisabled:
+        "Sign-up is disabled in the live demo — use the demo login.",
       unexpected: "An unexpected error occurred. Please try again.",
       credentials: "Incorrect email or password. Please try again.",
       notConfirmed: "Your email is not confirmed. Please check your inbox.",

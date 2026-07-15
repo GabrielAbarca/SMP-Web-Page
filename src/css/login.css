@@ -300,6 +300,18 @@
   border-left: 3px solid var(--color-success);
 }
 
+.demo-notice {
+  padding: 0.7rem 0.95rem;
+  border-radius: var(--border-radius-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 1.1rem;
+  line-height: 1.45;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-left: 3px solid var(--color-primary);
+}
+
 @keyframes toastSlide {
   from {
     opacity: 0;
@@ -391,6 +403,16 @@
 .input-wrapper.input-error input {
   border-color: var(--color-danger);
   box-shadow: 0 0 0 3px var(--color-danger-light);
+}
+
+/* Read-only prefilled credentials in demo mode: muted, no focus affordance. */
+.input-wrapper.demo-locked input,
+.input-wrapper.demo-locked input:focus {
+  background: var(--color-light);
+  color: var(--color-info-dark);
+  border-color: var(--color-info-light);
+  box-shadow: none;
+  cursor: default;
 }
 
 .toggle-password {
@@ -542,6 +564,13 @@
 
 .dark-theme-variables .input-wrapper input::placeholder {
   color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-theme-variables .input-wrapper.demo-locked input,
+.dark-theme-variables .input-wrapper.demo-locked input:focus {
+  background: #16181c;
+  color: var(--color-info-dark);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 @media screen and (max-width: 992px) {

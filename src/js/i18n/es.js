@@ -528,6 +528,11 @@ export default {
       postGrades: "Publicar notas",
       saveScores: "Guardar notas",
     },
+    demo: {
+      badge: "DEMO",
+      sandboxNotice:
+        "Modo demo — los cambios son locales a tu sesión y se restablecen al recargar.",
+    },
     toast: {
       studentAdded: "{name} agregado.",
       studentUpdated: "{name} actualizado.",
@@ -580,6 +585,8 @@ export default {
     feature4: "Cartelera de eventos escolares",
     welcomeTitle: "Bienvenido de nuevo",
     welcomeSubtitle: "Inicia sesión en tu cuenta para continuar",
+    demoSubtitle: "Iniciarás sesión con la cuenta de demostración compartida",
+    demoNotice: "Demo en vivo — las credenciales ya están completas, solo inicia sesión.",
     createTitle: "Crear una cuenta",
     createSubtitle: "Únete a SMP y accede a tu portal estudiantil",
     fullName: "Nombre completo",
@@ -599,6 +606,8 @@ export default {
       passwordsMatch: "Las contraseñas no coinciden.",
     },
     error: {
+      demoSignupDisabled:
+        "El registro está deshabilitado en la demo en vivo — usa el acceso de demostración.",
       unexpected: "Ocurrió un error inesperado. Inténtalo de nuevo.",
       credentials: "Correo o contraseña incorrectos. Inténtalo de nuevo.",
       notConfirmed: "Tu correo no está confirmado. Revisa tu bandeja de entrada.",

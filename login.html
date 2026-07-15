@@ -148,6 +148,15 @@
             aria-live="polite"
           ></div>
 
+          <p
+            class="demo-notice"
+            id="demo-notice"
+            style="display: none"
+            data-i18n="login.demoNotice"
+          >
+            Live demo — credentials are prefilled, just sign in.
+          </p>
+
           <form id="auth-form" novalidate>
             <div class="form-group" id="group-name" style="display: none">
               <label for="input-name" data-i18n="login.fullName"
@@ -183,7 +192,6 @@
                   placeholder="you@example.com"
                   autocomplete="email"
                   required
-                  value="gzelaya0404@gmail.com"
                 />
               </div>
               <span class="field-error" id="error-email"></span>
@@ -204,7 +212,6 @@
                   placeholder="••••••••"
                   autocomplete="current-password"
                   required
-                  value="Dev123"
                 />
                 <button
                   type="button"

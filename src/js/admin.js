@@ -29,6 +29,8 @@ import {
   skeletonCardItems,
 } from "./ui.js";
 import { renderSettings } from "./settings.js";
+import { DEMO_MODE } from "./demoMode.js";
+import { wrapDbForDemo } from "./demoDb.js";
 import {
   initI18n,
   applyTranslations,
@@ -96,7 +98,7 @@ function bindAdminAction(el, handler) {
 // ───────────────────────────────────────────────────────────────
 //  2. DATA LAYER
 // ───────────────────────────────────────────────────────────────
-const db = {
+const realDb = {
   // ── Identity / context ──────────────────────────────────────
   async getTeacherId() {
     const { data, error } = await supabase.rpc("demo_teacher_id");
@@ -582,6 +584,20 @@ const db = {
     return data;
   },
 };
+
+// Demo sandbox: writes land in an in-memory session overlay instead of the
+// shared backend; reads stay live with the overlay applied (see demoDb.js).
+// A refresh restores pristine data. The first write shows a one-time notice.
+let demoNoticeShown = false;
+const db = DEMO_MODE
+  ? wrapDbForDemo(realDb, {
+      onWrite: () => {
+        if (demoNoticeShown) return;
+        demoNoticeShown = true;
+        showToast(t("admin.demo.sandboxNotice"));
+      },
+    })
+  : realDb;
 
 // ───────────────────────────────────────────────────────────────
 //  3. UI HELPERS
@@ -3478,6 +3494,19 @@ function buildReportHtml(student, grades, attendance, discipline) {
 // ───────────────────────────────────────────────────────────────
 //  INIT
 // ───────────────────────────────────────────────────────────────
+if (DEMO_MODE) {
+  const logo = document.querySelector("aside .logo");
+  if (logo) {
+    const badge = document.createElement("span");
+    badge.className = "demo-badge";
+    badge.dataset.i18n = "admin.demo.badge";
+    badge.dataset.i18nTitle = "admin.demo.sandboxNotice";
+    badge.textContent = t("admin.demo.badge");
+    badge.title = t("admin.demo.sandboxNotice");
+    logo.appendChild(badge);
+  }
+}
+
 try {
   TEACHER_ID = await db.getTeacherId();
   const [year, teacher] = await Promise.all([
