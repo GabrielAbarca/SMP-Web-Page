@@ -245,6 +245,10 @@ a svg:has(use[href^="#icon-menu_book"]) {
   width: 1em;
   height: 1em;
 }
+label svg:has(use[href^="#icon-event"]) {
+  width: 1em;
+  height: 1em;
+}
 html {
   font-size: 14px;
 }
@@ -359,6 +363,20 @@ aside .logo img {
   height: 4rem;
   border-radius: 1rem;
   display: none;
+}
+
+/* Frontend sandbox tag — mirrors the admin console's DEMO badge. */
+.demo-badge {
+  align-self: center;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-white);
+  background: var(--color-danger);
+  cursor: help;
 }
 
 aside .close {

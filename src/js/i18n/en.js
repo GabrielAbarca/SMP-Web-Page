@@ -283,7 +283,6 @@ export default {
       loadFailed: "Failed to load today: {msg}",
       attendance: "Attendance",
       gradebook: "Gradebook",
-      notGraded: "Not one of your graded sections",
     },
     myclasses: {
       loading: "Loading your assignments…",
