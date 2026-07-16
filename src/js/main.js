@@ -1,5 +1,6 @@
 import { getSession, signOut } from "./auth.js";
 import { supabase } from "./supabaseClient.js";
+import { DEMO_MODE } from "./demoMode.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { skeletonRows } from "./ui.js";
 import { renderSettings } from "./settings.js";
@@ -113,6 +114,21 @@ bindThemeToggle(themeToggler);
 // and translate the static markup before any view renders.
 initI18n("student");
 applyTranslations();
+
+// Mark the frontend sandbox so students see the same "DEMO" tag as the admin
+// console (reuses the admin.demo.* strings; the badge is purely informational).
+if (DEMO_MODE) {
+  const logo = document.querySelector("aside .logo");
+  if (logo) {
+    const badge = document.createElement("span");
+    badge.className = "demo-badge";
+    badge.dataset.i18n = "admin.demo.badge";
+    badge.dataset.i18nTitle = "admin.demo.sandboxNotice";
+    badge.textContent = t("admin.demo.badge");
+    badge.title = t("admin.demo.sandboxNotice");
+    logo.appendChild(badge);
+  }
+}
 
 const sidebarLinks = document.querySelectorAll("aside .sidebar a[data-page]");
 const viewSections = document.querySelectorAll(".view-section");
