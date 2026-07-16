@@ -1,0 +1,291 @@
+// Shared e2e harness: seeds an authenticated session and mocks the Supabase
+// REST layer with in-memory fixtures (RLS hides all rows from anon, and no
+// credentials live in the repo). Mirrors the network shape the app expects:
+// GETs are answered from per-table fixtures with eq./in. filters applied; the
+// demo_teacher_id RPC returns a fixed id; anything else (a write) is blocked.
+
+export const SUPA = "https://demo.supabase.co";
+export const REF = "demo";
+export const UID = "00000000-0000-4000-8000-000000000001";
+
+const cls = {
+  id: 21,
+  section: "A",
+  display_name: "7A",
+  max_capacity: 30,
+  homeroom_teacher_id: 7,
+  room_id: 41,
+  grade_levels: { id: 1, name: "7th Grade", numeric_level: 7 },
+  school_years: {
+    id: 1,
+    name: "2025-2026",
+    start_date: "2025-09-01",
+    end_date: "2026-06-30",
+    is_active: true,
+  },
+};
+
+const teacher = {
+  id: 7,
+  first_name: "Sofía",
+  last_name: "Ramírez",
+  specialization: "Mathematics",
+  national_id: "0801-1990-00000",
+  email: "sofia@example.com",
+  phone: "555-0100",
+  address: "San José",
+  hire_date: "2020-02-01",
+  status: "active",
+};
+
+// Student-portal fixtures (index.html).
+export const studentFix = {
+  students: [
+    {
+      id: 101,
+      auth_user_id: UID,
+      class_id: 21,
+      first_name: "Ana",
+      last_name: "García",
+      email: "ana@example.com",
+      status: "active",
+      enrollment_number: "S-101",
+      date_of_birth: "2013-04-01",
+      gender: "F",
+      enrollment_date: "2025-09-01",
+      classes: cls,
+    },
+  ],
+  teachers: [
+    { id: 7, first_name: "Sofía", last_name: "Ramírez" },
+    { id: 8, first_name: "Marco", last_name: "López" },
+  ],
+  rooms: [{ id: 41, name: "Room 101" }],
+  grading_periods: [
+    {
+      id: 1,
+      school_year_id: 1,
+      name: "Period 1",
+      period_order: 1,
+      start_date: "2026-06-01",
+      end_date: "2026-08-31",
+    },
+  ],
+  student_grades: [
+    {
+      id: 501,
+      student_id: 101,
+      score: 88,
+      submitted_at: "2026-07-01T12:00:00Z",
+      grading_periods: { id: 1, name: "Period 1", period_order: 1 },
+      class_subject_teachers: {
+        id: 11,
+        subjects: {
+          id: 31,
+          name: "Mathematics",
+          code: "MATH7",
+          color: "#7380ec",
+        },
+        teachers: { id: 7, first_name: "Sofía", last_name: "Ramírez" },
+      },
+    },
+  ],
+  attendance: [
+    {
+      id: 601,
+      student_id: 101,
+      date: "2026-07-10",
+      status: "present",
+      recorded_by: 7,
+      classes: { id: 21, display_name: "7A" },
+    },
+    {
+      id: 602,
+      student_id: 101,
+      date: "2026-07-09",
+      status: "late",
+      recorded_by: 8,
+      classes: { id: 21, display_name: "7A" },
+    },
+    {
+      id: 603,
+      student_id: 101,
+      date: "2026-07-08",
+      status: "absent",
+      recorded_by: 7,
+      classes: { id: 21, display_name: "7A" },
+    },
+  ],
+  schedules: [1, 2, 3, 4, 5].map((day) => ({
+    id: 300 + day,
+    class_id: 21,
+    teacher_id: 7,
+    subject_id: 31,
+    room_id: 41,
+    day_of_week: day,
+    start_time: "08:00",
+    end_time: "09:00",
+    subjects: { id: 31, name: "Mathematics", code: "MATH7", color: "#7380ec" },
+    teachers: { id: 7, first_name: "Sofía", last_name: "Ramírez" },
+    rooms: { id: 41, name: "Room 101" },
+  })),
+  events: [
+    {
+      id: 701,
+      title: "Final Exams",
+      type: "exam_period",
+      description: "Week of finals",
+      start_date: "2026-07-20",
+      end_date: "2026-07-24",
+    },
+  ],
+};
+
+// Admin-console fixtures (admin.html).
+export const adminFix = {
+  profiles: [{ id: UID, name: "Gabriel", role: "admin" }],
+  school_years: [{ id: 1, name: "2025-2026", is_active: true }],
+  grading_periods: studentFix.grading_periods,
+  teachers: [teacher, { id: 8, first_name: "Marco", last_name: "López" }],
+  class_subject_teachers: [
+    {
+      id: 11,
+      class_id: 21,
+      subject_id: 31,
+      teacher_id: 7,
+      school_year_id: 1,
+      classes: {
+        id: 21,
+        display_name: "7A",
+        section: "A",
+        grade_levels: { name: "7th Grade" },
+      },
+      subjects: { id: 31, name: "Mathematics", color: "#7380ec" },
+    },
+  ],
+  students: [
+    {
+      id: 101,
+      class_id: 21,
+      first_name: "Ana",
+      last_name: "García",
+      status: "active",
+      enrollment_number: "S-101",
+    },
+    {
+      id: 102,
+      class_id: 21,
+      first_name: "Luis",
+      last_name: "Martínez",
+      status: "active",
+      enrollment_number: "S-102",
+    },
+  ],
+  schedules: studentFix.schedules,
+  subjects: [{ id: 31, name: "Mathematics", code: "MATH7", color: "#7380ec" }],
+  rooms: [{ id: 41, name: "Room 101", capacity: 30 }],
+  attendance: [],
+  assignments: [],
+  assignment_grades: [],
+  student_period_grades: [],
+  discipline_records: [],
+  student_grades: [],
+  grade_categories: [],
+};
+
+function rowMatches(row, params) {
+  for (const [k, v] of params) {
+    if (["select", "order", "limit", "offset"].includes(k)) continue;
+    if (v.startsWith("eq.")) {
+      if (String(row[k]) !== v.slice(3)) return false;
+    } else if (v.startsWith("in.(")) {
+      const vals = v
+        .slice(4, -1)
+        .split(",")
+        .map((s) => s.trim().replace(/^"|"$/g, ""));
+      if (!vals.includes(String(row[k]))) return false;
+    } else if (v === "not.is.null") {
+      if (row[k] == null) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Route the Supabase origin against `fix`. Returns a `writes` array that
+ * captures any non-GET request reaching the backend (must stay empty in demo).
+ */
+export async function routeSupabase(context, fix) {
+  const writes = [];
+  await context.route(`${SUPA}/**`, async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const isRead =
+      req.method() === "GET" || url.pathname.endsWith("/rpc/demo_teacher_id");
+    if (!isRead) writes.push(`${req.method()} ${url.pathname}`);
+
+    if (url.pathname.endsWith("/rpc/demo_teacher_id")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "7",
+      });
+    }
+    if (url.pathname.startsWith("/rest/v1/") && req.method() === "GET") {
+      const table = url.pathname.replace("/rest/v1/", "");
+      const rows = (fix[table] ?? []).filter((r) =>
+        rowMatches(r, url.searchParams),
+      );
+      const wantsObject = (req.headers()["accept"] ?? "").includes(
+        "vnd.pgrst.object",
+      );
+      if (wantsObject) {
+        return rows.length
+          ? route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify(rows[0]),
+            })
+          : route.fulfill({
+              status: 406,
+              contentType: "application/json",
+              body: JSON.stringify({ code: "PGRST116" }),
+            });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(rows),
+      });
+    }
+    // A write or auth call must never happen in the demo sandbox.
+    return route.fulfill({
+      status: 403,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "blocked by e2e harness" }),
+    });
+  });
+  return writes;
+}
+
+export function sessionSeed() {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const exp = Math.floor(Date.now() / 1000) + 3600 * 24 * 365;
+  const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, role: "authenticated", aud: "authenticated", exp })}.sig`;
+  return JSON.stringify({
+    access_token: jwt,
+    token_type: "bearer",
+    expires_in: 3600 * 24 * 365,
+    expires_at: exp,
+    refresh_token: "fake-refresh",
+    user: {
+      id: UID,
+      aud: "authenticated",
+      role: "authenticated",
+      email: "demo@example.com",
+      app_metadata: {},
+      user_metadata: {},
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  });
+}

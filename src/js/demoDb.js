@@ -75,6 +75,12 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
 
   // Overlay a row-table delta onto server rows. `matches` filters which local
   // inserts belong to the calling read's scope (its .eq() filters).
+  /**
+   * @param {any[]} serverRows
+   * @param {{ deletes: Set<any>, updates: Map<any, any>, inserts: any[] }} delta
+   * @param {(row: any) => boolean} [matches]
+   * @returns {any[]}
+   */
   function applyDelta(serverRows, delta, matches = () => true) {
     const rows = [];
     serverRows.forEach((r) => {
@@ -92,7 +98,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
   const byLastName = (a, b) =>
     (a.last_name ?? "").localeCompare(b.last_name ?? "");
   const byDueDate = (a, b) =>
-    (a.due_date == null) - (b.due_date == null) ||
+    Number(a.due_date == null) - Number(b.due_date == null) ||
     (a.due_date ?? "").localeCompare(b.due_date ?? "") ||
     (a.created_at ?? "").localeCompare(b.created_at ?? "");
   const byDayTime = (a, b) =>
@@ -138,7 +144,8 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
     let sum = 0;
     let wTot = 0;
     pctsByCat.forEach((list, cat) => {
-      const w = cat == null ? uncatWeight : (weightByCat.get(cat) ?? uncatWeight);
+      const w =
+        cat == null ? uncatWeight : (weightByCat.get(cat) ?? uncatWeight);
       if (w <= 0) return;
       sum += avg(list) * w;
       wTot += w;
@@ -215,7 +222,8 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
         affected.add(row.student_id);
     });
     serverGrades.forEach((g) => {
-      if (deletedServerIds.includes(g.assignment_id)) affected.add(g.student_id);
+      if (deletedServerIds.includes(g.assignment_id))
+        affected.add(g.student_id);
     });
 
     // Merge server grades + local upserts per student, current assignments only.
@@ -427,12 +435,23 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
 
     async fetchAssignmentColumn(assignmentId) {
       const server =
-        assignmentId > 0 ? await realDb.fetchAssignmentColumn(assignmentId) : [];
+        assignmentId > 0
+          ? await realDb.fetchAssignmentColumn(assignmentId)
+          : [];
       const out = [];
       const covered = new Set();
       server.forEach((g) => {
         const d = gradeDeltas.get(`${assignmentId}|${g.student_id}`);
-        out.push(d ? { ...g, score: d.score, note: d.note ?? null, graded_at: d.graded_at ?? null } : g);
+        out.push(
+          d
+            ? {
+                ...g,
+                score: d.score,
+                note: d.note ?? null,
+                graded_at: d.graded_at ?? null,
+              }
+            : g,
+        );
         covered.add(g.student_id);
       });
       gradeDeltas.forEach((d) => {
@@ -467,9 +486,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
 
     async fetchAllPeriodGrades(cstId) {
       const server = await realDb.fetchAllPeriodGrades(cstId);
-      const knownPeriods = [
-        ...new Set(server.map((r) => r.grading_period_id)),
-      ];
+      const knownPeriods = [...new Set(server.map((r) => r.grading_period_id))];
       const dirty = dirtyPeriodsFor(cstId, knownPeriods);
       if (!dirty.size)
         return server.filter((r) => !students.deletes.has(r.student_id));
@@ -480,9 +497,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
           !students.deletes.has(r.student_id),
       );
       for (const periodId of dirty) {
-        const baseline = server.filter(
-          (r) => r.grading_period_id === periodId,
-        );
+        const baseline = server.filter((r) => r.grading_period_id === periodId);
         const rows = await computePeriodRows(cstId, periodId, baseline);
         rows.forEach((r) =>
           out.push({
@@ -812,7 +827,8 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
       const server = await realDb.fetchCategories(cstId);
       server.forEach((c) => categoryIndex.set(c.id, cstId));
       categories.inserts.forEach((c) => {
-        if (c.class_subject_teacher_id === cstId) categoryIndex.set(c.id, cstId);
+        if (c.class_subject_teacher_id === cstId)
+          categoryIndex.set(c.id, cstId);
       });
       const rows = applyDelta(
         server,

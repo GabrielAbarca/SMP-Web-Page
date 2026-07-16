@@ -26,9 +26,10 @@
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/poppins-latin-400-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Poppins";
@@ -36,9 +37,10 @@
   font-weight: 500;
   font-display: swap;
   src: url("/fonts/poppins-latin-500-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Poppins";
@@ -46,9 +48,10 @@
   font-weight: 600;
   font-display: swap;
   src: url("/fonts/poppins-latin-600-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Poppins";
@@ -56,9 +59,10 @@
   font-weight: 700;
   font-display: swap;
   src: url("/fonts/poppins-latin-700-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Poppins";
@@ -66,9 +70,10 @@
   font-weight: 800;
   font-display: swap;
   src: url("/fonts/poppins-latin-800-normal.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Poppins";
@@ -76,9 +81,10 @@
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/poppins-latin-ext-400-normal.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Poppins";
@@ -86,9 +92,10 @@
   font-weight: 500;
   font-display: swap;
   src: url("/fonts/poppins-latin-ext-500-normal.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Poppins";
@@ -96,9 +103,10 @@
   font-weight: 600;
   font-display: swap;
   src: url("/fonts/poppins-latin-ext-600-normal.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Poppins";
@@ -106,9 +114,10 @@
   font-weight: 700;
   font-display: swap;
   src: url("/fonts/poppins-latin-ext-700-normal.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Poppins";
@@ -116,9 +125,10 @@
   font-weight: 800;
   font-display: swap;
   src: url("/fonts/poppins-latin-ext-800-normal.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 :root {
@@ -233,7 +243,13 @@
   fill: currentColor;
   flex-shrink: 0;
 }
-svg:has(use[href^="#icon-event"]), svg:has(use[href^="#icon-calculate"]), svg:has(use[href^="#icon-menu_book"]), svg:has(use[href^="#icon-history_edu"]), svg:has(use[href^="#icon-translate"]), svg:has(use[href^="#icon-fitness_center"]), svg:has(use[href^="#icon-science"]) {
+svg:has(use[href^="#icon-event"]),
+svg:has(use[href^="#icon-calculate"]),
+svg:has(use[href^="#icon-menu_book"]),
+svg:has(use[href^="#icon-history_edu"]),
+svg:has(use[href^="#icon-translate"]),
+svg:has(use[href^="#icon-fitness_center"]),
+svg:has(use[href^="#icon-science"]) {
   width: 1.6em;
   height: 1.6em;
 }
@@ -605,7 +621,11 @@ main {
   width: 3.2rem;
   height: 3.2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1073,7 +1093,11 @@ main .show-all {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
 }
 
 .teacher-card:hover {
@@ -1085,7 +1109,11 @@ main .show-all {
   width: 3.8rem;
   height: 3.8rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1377,7 +1405,11 @@ main .show-all {
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
   display: flex;
   align-items: center;
   justify-content: center;

@@ -74,7 +74,6 @@
   }
 }
 
-
 /* ─── Toolbar ──────────────────────────────────────────────────── */
 /* The .view-toolbar flex container is defined in style.css (shared).
    Below are the admin-only controls placed inside it. */
@@ -1175,7 +1174,8 @@
 .sg-row {
   display: grid;
   grid-template-columns:
-    minmax(120px, 1.6fr) 52px 96px 124px 96px 104px 104px minmax(140px, 1.5fr);
+    minmax(120px, 1.6fr)
+    52px 96px 124px 96px 104px 104px minmax(140px, 1.5fr);
   gap: 0.6rem;
   align-items: center;
   padding: 0.55rem 0;
@@ -1302,8 +1302,10 @@
 
 .pg-row {
   display: grid;
-  grid-template-columns:
-    minmax(140px, 1.6fr) 92px 92px 110px minmax(160px, 1.6fr);
+  grid-template-columns: minmax(140px, 1.6fr) 92px 92px 110px minmax(
+      160px,
+      1.6fr
+    );
   gap: 0.6rem;
   align-items: center;
   padding: 0.5rem 0;

@@ -93,9 +93,7 @@ export function setLang(lang) {
 
 // Walk a dotted path ("admin.roster.title") into a dictionary object.
 function resolve(root, key) {
-  return key
-    .split(".")
-    .reduce((o, k) => (o == null ? undefined : o[k]), root);
+  return key.split(".").reduce((o, k) => (o == null ? undefined : o[k]), root);
 }
 
 // Replace {token} placeholders from vars; unknown tokens are left intact.
@@ -178,7 +176,9 @@ export function formatDate(value, opts) {
   if (value == null || value === "") return "";
   const d = parseDate(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return new Intl.DateTimeFormat(localeTag(), opts ?? DEFAULT_DATE_OPTS).format(d);
+  return new Intl.DateTimeFormat(localeTag(), opts ?? DEFAULT_DATE_OPTS).format(
+    d,
+  );
 }
 
 /** Locale-aware time from "HH:MM" / "HH:MM:SS" (en → 12h, es → 24h). */

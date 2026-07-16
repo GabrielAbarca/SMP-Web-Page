@@ -245,7 +245,11 @@
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -449,7 +453,11 @@
   width: 100%;
   padding: 0.85rem 1.5rem;
   margin-top: 0.4rem;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-accent)
+  );
   color: #fff;
   font-family: "Poppins", sans-serif;
   font-size: 0.9rem;
