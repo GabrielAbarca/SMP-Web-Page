@@ -3289,7 +3289,18 @@ async function loadToday() {
 }
 
 function renderToday(entries, grid) {
-  if (!entries.length) {
+  // Only show schedule rows the teacher actually grades (has a
+  // class_subject_teacher assignment for); other teachers' classes are hidden.
+  const mine = entries
+    .map((e) => ({
+      entry: e,
+      cst: myClassesCache.find(
+        (c) => c.class_id === e.class_id && c.subject_id === e.subject_id,
+      ),
+    }))
+    .filter((m) => m.cst);
+
+  if (!mine.length) {
     grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_available"></use></svg></span><p>${t("admin.today.noClasses")}</p></div>`;
     return;
   }
@@ -3298,10 +3309,7 @@ function renderToday(entries, grid) {
   const list = document.createElement("div");
   list.className = "today-list";
 
-  entries.forEach((e) => {
-    const cst = myClassesCache.find(
-      (c) => c.class_id === e.class_id && c.subject_id === e.subject_id,
-    );
+  mine.forEach(({ entry: e, cst }) => {
     const color = e.subjects?.color || "var(--color-primary)";
     const card = document.createElement("div");
     card.className = "today-card";
@@ -3321,21 +3329,17 @@ function renderToday(entries, grid) {
       <div class="today-card-actions"></div>`;
 
     const actions = card.querySelector(".today-card-actions");
-    if (cst) {
-      const att = document.createElement("button");
-      att.type = "button";
-      att.className = "btn btn-sm btn-secondary";
-      att.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span> ${t("admin.today.attendance")}`;
-      att.addEventListener("click", () => openClassWorkspace(cst, "attendance"));
-      const gb = document.createElement("button");
-      gb.type = "button";
-      gb.className = "btn btn-sm btn-primary";
-      gb.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span> ${t("admin.today.gradebook")}`;
-      gb.addEventListener("click", () => openClassWorkspace(cst, "gradebook"));
-      actions.append(att, gb);
-    } else {
-      actions.innerHTML = `<span class="drawer-muted">${t("admin.today.notGraded")}</span>`;
-    }
+    const att = document.createElement("button");
+    att.type = "button";
+    att.className = "btn btn-sm btn-secondary";
+    att.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span> ${t("admin.today.attendance")}`;
+    att.addEventListener("click", () => openClassWorkspace(cst, "attendance"));
+    const gb = document.createElement("button");
+    gb.type = "button";
+    gb.className = "btn btn-sm btn-primary";
+    gb.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span> ${t("admin.today.gradebook")}`;
+    gb.addEventListener("click", () => openClassWorkspace(cst, "gradebook"));
+    actions.append(att, gb);
     list.appendChild(card);
   });
 

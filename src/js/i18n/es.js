@@ -275,7 +275,6 @@ export default {
       loadFailed: "No se pudo cargar el día: {msg}",
       attendance: "Asistencia",
       gradebook: "Libro de notas",
-      notGraded: "No es una de tus secciones calificadas",
     },
     myclasses: {
       loading: "Cargando tus asignaciones…",

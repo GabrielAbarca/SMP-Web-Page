@@ -245,6 +245,10 @@ a svg:has(use[href^="#icon-menu_book"]) {
   width: 1em;
   height: 1em;
 }
+label svg:has(use[href^="#icon-event"]) {
+  width: 1em;
+  height: 1em;
+}
 html {
   font-size: 14px;
 }
