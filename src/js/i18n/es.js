@@ -98,7 +98,8 @@ export default {
       moreinfo: "Más información",
     },
     account: {
-      demoBanner: "La edición está deshabilitada en esta demo: los valores se muestran solo como lectura.",
+      demoBanner:
+        "La edición está deshabilitada en esta demo: los valores se muestran solo como lectura.",
       personalInfo: "Información personal",
       username: "Usuario",
       changeUsername: "Cambiar usuario",
@@ -120,13 +121,17 @@ export default {
     help: {
       faqTitle: "Preguntas frecuentes",
       faq1q: "¿Cómo veo mis calificaciones?",
-      faq1a: "Abre la sección Calificaciones desde el menú lateral para ver las notas por materia y período.",
+      faq1a:
+        "Abre la sección Calificaciones desde el menú lateral para ver las notas por materia y período.",
       faq2q: "¿Dónde consulto la asistencia?",
-      faq2a: "La sección Asistencia muestra cada registro con su estado y la persona que lo registró.",
+      faq2a:
+        "La sección Asistencia muestra cada registro con su estado y la persona que lo registró.",
       faq3q: "¿Por qué no puedo editar mi perfil?",
-      faq3a: "Esta es una versión de demostración: Cuenta y perfil es de solo lectura para explorar con seguridad.",
+      faq3a:
+        "Esta es una versión de demostración: Cuenta y perfil es de solo lectura para explorar con seguridad.",
       needHand: "¿Necesitas ayuda?",
-      needHandText: "Usa el menú lateral para navegar entre secciones. Cada tarjeta del panel es un acceso directo a su vista completa.",
+      needHandText:
+        "Usa el menú lateral para navegar entre secciones. Cada tarjeta del panel es un acceso directo a su vista completa.",
       contactPrefix: "Contactar a soporte — ",
     },
     about: {
@@ -341,7 +346,8 @@ export default {
     },
     manage: {
       title: "Tareas — {period}",
-      empty: "Aún no hay tareas para este período. Agrega una para comenzar a calificar.",
+      empty:
+        "Aún no hay tareas para este período. Agrega una para comenzar a calificar.",
       enterScores: "Ingresar notas de todos los estudiantes",
     },
     sg: {
@@ -399,10 +405,12 @@ export default {
     },
     categories: {
       title: "Categorías de notas — {subject} {class}",
-      empty: "Aún no hay categorías. La nota del período es un promedio simple de puntos. Agrega categorías (p. ej. Exámenes 50%, Tareas 30%, Participación 20%) para ponderarlas: las tareas que etiquetes con una categoría se promedian dentro de ella y luego se combinan por ponderación.",
+      empty:
+        "Aún no hay categorías. La nota del período es un promedio simple de puntos. Agrega categorías (p. ej. Exámenes 50%, Tareas 30%, Participación 20%) para ponderarlas: las tareas que etiquetes con una categoría se promedian dentro de ella y luego se combinan por ponderación.",
       weight: "Ponderación: {weight}%",
       total: "Total: ",
-      totalOff: " — las ponderaciones se renormalizan, pero 100% es lo más claro.",
+      totalOff:
+        " — las ponderaciones se renormalizan, pero 100% es lo más claro.",
       editTitle: "Editar categoría",
       addTitle: "Agregar categoría",
       add: "Agregar categoría",
@@ -412,7 +420,8 @@ export default {
       title: "Publicar notas — {period}",
       loadFailed: "No se pudo cargar: {msg}",
       noStudents: "No hay estudiantes activos.",
-      intro: "{period} · revisa cada promedio calculado, ajústalo si es necesario y publícalo. Las notas publicadas son las que ven estudiantes y padres en el boletín.",
+      intro:
+        "{period} · revisa cada promedio calculado, ajústalo si es necesario y publícalo. Las notas publicadas son las que ven estudiantes y padres en el boletín.",
       student: "Estudiante",
       computed: "Calculada",
       posted: "Publicada",
@@ -438,7 +447,8 @@ export default {
     },
     absence: {
       title: "Resumen de ausencias",
-      empty: "Ningún estudiante ha alcanzado {threshold} ausencias/tardías en esta sección todavía. ✔",
+      empty:
+        "Ningún estudiante ha alcanzado {threshold} ausencias/tardías en esta sección todavía. ✔",
       atRisk: "{count} en riesgo (≥ {threshold})",
       studentFallback: "Estudiante {id}",
       loadFailed: "No se pudo cargar el resumen de ausencias: {msg}",
@@ -492,7 +502,8 @@ export default {
       dueDate: "Fecha de entrega (opcional)",
       maxScore: "Puntaje máximo",
       category: "Categoría (opcional)",
-      categoryHelp: "Las categorías permiten ponderar exámenes y tareas. Gestiónalas con el botón Categorías.",
+      categoryHelp:
+        "Las categorías permiten ponderar exámenes y tareas. Gestiónalas con el botón Categorías.",
       note: "Nota (opcional)",
       assignmentNamePlaceholder: "p. ej. Prueba 1 — Fracciones",
       weightPct: "Ponderación (%)",
@@ -516,9 +527,12 @@ export default {
     confirm: {
       title: "¿Eliminar elemento?",
       message: "Esta acción no se puede deshacer.",
-      deleteStudent: '¿Eliminar a "{name}"? Esto elimina su registro de forma permanente y no se puede deshacer.',
-      deleteAssignment: '¿Eliminar la tarea "{name}"? También se eliminarán todas las notas de los estudiantes. Esto no se puede deshacer.',
-      deleteCategory: '¿Eliminar la categoría "{name}"? Sus tareas se mantienen, pero quedan sin categoría (ponderación simple).',
+      deleteStudent:
+        '¿Eliminar a "{name}"? Esto elimina su registro de forma permanente y no se puede deshacer.',
+      deleteAssignment:
+        '¿Eliminar la tarea "{name}"? También se eliminarán todas las notas de los estudiantes. Esto no se puede deshacer.',
+      deleteCategory:
+        '¿Eliminar la categoría "{name}"? Sus tareas se mantienen, pero quedan sin categoría (ponderación simple).',
       deleteSchedule: "¿Eliminar esta entrada de horario?",
     },
     modal: {
@@ -585,7 +599,8 @@ export default {
     welcomeTitle: "Bienvenido de nuevo",
     welcomeSubtitle: "Inicia sesión en tu cuenta para continuar",
     demoSubtitle: "Iniciarás sesión con la cuenta de demostración compartida",
-    demoNotice: "Demo en vivo — las credenciales ya están completas, solo inicia sesión.",
+    demoNotice:
+      "Demo en vivo — las credenciales ya están completas, solo inicia sesión.",
     createTitle: "Crear una cuenta",
     createSubtitle: "Únete a SMP y accede a tu portal estudiantil",
     fullName: "Nombre completo",
@@ -609,10 +624,12 @@ export default {
         "El registro está deshabilitado en la demo en vivo — usa el acceso de demostración.",
       unexpected: "Ocurrió un error inesperado. Inténtalo de nuevo.",
       credentials: "Correo o contraseña incorrectos. Inténtalo de nuevo.",
-      notConfirmed: "Tu correo no está confirmado. Revisa tu bandeja de entrada.",
+      notConfirmed:
+        "Tu correo no está confirmado. Revisa tu bandeja de entrada.",
       exists: "Ya existe una cuenta con este correo. Intenta iniciar sesión.",
       passwordLength: "La contraseña debe tener al menos 6 caracteres.",
-      rateLimit: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
+      rateLimit:
+        "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
       network: "Error de red. Verifica tu conexión e inténtalo de nuevo.",
     },
   },

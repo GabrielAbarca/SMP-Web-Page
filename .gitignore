@@ -16,10 +16,10 @@ build/
 # SEGURIDAD, SECRETOS Y VARIABLES DE ENTORNO
 # (¡NUNCA SUBIR ESTOS ARCHIVOS!)
 # ==========================================
-.env
-.env.local
-.env.*.local
+.env*
 *.env
+# Mantener el template compartible rastreado pese a los patrones de arriba
+!.env.example
 # Claves criptográficas y certificados
 *.pem
 *.key
@@ -51,6 +51,7 @@ yarn-error.log*
 # ==========================================
 .vite/
 .eslintcache
+*.tsbuildinfo
 .temp/
 tmp/
 
@@ -85,5 +86,10 @@ Desktop.ini
 # ==========================================
 coverage/
 .nyc_output/
-.vercel
-.env*
+
+# Playwright e2e artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.playwright/

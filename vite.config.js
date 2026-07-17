@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { resolve } from "path";
 import { readFileSync } from "fs";
 
@@ -7,7 +7,10 @@ import { readFileSync } from "fs";
 // authored once in src/icons/icons.svg, ships with zero extra network requests,
 // and—being in-document—lets every <use> icon inherit color via currentColor.
 const inlineSvgSprite = () => {
-  const sprite = readFileSync(resolve(__dirname, "src/icons/icons.svg"), "utf8").trim();
+  const sprite = readFileSync(
+    resolve(__dirname, "src/icons/icons.svg"),
+    "utf8",
+  ).trim();
   return {
     name: "inline-svg-sprite",
     transformIndexHtml(html) {
@@ -17,23 +20,63 @@ const inlineSvgSprite = () => {
   };
 };
 
-export default defineConfig({
-  plugins: [inlineSvgSprite()],
-  server: {
-    port: 3000,
-    open: true,
+// Warm the TCP+TLS connection to the Supabase origin before the app code runs.
+// The student/admin views contact Supabase (auth + queries) on first paint, so a
+// preconnect shaves the handshake off the critical path. The origin is read from
+// the same env var the client uses (VITE_SUPABASE_URL) — never hardcoded — so the
+// hint always matches the deployed backend. `crossorigin` is required because the
+// requests carry the apikey/Authorization headers (CORS credentialed fetches).
+const injectSupabasePreconnect = (origin) => ({
+  name: "inject-supabase-preconnect",
+  transformIndexHtml() {
+    if (!origin) return [];
+    return [
+      {
+        tag: "link",
+        attrs: { rel: "preconnect", href: origin, crossorigin: "" },
+        injectTo: "head-prepend",
+      },
+      {
+        tag: "link",
+        attrs: { rel: "dns-prefetch", href: origin },
+        injectTo: "head-prepend",
+      },
+    ];
   },
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-    target: "esnext",
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
-        login: resolve(__dirname, "login.html"),
-        admin: resolve(__dirname, "admin.html"),
-        notFound: resolve(__dirname, "404.html"),
+});
+
+export default defineConfig(({ mode }) => {
+  // Load VITE_* env so the preconnect origin tracks the configured backend.
+  const env = loadEnv(mode, process.cwd(), "");
+  const supabaseOrigin = env.VITE_SUPABASE_URL || "";
+
+  return {
+    plugins: [inlineSvgSprite(), injectSupabasePreconnect(supabaseOrigin)],
+    server: {
+      port: 3000,
+      open: true,
+    },
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+      target: "esnext",
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, "index.html"),
+          login: resolve(__dirname, "login.html"),
+          admin: resolve(__dirname, "admin.html"),
+          notFound: resolve(__dirname, "404.html"),
+        },
+        output: {
+          // Split the Supabase SDK into its own long-lived vendor chunk. It's the
+          // heaviest dependency (~230 KB) and shared by every page; isolating it
+          // means routine app-code changes no longer bust its immutable cache
+          // entry across deploys — returning visitors keep the cached copy.
+          manualChunks(id) {
+            if (id.includes("node_modules/@supabase")) return "vendor-supabase";
+          },
+        },
       },
     },
-  },
+  };
 });

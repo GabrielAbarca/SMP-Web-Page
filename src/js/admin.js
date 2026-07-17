@@ -19,6 +19,8 @@
 // 11. Subjects    (global catalog — retained)
 // ═══════════════════════════════════════════════════════════════
 
+import "./errorHandler.js";
+import "./speedInsights.js";
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
@@ -501,11 +503,9 @@ const realDb = {
   // Commit final period grades to the official student_grades record the student
   // portal reads. Upsert on the unique (student, cst, period) key.
   async upsertStudentGrades(rows) {
-    const { error } = await supabase
-      .from("student_grades")
-      .upsert(rows, {
-        onConflict: "student_id,class_subject_teacher_id,grading_period_id",
-      });
+    const { error } = await supabase.from("student_grades").upsert(rows, {
+      onConflict: "student_id,class_subject_teacher_id,grading_period_id",
+    });
     if (error) throw error;
   },
 
@@ -577,7 +577,7 @@ const realDb = {
         rooms!room_id(name)
       `,
       )
-      .eq("teacher_id", teacherId)  
+      .eq("teacher_id", teacherId)
       .eq("day_of_week", dayOfWeek)
       .order("start_time");
     if (error) throw error;
@@ -625,7 +625,12 @@ const modalSubmit = document.getElementById("modal-submit");
 
 let currentSubmitHandler = null;
 
-function openModal({ title, fields, onSubmit, submitLabel = t("common.save") }) {
+function openModal({
+  title,
+  fields,
+  onSubmit,
+  submitLabel = t("common.save"),
+}) {
   modalTitle.textContent = title;
   modalSubmit.textContent = submitLabel;
   modalForm.innerHTML = "";
@@ -916,7 +921,13 @@ function renderErrorRow(tbodyId, colspan) {
   renderEmptyRow(tbodyId, colspan, t("common.loadFailed"));
 }
 
-function makeActionBtn(icon, label, onClick, danger = false, adminOnly = false) {
+function makeActionBtn(
+  icon,
+  label,
+  onClick,
+  danger = false,
+  adminOnly = false,
+) {
   const btn = document.createElement("button");
   btn.className = `btn-icon${danger ? " danger" : ""}`;
   btn.type = "button";
@@ -1042,7 +1053,7 @@ const navLinks = document.querySelectorAll(".sidebar a[data-page]");
 
 let myClassesCache = [];
 let currentClass = null; // { cstId, classId, subjectId, names, color }
-const loaded = { subjects: false, settings: false };
+const loaded = { today: false, subjects: false, settings: false };
 
 function showSection(page) {
   sections.forEach((s) => s.classList.remove("active"));
@@ -1057,7 +1068,12 @@ function showSection(page) {
     .querySelector(`.sidebar a[data-page="${navPage}"]`)
     ?.classList.add("active");
 
-  if (page === "today") loadToday();
+  // Today's schedule is static for the session, so load it once (a reload
+  // refreshes it). My Classes stays live because its student counts are mutable.
+  if (page === "today" && !loaded.today) {
+    loaded.today = true;
+    loadToday();
+  }
   if (page === "myclasses") loadMyClasses();
   if (page === "subjects" && !loaded.subjects) {
     loaded.subjects = true;
@@ -1086,8 +1102,7 @@ async function loadSettings() {
   }
 
   const tr = teacher;
-  const statusLabel = (v) =>
-    v ? t(`enums.studentStatus.${v}`) : null;
+  const statusLabel = (v) => (v ? t(`enums.studentStatus.${v}`) : null);
 
   const adapter = {
     context: "teacher",
@@ -1095,18 +1110,45 @@ async function loadSettings() {
       displayName: `${tr.first_name} ${tr.last_name}`,
       subtitle: `${t("settings.roleTeacher")}${tr.specialization ? " · " + tr.specialization : ""}`,
       avatarIcon: "co_present",
-      roleBadge: { text: t("settings.roleTeacher"), className: "badge-primary" },
+      roleBadge: {
+        text: t("settings.roleTeacher"),
+        className: "badge-primary",
+      },
     },
     personal: [
-      { label: t("settings.fields.firstName"), value: tr.first_name, icon: "badge" },
-      { label: t("settings.fields.lastName"), value: tr.last_name, icon: "badge" },
-      { label: t("settings.fields.nationalId"), value: tr.national_id, icon: "fingerprint" },
-      { label: t("settings.fields.specialization"), value: tr.specialization, icon: "menu_book" },
+      {
+        label: t("settings.fields.firstName"),
+        value: tr.first_name,
+        icon: "badge",
+      },
+      {
+        label: t("settings.fields.lastName"),
+        value: tr.last_name,
+        icon: "badge",
+      },
+      {
+        label: t("settings.fields.nationalId"),
+        value: tr.national_id,
+        icon: "fingerprint",
+      },
+      {
+        label: t("settings.fields.specialization"),
+        value: tr.specialization,
+        icon: "menu_book",
+      },
       { label: t("settings.fields.email"), value: tr.email, icon: "mail" },
       { label: t("settings.fields.phone"), value: tr.phone, icon: "call" },
       { label: t("settings.fields.address"), value: tr.address, icon: "home" },
-      { label: t("settings.fields.hireDate"), value: tr.hire_date ? formatDate(tr.hire_date) : null, icon: "event" },
-      { label: t("settings.fields.status"), value: statusLabel(tr.status), icon: "info" },
+      {
+        label: t("settings.fields.hireDate"),
+        value: tr.hire_date ? formatDate(tr.hire_date) : null,
+        icon: "event",
+      },
+      {
+        label: t("settings.fields.status"),
+        value: statusLabel(tr.status),
+        icon: "info",
+      },
     ],
     username: tr.email,
     email: tr.email,
@@ -1127,7 +1169,8 @@ document.getElementById("menu-btn")?.addEventListener("click", () => {
   document.querySelector("aside").classList.toggle("active");
 });
 const closeBtnEl = document.getElementById("close-btn");
-const closeAside = () => document.querySelector("aside").classList.remove("active");
+const closeAside = () =>
+  document.querySelector("aside").classList.remove("active");
 closeBtnEl?.addEventListener("click", closeAside);
 // #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
 closeBtnEl?.addEventListener("keydown", (e) => {
@@ -1558,7 +1601,11 @@ function renderDrawerSubjectGrades(rows) {
 function renderDrawerDiscipline(rows) {
   if (!rows.length)
     return `<p class="drawer-muted">${t("admin.drawer.noDiscipline")}</p>`;
-  const sevBadge = { low: "badge-neutral", medium: "badge-warning", high: "badge-danger" };
+  const sevBadge = {
+    low: "badge-neutral",
+    medium: "badge-warning",
+    high: "badge-danger",
+  };
   return rows
     .map((r) => {
       const sev = sevBadge[r.severity] ?? "badge-neutral";
@@ -1604,10 +1651,19 @@ async function openAddStudent() {
         type: "text",
         required: true,
       },
-      { name: "last_name", label: t("admin.form.lastName"), type: "text", required: true },
+      {
+        name: "last_name",
+        label: t("admin.form.lastName"),
+        type: "text",
+        required: true,
+      },
       { name: "email", label: t("admin.form.email"), type: "email" },
       { name: "phone", label: t("admin.form.phone"), type: "text" },
-      { name: "date_of_birth", label: t("admin.form.dateOfBirth"), type: "date" },
+      {
+        name: "date_of_birth",
+        label: t("admin.form.dateOfBirth"),
+        type: "date",
+      },
       {
         name: "gender",
         label: t("admin.form.gender"),
@@ -1675,8 +1731,18 @@ function openEditStudent(student) {
         required: true,
         value: student.last_name,
       },
-      { name: "email", label: t("admin.form.email"), type: "email", value: student.email ?? "" },
-      { name: "phone", label: t("admin.form.phone"), type: "text", value: student.phone ?? "" },
+      {
+        name: "email",
+        label: t("admin.form.email"),
+        type: "email",
+        value: student.email ?? "",
+      },
+      {
+        name: "phone",
+        label: t("admin.form.phone"),
+        type: "text",
+        value: student.phone ?? "",
+      },
       {
         name: "national_id",
         label: t("admin.form.nationalIdFull"),
@@ -1779,8 +1845,7 @@ let gradebookState = null; // { cstId, periodId, assignments, students }
 
 function renderGradebookTab(content) {
   const periodOptions = PERIODS.map(
-    (p) =>
-      `<option value="${p.id}">${escapeHtml(p.name)}</option>`,
+    (p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`,
   ).join("");
 
   content.innerHTML = `
@@ -1847,7 +1912,8 @@ async function loadGradebook() {
     renderGradebook(assignments, students, periodGrades);
 
     // Keep an open Manage Assignments list in sync after add/edit/delete.
-    if (assignmentsOverlay.classList.contains("active")) renderManageAssignments();
+    if (assignmentsOverlay.classList.contains("active"))
+      renderManageAssignments();
   } catch (err) {
     console.error(err);
     grid.innerHTML = `<div class="loading-cell">${t("admin.gradebook.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
@@ -2078,7 +2144,12 @@ function renderManageAssignments() {
       makeActionBtn("edit", t("common.edit"), () => openEditAssignment(a)),
     );
     actions.appendChild(
-      makeActionBtn("delete", t("common.delete"), () => confirmDeleteAssignment(a), true),
+      makeActionBtn(
+        "delete",
+        t("common.delete"),
+        () => confirmDeleteAssignment(a),
+        true,
+      ),
     );
 
     item.append(info, actions);
@@ -2104,7 +2175,7 @@ async function openStudentGradesModal(student) {
     return;
   }
 
-  let grades = [];
+  let grades;
   try {
     grades = await db.fetchStudentAssignmentGrades(
       assignments.map((a) => a.id),
@@ -2389,7 +2460,9 @@ async function saveAttendance() {
       row._original = { status: row.status, notes: row.notes ?? "" };
     });
     showToast(
-      tn("admin.toast.attendanceSaved", changed.length, { count: changed.length }),
+      tn("admin.toast.attendanceSaved", changed.length, {
+        count: changed.length,
+      }),
     );
     loadAbsenceSummary(); // counts may have shifted a student over the threshold
   } catch (err) {
@@ -2498,7 +2571,10 @@ async function openAddSchedule() {
       db.fetchRooms(),
     ]);
   } catch (err) {
-    showToast(t("admin.schedule.formDataFailed", { msg: err.message }), "error");
+    showToast(
+      t("admin.schedule.formDataFailed", { msg: err.message }),
+      "error",
+    );
     return;
   }
 
@@ -2513,8 +2589,18 @@ async function openAddSchedule() {
         required: true,
         options: dayOptions(),
       },
-      { name: "start_time", label: t("admin.form.startTime"), type: "time", required: true },
-      { name: "end_time", label: t("admin.form.endTime"), type: "time", required: true },
+      {
+        name: "start_time",
+        label: t("admin.form.startTime"),
+        type: "time",
+        required: true,
+      },
+      {
+        name: "end_time",
+        label: t("admin.form.endTime"),
+        type: "time",
+        required: true,
+      },
       {
         name: "subject_id",
         label: t("admin.form.subject"),
@@ -2688,9 +2774,16 @@ function renderCategories() {
     info.innerHTML = `<b>${escapeHtml(c.name)}</b><span class="manage-item-meta">${t("admin.categories.weight", { weight: Number(c.weight) })}</span>`;
     const actions = document.createElement("div");
     actions.className = "manage-item-actions";
-    actions.appendChild(makeActionBtn("edit", t("common.edit"), () => openCategoryForm(c)));
     actions.appendChild(
-      makeActionBtn("delete", t("common.delete"), () => confirmDeleteCategory(c), true),
+      makeActionBtn("edit", t("common.edit"), () => openCategoryForm(c)),
+    );
+    actions.appendChild(
+      makeActionBtn(
+        "delete",
+        t("common.delete"),
+        () => confirmDeleteCategory(c),
+        true,
+      ),
     );
     item.append(info, actions);
     categoriesBody.appendChild(item);
@@ -2706,7 +2799,9 @@ function renderCategories() {
 function openCategoryForm(category = null) {
   const editing = !!category;
   openModal({
-    title: editing ? t("admin.categories.editTitle") : t("admin.categories.addTitle"),
+    title: editing
+      ? t("admin.categories.editTitle")
+      : t("admin.categories.addTitle"),
     submitLabel: editing ? t("common.save") : t("admin.categories.add"),
     fields: [
       {
@@ -2792,7 +2887,9 @@ async function openPostGrades() {
     return;
   }
 
-  const computedById = Object.fromEntries(computed.map((c) => [c.student_id, c]));
+  const computedById = Object.fromEntries(
+    computed.map((c) => [c.student_id, c]),
+  );
   const postedById = Object.fromEntries(posted.map((p) => [p.student_id, p]));
   _postGradesState = { cstId, periodId };
 
@@ -2807,7 +2904,8 @@ async function openPostGrades() {
       const computedScore =
         comp && comp.period_score != null ? Number(comp.period_score) : null;
       const post = postedById[s.id];
-      const postedScore = post && post.score != null ? Number(post.score) : null;
+      const postedScore =
+        post && post.score != null ? Number(post.score) : null;
       const prefill =
         postedScore != null
           ? postedScore
@@ -2913,7 +3011,9 @@ async function savePostGrades() {
   pgSave.disabled = true;
   try {
     await db.upsertStudentGrades(rows);
-    showToast(tn("admin.toast.gradesPosted", rows.length, { count: rows.length }));
+    showToast(
+      tn("admin.toast.gradesPosted", rows.length, { count: rows.length }),
+    );
     closePostGrades();
   } catch (err) {
     showToast(err.message, "error");
@@ -2971,7 +3071,9 @@ async function openColumnGrades(assignment) {
 
   cgBody.innerHTML = `
     <p class="sg-period">${t("admin.cg.outOf", { max: assignment.max_score })}${
-      assignment.due_date ? " · " + t("admin.cg.dueOn", { date: formatDate(assignment.due_date) }) : ""
+      assignment.due_date
+        ? " · " + t("admin.cg.dueOn", { date: formatDate(assignment.due_date) })
+        : ""
     } · ${tn("admin.students", students.length)}</p>
     <div class="sg-scroll">
       <div class="cg-grid">
@@ -3046,7 +3148,9 @@ async function saveColumnGrades() {
   cgSave.disabled = true;
   try {
     await db.upsertAssignmentGrades(rows);
-    showToast(tn("admin.toast.scoresSaved", rows.length, { count: rows.length }));
+    showToast(
+      tn("admin.toast.scoresSaved", rows.length, { count: rows.length }),
+    );
     closeColumnGrades();
     loadGradebook();
   } catch (err) {
@@ -3078,7 +3182,13 @@ function openAddDiscipline() {
     }),
     submitLabel: t("admin.discipline.addRecord"),
     fields: [
-      { name: "date", label: t("admin.form.date"), type: "date", required: true, value: today },
+      {
+        name: "date",
+        label: t("admin.form.date"),
+        type: "date",
+        required: true,
+        value: today,
+      },
       {
         name: "type",
         label: t("admin.form.type"),
@@ -3094,7 +3204,11 @@ function openAddDiscipline() {
         value: "low",
         options: disciplineSeverityOptions(),
       },
-      { name: "description", label: t("admin.form.description"), type: "textarea" },
+      {
+        name: "description",
+        label: t("admin.form.description"),
+        type: "textarea",
+      },
     ],
     onSubmit: async (formData) => {
       await db.insertDiscipline({
@@ -3284,6 +3398,7 @@ async function loadToday() {
     const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
     renderToday(entries, grid);
   } catch (err) {
+    loaded.today = false; // allow a retry on next visit
     grid.innerHTML = `<div class="loading-cell">${t("admin.today.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
@@ -3375,7 +3490,9 @@ async function printStudentReport() {
 
 function buildReportHtml(student, grades, attendance, discipline) {
   const esc = escapeHtml;
-  const periods = PERIODS.slice().sort((a, b) => a.period_order - b.period_order);
+  const periods = PERIODS.slice().sort(
+    (a, b) => a.period_order - b.period_order,
+  );
 
   // Pivot posted grades into subject × period.
   const bySubject = {};

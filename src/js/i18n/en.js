@@ -104,7 +104,8 @@ export default {
       moreinfo: "More info",
     },
     account: {
-      demoBanner: "Editing is disabled in this demo — values are shown read-only.",
+      demoBanner:
+        "Editing is disabled in this demo — values are shown read-only.",
       personalInfo: "Personal info",
       username: "Username",
       changeUsername: "Change username",
@@ -126,13 +127,17 @@ export default {
     help: {
       faqTitle: "Frequently asked",
       faq1q: "How do I view my grades?",
-      faq1a: "Open the Grades section from the sidebar to see scores by subject and grading period.",
+      faq1a:
+        "Open the Grades section from the sidebar to see scores by subject and grading period.",
       faq2q: "Where do I check attendance?",
-      faq2a: "The Attendance section lists every record with its status and the staff member who logged it.",
+      faq2a:
+        "The Attendance section lists every record with its status and the staff member who logged it.",
       faq3q: "Why can't I edit my profile?",
-      faq3a: "This is a demo build — Account & Profile is read-only so reviewers can explore safely.",
+      faq3a:
+        "This is a demo build — Account & Profile is read-only so reviewers can explore safely.",
       needHand: "Need a hand?",
-      needHandText: "Use the sidebar to move between sections. Each card on the dashboard is a shortcut to its full view.",
+      needHandText:
+        "Use the sidebar to move between sections. Each card on the dashboard is a shortcut to its full view.",
       contactPrefix: "Contact support — ",
     },
     about: {
@@ -407,7 +412,8 @@ export default {
     },
     categories: {
       title: "Grade categories — {subject} {class}",
-      empty: "No categories yet. The period grade is a flat points average. Add categories (e.g. Exams 50%, Tasks 30%, Participation 20%) to weight them — assignments you tag with a category are averaged within it, then combined by weight.",
+      empty:
+        "No categories yet. The period grade is a flat points average. Add categories (e.g. Exams 50%, Tasks 30%, Participation 20%) to weight them — assignments you tag with a category are averaged within it, then combined by weight.",
       weight: "Weight: {weight}%",
       total: "Total: ",
       totalOff: " — weights are renormalized, but 100% is clearest.",
@@ -420,7 +426,8 @@ export default {
       title: "Post grades — {period}",
       loadFailed: "Failed to load: {msg}",
       noStudents: "No active students.",
-      intro: "{period} · review each computed average, adjust if needed, then post. Posted grades are what students & parents see on the report card.",
+      intro:
+        "{period} · review each computed average, adjust if needed, then post. Posted grades are what students & parents see on the report card.",
       student: "Student",
       computed: "Computed",
       posted: "Posted",
@@ -446,7 +453,8 @@ export default {
     },
     absence: {
       title: "Absence summary",
-      empty: "No student has reached {threshold} absences/lates in this section yet. ✔",
+      empty:
+        "No student has reached {threshold} absences/lates in this section yet. ✔",
       atRisk: "{count} at risk (≥ {threshold})",
       studentFallback: "Student {id}",
       loadFailed: "Failed to load absence summary: {msg}",
@@ -500,7 +508,8 @@ export default {
       dueDate: "Due Date (optional)",
       maxScore: "Max Score",
       category: "Category (optional)",
-      categoryHelp: "Categories let you weight exams vs. tasks. Manage them from the Categories button.",
+      categoryHelp:
+        "Categories let you weight exams vs. tasks. Manage them from the Categories button.",
       note: "Note (optional)",
       assignmentNamePlaceholder: "e.g. Quiz 1 — Fractions",
       weightPct: "Weight (%)",
@@ -524,9 +533,12 @@ export default {
     confirm: {
       title: "Delete item?",
       message: "This action cannot be undone.",
-      deleteStudent: 'Delete "{name}"? This removes their record permanently and cannot be undone.',
-      deleteAssignment: 'Delete assignment "{name}"? All student scores for it will also be removed. This cannot be undone.',
-      deleteCategory: 'Delete category "{name}"? Its assignments stay but become uncategorized (flat weighting).',
+      deleteStudent:
+        'Delete "{name}"? This removes their record permanently and cannot be undone.',
+      deleteAssignment:
+        'Delete assignment "{name}"? All student scores for it will also be removed. This cannot be undone.',
+      deleteCategory:
+        'Delete category "{name}"? Its assignments stay but become uncategorized (flat weighting).',
       deleteSchedule: "Delete this schedule entry?",
     },
     modal: {
@@ -619,7 +631,8 @@ export default {
       unexpected: "An unexpected error occurred. Please try again.",
       credentials: "Incorrect email or password. Please try again.",
       notConfirmed: "Your email is not confirmed. Please check your inbox.",
-      exists: "An account with this email already exists. Try signing in instead.",
+      exists:
+        "An account with this email already exists. Try signing in instead.",
       passwordLength: "Password must be at least 6 characters long.",
       rateLimit: "Too many attempts. Please wait a moment before trying again.",
       network: "Network error. Please check your connection and try again.",

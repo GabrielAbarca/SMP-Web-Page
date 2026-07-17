@@ -107,14 +107,23 @@ export async function fetchStudentAttendance(studentId) {
     return [];
   }
 
-  for (const record of data) {
-    if (record.recorded_by) {
-      const { data: teacher } = await supabase
-        .from("teachers")
-        .select("id, first_name, last_name")
-        .eq("id", record.recorded_by)
-        .maybeSingle();
-      record.teacher = teacher;
+  // Resolve every recorder in ONE batched query instead of one lookup per row
+  // (this was an N+1: a serial round-trip for each attendance record).
+  const recorderIds = [
+    ...new Set(data.filter((r) => r.recorded_by).map((r) => r.recorded_by)),
+  ];
+  if (recorderIds.length > 0) {
+    const { data: teachers } = await supabase
+      .from("teachers")
+      .select("id, first_name, last_name")
+      .in("id", recorderIds);
+    const byId = new Map((teachers ?? []).map((tch) => [tch.id, tch]));
+    // `data` rows are typed from the select above; `teacher` is attached
+    // dynamically here (the recorder resolved from the batched query).
+    for (const record of /** @type {any[]} */ (data)) {
+      if (record.recorded_by) {
+        record.teacher = byId.get(record.recorded_by) ?? null;
+      }
     }
   }
 
@@ -170,7 +179,15 @@ export async function fetchEvents() {
 }
 
 export async function fetchDashboardStats(studentId, classId) {
-  const attendance = await fetchStudentAttendance(studentId);
+  // Attendance, grades and schedule are independent reads — fetch them
+  // concurrently instead of chaining awaits (was a 3-deep serial waterfall
+  // blocking the dashboard's first paint).
+  const [attendance, grades, schedule] = await Promise.all([
+    fetchStudentAttendance(studentId),
+    fetchStudentGrades(studentId),
+    fetchClassSchedule(classId),
+  ]);
+
   const totalDays = attendance.length;
   const presentDays = attendance.filter(
     (a) => a.status === "present" || a.status === "late",
@@ -178,7 +195,6 @@ export async function fetchDashboardStats(studentId, classId) {
   const attendancePct =
     totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
-  const grades = await fetchStudentGrades(studentId);
   const scores = grades
     .filter((g) => g.score !== null)
     .map((g) => Number(g.score));
@@ -188,7 +204,6 @@ export async function fetchDashboardStats(studentId, classId) {
         10
       : 0;
 
-  const schedule = await fetchClassSchedule(classId);
   const now = new Date();
   const currentDay = now.getDay();
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;

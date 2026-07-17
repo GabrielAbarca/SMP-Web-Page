@@ -1,0 +1,12 @@
+# Build output & deps
+dist/
+node_modules/
+coverage/
+.vercel/
+
+# Generated / vendored
+package-lock.json
+src/icons/icons.svg
+
+# Static HTML entry points carry a large inlined layout; leave as authored
+*.html

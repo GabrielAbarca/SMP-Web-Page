@@ -44,10 +44,30 @@ function esc(value) {
 // Settings sub-sections — the left rail. `render` builds each panel body.
 // `labelKey` resolves through t() at render time (after initI18n).
 const SECTIONS = [
-  { id: "account", labelKey: "settings.rail.account", icon: "account_circle", render: renderAccount },
-  { id: "preferences", labelKey: "settings.rail.preferences", icon: "tune", render: renderPreferences },
-  { id: "help", labelKey: "settings.rail.help", icon: "help", render: renderHelp },
-  { id: "moreinfo", labelKey: "settings.rail.moreinfo", icon: "info", render: renderMoreInfo },
+  {
+    id: "account",
+    labelKey: "settings.rail.account",
+    icon: "account_circle",
+    render: renderAccount,
+  },
+  {
+    id: "preferences",
+    labelKey: "settings.rail.preferences",
+    icon: "tune",
+    render: renderPreferences,
+  },
+  {
+    id: "help",
+    labelKey: "settings.rail.help",
+    icon: "help",
+    render: renderHelp,
+  },
+  {
+    id: "moreinfo",
+    labelKey: "settings.rail.moreinfo",
+    icon: "info",
+    render: renderMoreInfo,
+  },
 ];
 
 /**

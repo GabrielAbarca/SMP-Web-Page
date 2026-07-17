@@ -1,3 +1,5 @@
+import "./errorHandler.js";
+import "./speedInsights.js";
 import { getSession, signOut } from "./auth.js";
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
@@ -242,7 +244,20 @@ let studentProfile = null;
 let schoolYearId = null;
 let classId = null;
 
+// Events feed both the dashboard "Upcoming" widget and the Events view. Memoize
+// the request so navigating between them reuses a single round-trip instead of
+// re-fetching (the two callers previously fired independent queries).
+let eventsPromise = null;
+function getEvents() {
+  if (!eventsPromise) eventsPromise = fetchEvents();
+  return eventsPromise;
+}
+
 async function initDashboard() {
+  // Warm the events request now so it overlaps the profile + stats fetches
+  // below; renderUpcomingEvents() awaits this same in-flight promise.
+  getEvents();
+
   studentProfile = await fetchStudentProfile(STUDENT_ID);
   if (!studentProfile) {
     document.getElementById("student-name").textContent = t(
@@ -257,10 +272,13 @@ async function initDashboard() {
 
   document.getElementById("student-name").textContent =
     `${studentProfile.first_name} ${studentProfile.last_name}`;
-  document.getElementById("student-class").textContent = t("student.classLine", {
-    grade: cls?.grade_levels?.name ?? "—",
-    section: cls?.display_name ?? "—",
-  });
+  document.getElementById("student-class").textContent = t(
+    "student.classLine",
+    {
+      grade: cls?.grade_levels?.name ?? "—",
+      section: cls?.display_name ?? "—",
+    },
+  );
   document.getElementById("student-year").textContent =
     cls?.school_years?.name ?? "—";
   document.getElementById("student-status").textContent = statusLabel(
@@ -286,12 +304,12 @@ async function initDashboard() {
   if (stats.nextClass) {
     document.getElementById("next-class-subject").textContent =
       stats.nextClass.subjects?.name ?? "—";
-    document.getElementById("next-class-day").textContent =
-      dayNameFull(stats.nextClass.day_of_week);
-  } else {
-    document.getElementById("next-class-subject").textContent = t(
-      "student.next.none",
+    document.getElementById("next-class-day").textContent = dayNameFull(
+      stats.nextClass.day_of_week,
     );
+  } else {
+    document.getElementById("next-class-subject").textContent =
+      t("student.next.none");
     document.getElementById("next-class-day").textContent = t(
       "student.next.enjoyBreak",
     );
@@ -533,10 +551,22 @@ async function initAttendanceView() {
   });
 
   summary.innerHTML = [
-    { label: t("enums.attendance.present"), val: counts.present, cls: "stat-present" },
-    { label: t("enums.attendance.absent"), val: counts.absent, cls: "stat-absent" },
+    {
+      label: t("enums.attendance.present"),
+      val: counts.present,
+      cls: "stat-present",
+    },
+    {
+      label: t("enums.attendance.absent"),
+      val: counts.absent,
+      cls: "stat-absent",
+    },
     { label: t("enums.attendance.late"), val: counts.late, cls: "stat-late" },
-    { label: t("enums.attendance.excused"), val: counts.excused, cls: "stat-excused" },
+    {
+      label: t("enums.attendance.excused"),
+      val: counts.excused,
+      cls: "stat-excused",
+    },
   ]
     .map(
       (s) => `
@@ -558,7 +588,9 @@ async function initAttendanceView() {
   tbody.innerHTML = records
     .map((r) => {
       const statusCls = `status-${r.status}`;
-      const teacher = r.teachers;
+      // fetchStudentAttendance attaches the recorder as `r.teacher` (singular);
+      // reading `r.teachers` here left this column always blank ("—").
+      const teacher = r.teacher;
       return `<tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.classes?.display_name ?? "—"}</td>
@@ -571,7 +603,7 @@ async function initAttendanceView() {
 }
 
 async function initEventsView() {
-  const events = await fetchEvents();
+  const events = await getEvents();
   const container = document.getElementById("events-timeline");
 
   if (!events || events.length === 0) {
@@ -647,21 +679,56 @@ async function initSettings() {
       displayName: `${s.first_name} ${s.last_name}`,
       subtitle: `${t("settings.roleStudent")}${gradeName ? " · " + gradeName : ""}`,
       avatarIcon: "person",
-      roleBadge: { text: t("settings.roleStudent"), className: "badge-primary" },
+      roleBadge: {
+        text: t("settings.roleStudent"),
+        className: "badge-primary",
+      },
     },
     personal: [
-      { label: t("settings.fields.firstName"), value: s.first_name, icon: "badge" },
-      { label: t("settings.fields.lastName"), value: s.last_name, icon: "badge" },
-      { label: t("settings.fields.enrollmentNumber"), value: s.enrollment_number, icon: "tag" },
-      { label: t("settings.fields.nationalId"), value: s.national_id, icon: "fingerprint" },
-      { label: t("settings.fields.dateOfBirth"), value: dateOr(s.date_of_birth), icon: "cake" },
-      { label: t("settings.fields.gender"), value: genderLabel(s.gender), icon: "wc" },
+      {
+        label: t("settings.fields.firstName"),
+        value: s.first_name,
+        icon: "badge",
+      },
+      {
+        label: t("settings.fields.lastName"),
+        value: s.last_name,
+        icon: "badge",
+      },
+      {
+        label: t("settings.fields.enrollmentNumber"),
+        value: s.enrollment_number,
+        icon: "tag",
+      },
+      {
+        label: t("settings.fields.nationalId"),
+        value: s.national_id,
+        icon: "fingerprint",
+      },
+      {
+        label: t("settings.fields.dateOfBirth"),
+        value: dateOr(s.date_of_birth),
+        icon: "cake",
+      },
+      {
+        label: t("settings.fields.gender"),
+        value: genderLabel(s.gender),
+        icon: "wc",
+      },
       { label: t("settings.fields.class"), value: classLine, icon: "school" },
       { label: t("settings.fields.email"), value: s.email, icon: "mail" },
       { label: t("settings.fields.phone"), value: s.phone, icon: "call" },
       { label: t("settings.fields.address"), value: s.address, icon: "home" },
-      { label: t("settings.fields.status"), value: s.status ? statusLabel(s.status) : null, icon: "info" },
-      { label: t("settings.fields.enrolled"), value: dateOr(s.enrollment_date), icon: "event" },
+      {
+        label: t("settings.fields.status"),
+        value: s.status ? statusLabel(s.status) : null,
+        icon: "info",
+      },
+      {
+        label: t("settings.fields.enrolled"),
+        value: dateOr(s.enrollment_date),
+        icon: "event",
+      },
     ],
     username: s.email,
     email: s.email,
@@ -697,7 +764,7 @@ function dayNameFull(dow) {
 }
 
 async function renderUpcomingEvents() {
-  const events = await fetchEvents();
+  const events = await getEvents();
   const card = document.getElementById("upcoming-events-card");
 
   const upcoming = events.slice(0, 4);
@@ -839,6 +906,5 @@ function formatEventType(type) {
 async function init() {
   navigateTo("dashboard");
 }
-
 
 init();

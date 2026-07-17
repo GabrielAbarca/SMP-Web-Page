@@ -1,3 +1,5 @@
+import "./errorHandler.js";
+import "./speedInsights.js";
 import { signIn, signUp, getSession } from "./auth.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initI18n, applyTranslations, t } from "./i18n.js";
