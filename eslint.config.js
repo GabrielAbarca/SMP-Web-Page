@@ -9,7 +9,6 @@ export default [
       "coverage/**",
       ".vercel/**",
       "src/icons/**",
-      "test_supabase.js",
     ],
   },
   js.configs.recommended,

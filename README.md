@@ -11,6 +11,8 @@
   &nbsp;
   <img src="https://img.shields.io/badge/Status-In%20Progress-f59e0b?style=for-the-badge" alt="Status"/>
   &nbsp;
+  <img src="https://img.shields.io/github/actions/workflow/status/GabrielAbarca/SMP-Web-Page/ci.yml?style=for-the-badge&label=CI&logo=github&logoColor=white" alt="CI"/>
+  &nbsp;
   <img src="https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   &nbsp;
   <img src="https://img.shields.io/badge/Backend-Supabase-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
@@ -37,14 +39,14 @@ The project targets real data complexity: the underlying PostgreSQL schema spans
 
 ## ✨ Features
 
-| Module | Description |
-|---|---|
-| 📊 **Grades & Attendance** | Track student academic performance and daily attendance |
-| 📅 **Schedules** | View weekly class schedules per course and teacher |
-| 👨‍🏫 **Teacher Assignments** | View teachers assigned to the student |
-| 🏫 **Class Information** | Detailed view of each class — enrolled year, class number, status |
-| 📆 **Upcoming Events** | Institution events board for academic and administrative activities |
-| 📈 **Reports & Analytics** | Data views for attendance rates and grade distributions |
+| Module                     | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| 📊 **Grades & Attendance** | Track student academic performance and daily attendance             |
+| 📅 **Schedules**           | View weekly class schedules per course and teacher                  |
+| 👨‍🏫 **Teacher Assignments** | View teachers assigned to the student                               |
+| 🏫 **Class Information**   | Detailed view of each class — enrolled year, class number, status   |
+| 📆 **Upcoming Events**     | Institution events board for academic and administrative activities |
+| 📈 **Reports & Analytics** | Data views for attendance rates and grade distributions             |
 
 ---
 
@@ -56,13 +58,13 @@ The project targets real data complexity: the underlying PostgreSQL schema spans
 
 <br/>
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | ![JS](https://img.shields.io/badge/JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black) ![HTML](https://img.shields.io/badge/HTML5-e34f26?style=flat-square&logo=html5&logoColor=white) ![CSS](https://img.shields.io/badge/CSS3-1572b6?style=flat-square&logo=css3&logoColor=white) |
-| **Build Tool** | ![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white) |
-| **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) hosted on Supabase |
-| **Backend / Auth** | ![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?style=flat-square&logo=supabase&logoColor=white) RLS · Auth · Realtime |
-| **Deployment** | ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white) |
+| Layer              | Technology                                                                                                                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend**       | ![JS](https://img.shields.io/badge/JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black) ![HTML](https://img.shields.io/badge/HTML5-e34f26?style=flat-square&logo=html5&logoColor=white) ![CSS](https://img.shields.io/badge/CSS3-1572b6?style=flat-square&logo=css3&logoColor=white) |
+| **Build Tool**     | ![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white)                                                                                                                                                                                                        |
+| **Database**       | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) hosted on Supabase                                                                                                                                                                   |
+| **Backend / Auth** | ![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?style=flat-square&logo=supabase&logoColor=white) RLS · Auth · Realtime                                                                                                                                                                      |
+| **Deployment**     | ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)                                                                                                                                                                                                  |
 
 ---
 
@@ -120,6 +122,35 @@ npm run dev
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+### Scripts
+
+| Command             | Description                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| `npm run dev`       | Start the Vite dev server                                    |
+| `npm run build`     | Production build to `dist/`                                  |
+| `npm run preview`   | Preview the production build locally                         |
+| `npm run lint`      | Lint the codebase with ESLint                                |
+| `npm run format`    | Format with Prettier (`npm run format:check` to verify only) |
+| `npm run typecheck` | Type-check the JS via JSDoc + TypeScript `checkJs`           |
+| `npm test`          | Run the Vitest unit suite                                    |
+| `npm run test:e2e`  | Run the Playwright end-to-end suite                          |
+
+---
+
+## 🧪 Quality & Testing
+
+Quality gates run automatically in **CI** (GitHub Actions) on every push and pull request to `main` / `development`, and locally through a **husky** pre-commit hook (`lint-staged`).
+
+| Gate            | Tooling                                                           |
+| --------------- | ----------------------------------------------------------------- |
+| **Formatting**  | Prettier                                                          |
+| **Linting**     | ESLint (flat config)                                              |
+| **Type safety** | JSDoc + TypeScript `checkJs` — no compile step                    |
+| **Unit tests**  | Vitest — query/aggregation, i18n and demo-sandbox logic (`test/`) |
+| **End-to-end**  | Playwright — login, student portal and admin console (`e2e/`)     |
+
+The end-to-end suite is fully self-contained: it boots the app with placeholder environment variables and mocks Supabase at the network layer, so it needs no real backend or credentials — and it verifies the demo sandbox's **zero-write** guarantee.
 
 ---
 
