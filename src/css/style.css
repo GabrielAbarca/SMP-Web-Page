@@ -372,14 +372,21 @@ aside .top {
 
 aside .logo {
   display: flex;
-  margin-left: -1rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 aside .logo img {
-  width: 8rem;
-  height: 4rem;
-  border-radius: 1rem;
-  display: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+aside .logo h2 {
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 /* Frontend sandbox tag — mirrors the admin console's DEMO badge. */
@@ -1943,11 +1950,15 @@ main .show-all {
     grid-template-columns: 7rem minmax(0, 1fr) 23rem;
   }
 
+  aside .top {
+    justify-content: center;
+  }
   aside .logo {
     margin-left: 0;
+    justify-content: center;
   }
-  aside h2 {
-    display: block;
+  aside .logo h2 {
+    display: none;
   }
   aside .sidebar h3 {
     display: none;
@@ -2036,6 +2047,10 @@ main .show-all {
   }
   .container > aside .sidebar a {
     height: 3.4rem;
+  }
+
+  .container > aside .top {
+    justify-content: space-between;
   }
 
   .container > aside .logo {
