@@ -1015,15 +1015,6 @@
   }
 }
 
-/* Mobile slide-in sidebar. admin.js toggles `aside.active`; style.css
-   only wires the student portal's inline-style toggle, so define the
-   open state here (the slide animation lives in style.css). */
-@media screen and (max-width: 768px) {
-  aside.active {
-    display: block;
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════════
    ROSTER — clickable grid list with a trailing action rail
    The roster is a CSS-grid list (not a <table>) so the edit/delete

@@ -29,6 +29,7 @@ import {
   skeletonBlock,
   skeletonCards,
   skeletonCardItems,
+  initSidebarToggle,
 } from "./ui.js";
 import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
@@ -1157,28 +1158,16 @@ async function loadSettings() {
   renderSettings(root, adapter);
 }
 
+const closeNav = initSidebarToggle();
+
 navLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
     showSection(link.dataset.page);
-    document.querySelector("aside").classList.remove("active");
+    closeNav();
   });
 });
 
-document.getElementById("menu-btn")?.addEventListener("click", () => {
-  document.querySelector("aside").classList.toggle("active");
-});
-const closeBtnEl = document.getElementById("close-btn");
-const closeAside = () =>
-  document.querySelector("aside").classList.remove("active");
-closeBtnEl?.addEventListener("click", closeAside);
-// #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
-closeBtnEl?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    closeAside();
-  }
-});
 document.getElementById("logout-btn")?.addEventListener("click", async () => {
   await signOut();
   window.location.replace("/login.html");

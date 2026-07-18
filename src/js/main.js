@@ -4,7 +4,7 @@ import { getSession, signOut } from "./auth.js";
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
-import { skeletonRows } from "./ui.js";
+import { skeletonRows, initSidebarToggle } from "./ui.js";
 import { renderSettings } from "./settings.js";
 import {
   initI18n,
@@ -77,9 +77,7 @@ window.addEventListener("pageshow", (event) => {
   }
 });
 
-const sideMenu = document.querySelector("aside");
-const menuBtn = document.querySelector("#menu-btn");
-const closeBtn = document.querySelector("#close-btn");
+const closeNav = initSidebarToggle();
 const themeToggler = document.querySelector(".theme-toggler");
 
 const profilePhotoDiv = document.querySelector(".profile-photo");
@@ -92,21 +90,6 @@ profilePhotoDiv.addEventListener("click", () => {
   document
     .querySelector('#settings-root .settings-rail-item[data-section="account"]')
     ?.click();
-});
-
-menuBtn.addEventListener("click", () => {
-  sideMenu.style.display = "block";
-});
-const closeSideMenu = () => {
-  sideMenu.style.display = "none";
-};
-closeBtn.addEventListener("click", closeSideMenu);
-// #close-btn is a <div role="button">; support keyboard (Enter/Space) activation.
-closeBtn.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    closeSideMenu();
-  }
 });
 
 initTheme();
@@ -157,9 +140,7 @@ function navigateTo(page) {
     initView(page);
   }
 
-  if (window.innerWidth <= 768) {
-    sideMenu.style.display = "none";
-  }
+  closeNav();
 
   // Return to the top on navigation. On mobile the top bar is fixed and pages
   // scroll long, so tapping the profile photo (→ Settings) at the bottom would

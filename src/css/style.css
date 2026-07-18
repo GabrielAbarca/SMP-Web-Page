@@ -360,6 +360,8 @@ b {
 
 aside {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 aside .top {
@@ -402,9 +404,8 @@ aside .close {
 aside .sidebar {
   display: flex;
   flex-direction: column;
-  height: 86vh;
-  position: relative;
-  top: 3rem;
+  flex: 1 0 auto;
+  margin-top: 3rem;
   border-radius: var(--card-border-radius);
 }
 
@@ -429,8 +430,8 @@ aside .sidebar a span {
 }
 
 aside .sidebar a:last-child {
-  position: absolute;
-  bottom: 2rem;
+  margin-top: auto;
+  margin-bottom: 2rem;
   width: 100%;
 }
 
@@ -1953,11 +1954,6 @@ main .show-all {
     width: 5.6rem;
   }
 
-  aside .sidebar a:last-child {
-    position: relative;
-    margin-top: 2.4rem;
-  }
-
   main .dashboard {
     grid-template-columns: 1fr;
     gap: 0;
@@ -1991,21 +1987,37 @@ main .show-all {
     grid-template-columns: 1fr;
   }
 
-  aside {
-    /* Fixed (not absolute) so the fly-out opens in the current viewport at any
-       scroll position — absolute anchored it to the document top, pushing the
-       menu off-screen when the page was scrolled down. */
+  .container > aside {
     position: fixed;
     top: 0;
     left: -100%;
-    background: var(--color-white);
-    width: 20rem;
+    z-index: 4;
+    width: min(20rem, 86vw);
     height: 100vh;
-    z-index: 3;
+    height: 100dvh;
+    background: var(--color-white);
     box-shadow: 1rem 3rem 4rem var(--color-light);
     padding-right: var(--card-padding);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
     animation: showMenu 400ms ease forwards;
+  }
+
+  .container > aside.active {
+    display: flex;
+  }
+
+  body.nav-open {
+    overflow: hidden;
+  }
+
+  body.nav-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.45);
   }
 
   @keyframes showMenu {
@@ -2014,41 +2026,35 @@ main .show-all {
     }
   }
 
-  aside .sidebar {
+  .container > aside .sidebar {
     width: 100%;
   }
-  aside .sidebar h3 {
+  .container > aside .sidebar h3 {
     display: inline;
   }
-  aside .sidebar a {
+  .container > aside .sidebar a {
     width: 100%;
     height: 3.4rem;
   }
 
-  aside .logo {
+  .container > aside .logo {
     margin-left: 1rem;
     display: flex;
     align-items: center;
   }
 
-  aside .logo h2 {
+  .container > aside .logo h2 {
     display: inline;
     font-size: 1rem;
   }
 
-  aside .sidebar a:last-child {
-    position: absolute;
-    bottom: 5rem;
-  }
-
-  aside .close {
-    display: inline-block;
-    cursor: pointer;
+  .container > aside .close {
     display: flex;
+    cursor: pointer;
     align-items: center;
   }
 
-  aside .close span {
+  .container > aside .close span {
     font-size: 1.7rem;
   }
 

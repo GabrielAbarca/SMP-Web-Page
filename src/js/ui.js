@@ -32,3 +32,32 @@ export function skeletonCardItems(count = 3) {
 export function skeletonCards(count = 3) {
   return `<div class="skeleton-cards">${skeletonCardItems(count)}</div>`;
 }
+
+/** Wire the mobile nav drawer (open, close, scrim, Escape). Returns the closer. */
+export function initSidebarToggle() {
+  const aside = document.querySelector(".container > aside");
+  const open = () => {
+    aside.classList.add("active");
+    document.body.classList.add("nav-open");
+  };
+  const close = () => {
+    aside.classList.remove("active");
+    document.body.classList.remove("nav-open");
+  };
+  document.getElementById("menu-btn")?.addEventListener("click", open);
+  const closeBtn = document.getElementById("close-btn");
+  closeBtn?.addEventListener("click", close);
+  closeBtn?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      close();
+    }
+  });
+  document.body.addEventListener("click", (e) => {
+    if (e.target === document.body) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+  return close;
+}
