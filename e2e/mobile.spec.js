@@ -7,10 +7,12 @@ import {
   sessionSeed,
 } from "./fixtures.js";
 
-const noOverflow = (page) =>
-  page.evaluate(
-    () => document.documentElement.scrollWidth <= window.innerWidth,
+async function noOverflow(page) {
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
   );
+  return scrollWidth <= page.viewportSize().width;
+}
 
 async function seedSession(context) {
   await context.addInitScript(

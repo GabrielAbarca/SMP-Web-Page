@@ -571,6 +571,7 @@ aside .sidebar a.nav-cta:hover span {
 
 main {
   margin-top: 3rem;
+  min-width: 0;
 }
 
 .view-section {
@@ -1989,7 +1990,7 @@ main .show-all {
 @media screen and (max-width: 768px) {
   .container {
     width: 100%;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .container > aside {
