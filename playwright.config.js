@@ -16,7 +16,18 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: /mobile\.spec\.js/,
+    },
+    {
+      name: "mobile-chromium",
+      use: { ...devices["Pixel 7"] },
+      testMatch: /mobile\.spec\.js/,
+    },
+  ],
   webServer: {
     command: `npx vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
