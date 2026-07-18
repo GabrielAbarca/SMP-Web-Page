@@ -18,7 +18,7 @@
 /* ─── Stat cards (Overview) ───────────────────────────────────── */
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
@@ -60,18 +60,6 @@
 
 .stat-card small {
   margin: 0;
-}
-
-@media (max-width: 1200px) {
-  .admin-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .admin-stats {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ─── Toolbar ──────────────────────────────────────────────────── */
@@ -917,7 +905,7 @@
 ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 769px) {
   .container {
-    grid-template-columns: 14rem 1fr;
+    grid-template-columns: 14rem minmax(0, 1fr);
     grid-template-rows: auto 1fr;
     align-items: start;
   }
@@ -953,7 +941,7 @@
 /* Preserve the icon-rail sidebar width in the mid-width range. */
 @media (min-width: 769px) and (max-width: 1200px) {
   .container {
-    grid-template-columns: 7rem 1fr;
+    grid-template-columns: 7rem minmax(0, 1fr);
   }
 }
 
@@ -1154,12 +1142,17 @@
   color: var(--color-dark-variant);
 }
 
-.sg-scroll {
-  overflow-x: auto;
-}
-
 .sg-grid {
   min-width: 800px;
+}
+
+.sg-row > :first-child,
+.pg-row > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-white);
+  box-shadow: 2px 0 0 var(--color-light);
 }
 
 .sg-row {

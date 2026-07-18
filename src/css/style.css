@@ -266,17 +266,16 @@ label svg:has(use[href^="#icon-event"]) {
   height: 1em;
 }
 html {
-  font-size: 14px;
+  font-size: clamp(12.5px, 12px + 0.25vw, 14px);
 }
 
 body {
-  width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   font-family: "Poppins", sans-serif;
   font-size: var(--text-base);
   background: var(--color-background);
   user-select: none;
-  overflow-x: hidden;
   color: var(--color-dark);
 }
 
@@ -285,7 +284,7 @@ body {
   width: 96%;
   margin: 0 auto;
   gap: var(--space-4);
-  grid-template-columns: 14rem auto 23rem;
+  grid-template-columns: 14rem minmax(0, 1fr) 23rem;
 }
 
 a {
@@ -978,9 +977,15 @@ main .show-all {
   outline: none;
 }
 
+.schedule-wrapper,
+.sg-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
 .schedule-wrapper {
   margin-top: 1rem;
-  overflow-x: auto;
 }
 
 .schedule-grid {
@@ -1938,7 +1943,7 @@ main .show-all {
 @media screen and (max-width: 1200px) {
   .container {
     width: 94%;
-    grid-template-columns: 7rem auto 23rem;
+    grid-template-columns: 7rem minmax(0, 1fr) 23rem;
   }
 
   aside .logo {
@@ -2134,11 +2139,6 @@ main .show-all {
     gap: 0.5rem;
   }
 
-  .schedule-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   .teacher-cards {
     grid-template-columns: 1fr;
   }
@@ -2154,6 +2154,17 @@ main .show-all {
   .right .subjects-analytics .item .right-content .grade-title {
     position: absolute;
     left: 68%;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --card-padding: 1.2rem;
+    --card-border-radius: 1.2rem;
+  }
+
+  .container {
+    gap: var(--space-3);
   }
 }
 
