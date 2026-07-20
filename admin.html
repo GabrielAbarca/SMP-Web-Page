@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Simple Manage Pro — Teacher console: your classes, gradebook, attendance and schedule."
+      content="Simple Manage Pro — Admin console: school setup, academic structure, people and enrollment."
     />
     <meta name="theme-color" content="#7380ec" />
     <link rel="canonical" href="https://smp-web-page.vercel.app/admin" />
@@ -13,20 +13,20 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://smp-web-page.vercel.app/admin" />
     <meta property="og:site_name" content="Simple Manage Pro" />
-    <meta property="og:title" content="Simple Manage Pro — Teacher Console" />
+    <meta property="og:title" content="Simple Manage Pro — Admin Console" />
     <meta
       property="og:description"
-      content="Teacher console for classes, gradebook, attendance and schedule."
+      content="Admin console for school setup, academic structure, people and enrollment."
     />
     <meta
       property="og:image"
       content="https://smp-web-page.vercel.app/android-chrome-512x512.png"
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Simple Manage Pro — Teacher Console" />
+    <meta name="twitter:title" content="Simple Manage Pro — Admin Console" />
     <meta
       name="twitter:description"
-      content="Teacher console for classes, gradebook, attendance and schedule."
+      content="Admin console for school setup, academic structure, people and enrollment."
     />
     <meta
       name="twitter:image"
@@ -53,7 +53,7 @@
       } catch (e) {}
     </script>
     <script src="/src/js/admin.js" type="module" defer></script>
-    <title>Simple Manage Pro — Teacher</title>
+    <title>Simple Manage Pro — Admin</title>
   </head>
 
   <body>
@@ -82,44 +82,67 @@
         </div>
 
         <div class="sidebar">
-          <a href="/admin" data-page="today" class="active">
+          <a href="/admin" data-page="overview" class="active">
             <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-today"></use></svg
+              ><svg aria-hidden="true"><use href="#icon-dashboard"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.today">Today</h3>
+            <h3 data-i18n="console.nav.overview">Overview</h3>
           </a>
-          <a href="/admin" data-page="myclasses">
+          <a href="/admin" data-page="yearperiods">
             <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+              ><svg aria-hidden="true">
+                <use href="#icon-calendar_month"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.myclasses">My Classes</h3>
+            <h3 data-i18n="console.nav.yearPeriods">Year &amp; Periods</h3>
+          </a>
+          <a href="/admin" data-page="gradessections">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-school"></use></svg
+            ></span>
+            <h3 data-i18n="console.nav.gradesSections">
+              Grades &amp; Sections
+            </h3>
           </a>
           <a href="/admin" data-page="subjects">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-menu_book"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.subjects">Subjects</h3>
+            <h3 data-i18n="console.nav.subjects">Subjects</h3>
+          </a>
+          <a href="/admin" data-page="teachers">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+            ></span>
+            <h3 data-i18n="console.nav.teachers">Teachers</h3>
+          </a>
+          <a href="/admin" data-page="students">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-groups"></use></svg
+            ></span>
+            <h3 data-i18n="console.nav.students">Students &amp; Enrollment</h3>
           </a>
           <a href="/admin" data-page="settings">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-settings"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.settings">Settings</h3>
+            <h3 data-i18n="console.nav.settings">Settings</h3>
           </a>
 
           <div class="sidebar-divider"></div>
 
-          <a href="/" class="nav-cta">
+          <a href="/teacher" class="nav-cta">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-visibility"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.viewStudentPortal">View Student Portal</h3>
+            <h3 data-i18n="console.nav.viewTeacherConsole">
+              View Teacher Console
+            </h3>
           </a>
           <a href="/" id="logout-btn">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-logout"></use></svg
             ></span>
-            <h3 data-i18n="admin.nav.logout">Logout</h3>
+            <h3 data-i18n="console.nav.logout">Logout</h3>
           </a>
         </div>
       </aside>
@@ -128,162 +151,133 @@
              MAIN
         ═══════════════════════════════════════════════════════ -->
       <main>
-        <!-- ─── TODAY (landing) ──────────────────────────────── -->
-        <section class="view-section active" id="view-today">
-          <h1 data-i18n="admin.heading.today">Today</h1>
-          <p
-            class="view-subtitle"
-            id="today-subtitle"
-            data-i18n="admin.today.loading"
-          >
-            Loading your day…
+        <!-- ─── OVERVIEW (landing) ───────────────────────────── -->
+        <section class="view-section active" id="view-overview">
+          <h1 data-i18n="console.heading.overview">School Overview</h1>
+          <p class="view-subtitle" data-i18n="console.overview.subtitle">
+            School-wide setup and administration.
           </p>
-          <div id="today-grid">
-            <div class="skeleton-cards">
-              <div class="skeleton skeleton-card"></div>
-              <div class="skeleton skeleton-card"></div>
-              <div class="skeleton skeleton-card"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── MY CLASSES ───────────────────────────────────── -->
-        <section class="view-section" id="view-myclasses">
-          <h1 data-i18n="admin.heading.myclasses">My Classes</h1>
-          <p
-            class="view-subtitle"
-            id="myclasses-subtitle"
-            data-i18n="admin.myclasses.loading"
-          >
-            Loading your assignments…
-          </p>
-          <div class="myclasses-grid" id="myclasses-grid">
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-          </div>
-        </section>
-
-        <!-- ─── CLASS WORKSPACE (entered from a card) ────────── -->
-        <section class="view-section" id="view-class">
-          <button class="breadcrumb-back" id="class-back-btn" type="button">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-arrow_back"></use></svg
-            ></span>
-            <span data-i18n="admin.classws.back">My Classes</span>
-          </button>
-
-          <div class="class-ws-header">
-            <span class="class-ws-dot" id="class-ws-dot"></span>
-            <div>
-              <h1 id="class-ws-title">—</h1>
-              <p class="view-subtitle" id="class-ws-subtitle">—</p>
-            </div>
-          </div>
-
-          <nav class="class-subtabs" id="class-subtabs">
-            <button class="class-subtab active" data-tab="roster" type="button">
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-groups"></use></svg
-              ></span>
-              <span data-i18n="admin.subtabs.roster">Roster</span>
-            </button>
-            <button class="class-subtab" data-tab="gradebook" type="button">
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-school"></use></svg
-              ></span>
-              <span data-i18n="admin.subtabs.gradebook">Gradebook</span>
-            </button>
-            <button class="class-subtab" data-tab="attendance" type="button">
+          <div class="console-card">
+            <h2
+              id="overview-welcome-title"
+              data-i18n="console.overview.welcomeFallback"
+            >
+              Welcome
+            </h2>
+            <p data-i18n="console.overview.intro">
+              This console is where the school is configured and operated:
+              academic structure, people, enrollment and a school-wide
+              overview.
+            </p>
+            <div class="console-year">
               <span class="material-symbols-outlined"
                 ><svg aria-hidden="true">
-                  <use href="#icon-fact_check"></use></svg
+                  <use href="#icon-calendar_today"></use></svg
               ></span>
-              <span data-i18n="admin.subtabs.attendance">Attendance</span>
-            </button>
-            <button class="class-subtab" data-tab="schedule" type="button">
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true">
-                  <use href="#icon-calendar_month"></use></svg
-              ></span>
-              <span data-i18n="admin.subtabs.schedule">Schedule</span>
-            </button>
-          </nav>
-
-          <div id="class-tab-content">
-            <div class="skeleton-block">
-              <span class="skeleton skeleton-line"></span>
-              <span class="skeleton skeleton-line"></span>
-              <span class="skeleton skeleton-line"></span>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── SUBJECTS (global catalog — retained) ─────────── -->
-        <section class="view-section" id="view-subjects">
-          <h1 data-i18n="admin.heading.subjects">Subjects</h1>
-
-          <div class="view-toolbar">
-            <div class="search-bar">
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-search"></use></svg
-              ></span>
-              <input
-                type="search"
-                id="subjects-search"
-                placeholder="Search by name or code..."
-                data-i18n-placeholder="admin.subjects.searchPlaceholder"
-              />
-            </div>
-            <span class="readonly-note">
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
-              ></span>
-              <span data-i18n="admin.subjects.readonly"
-                >Read-only reference</span
+              <span
+                id="overview-year-text"
+                data-i18n="console.overview.loading"
+                >Loading overview…</span
               >
-            </span>
-          </div>
-
-          <div class="recent-activity">
-            <table class="data-table" id="subjects-table">
-              <thead>
-                <tr>
-                  <th data-i18n="admin.subjects.code">Code</th>
-                  <th data-i18n="admin.subjects.name">Name</th>
-                  <th data-i18n="admin.subjects.color">Color</th>
-                  <th data-i18n="admin.subjects.gradeLevels">Grade Levels</th>
-                </tr>
-              </thead>
-              <tbody id="subjects-body">
-                <tr class="skeleton-row">
-                  <td colspan="4">
-                    <span class="skeleton skeleton-text"></span>
-                  </td>
-                </tr>
-                <tr class="skeleton-row">
-                  <td colspan="4">
-                    <span class="skeleton skeleton-text"></span>
-                  </td>
-                </tr>
-                <tr class="skeleton-row">
-                  <td colspan="4">
-                    <span class="skeleton skeleton-text"></span>
-                  </td>
-                </tr>
-                <tr class="skeleton-row">
-                  <td colspan="4">
-                    <span class="skeleton skeleton-text"></span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            </div>
           </div>
         </section>
 
-        <!-- ─── SETTINGS (read-only, demo) ───────────────────── -->
+        <!-- ─── YEAR & PERIODS (placeholder) ─────────────────── -->
+        <section class="view-section" id="view-yearperiods">
+          <h1 data-i18n="console.heading.yearPeriods">
+            School Year &amp; Periods
+          </h1>
+          <div class="console-placeholder">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true">
+                <use href="#icon-calendar_month"></use></svg
+            ></span>
+            <p data-i18n="console.placeholder.yearPeriods">
+              Create the school year and its grading periods — coming in the
+              next update.
+            </p>
+            <span class="badge badge-primary" data-i18n="common.comingSoon"
+              >Coming soon</span
+            >
+          </div>
+        </section>
+
+        <!-- ─── GRADES & SECTIONS (placeholder) ──────────────── -->
+        <section class="view-section" id="view-gradessections">
+          <h1 data-i18n="console.heading.gradesSections">
+            Grade Levels &amp; Sections
+          </h1>
+          <div class="console-placeholder">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-school"></use></svg
+            ></span>
+            <p data-i18n="console.placeholder.gradesSections">
+              Define grade levels and their class sections — coming in the next
+              update.
+            </p>
+            <span class="badge badge-primary" data-i18n="common.comingSoon"
+              >Coming soon</span
+            >
+          </div>
+        </section>
+
+        <!-- ─── SUBJECTS (placeholder) ───────────────────────── -->
+        <section class="view-section" id="view-subjects">
+          <h1 data-i18n="console.heading.subjects">Subjects</h1>
+          <div class="console-placeholder">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-menu_book"></use></svg
+            ></span>
+            <p data-i18n="console.placeholder.subjects">
+              Manage the subject catalog and grade-level mapping — coming in
+              the next update.
+            </p>
+            <span class="badge badge-primary" data-i18n="common.comingSoon"
+              >Coming soon</span
+            >
+          </div>
+        </section>
+
+        <!-- ─── TEACHERS (placeholder) ───────────────────────── -->
+        <section class="view-section" id="view-teachers">
+          <h1 data-i18n="console.heading.teachers">Teachers</h1>
+          <div class="console-placeholder">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+            ></span>
+            <p data-i18n="console.placeholder.teachers">
+              Create teacher accounts and class assignments — coming in the
+              next update.
+            </p>
+            <span class="badge badge-primary" data-i18n="common.comingSoon"
+              >Coming soon</span
+            >
+          </div>
+        </section>
+
+        <!-- ─── STUDENTS & ENROLLMENT (placeholder) ──────────── -->
+        <section class="view-section" id="view-students">
+          <h1 data-i18n="console.heading.students">
+            Students &amp; Enrollment
+          </h1>
+          <div class="console-placeholder">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-groups"></use></svg
+            ></span>
+            <p data-i18n="console.placeholder.students">
+              Enroll students and import rosters from CSV — coming in the next
+              update.
+            </p>
+            <span class="badge badge-primary" data-i18n="common.comingSoon"
+              >Coming soon</span
+            >
+          </div>
+        </section>
+
+        <!-- ─── SETTINGS (read-only) ─────────────────────────── -->
         <section class="view-section" id="view-settings">
-          <h1 data-i18n="admin.heading.settings">Settings</h1>
+          <h1 data-i18n="console.heading.settings">Settings</h1>
           <div id="settings-root"></div>
         </section>
       </main>
@@ -292,7 +286,6 @@
              RIGHT PANEL
         ═══════════════════════════════════════════════════════ -->
       <div class="right">
-        <div class="quickbar" id="quick-stats-list"></div>
         <div class="top">
           <button
             id="menu-btn"
@@ -314,378 +307,20 @@
           <div class="profile">
             <div class="info">
               <p>
-                <span data-i18n="admin.profile.signedInAs">Signed in as</span>
-                <b id="teacher-name">Teacher</b>
+                <span data-i18n="console.profile.signedInAs">Signed in as</span>
+                <b id="admin-name">Admin</b>
               </p>
-              <span
-                class="badge badge-primary"
-                data-i18n="admin.profile.teacher"
-                >Teacher</span
+              <span class="badge badge-primary" data-i18n="console.profile.admin"
+                >Administrator</span
               >
             </div>
             <div class="profile-photo">
               <span class="material-symbols-outlined"
                 ><svg aria-hidden="true">
-                  <use href="#icon-co_present"></use></svg
+                  <use href="#icon-admin_panel_settings"></use></svg
               ></span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         STUDENT DETAIL DRAWER — read-only contact + guardians
-    ═══════════════════════════════════════════════════════════════ -->
-    <div class="drawer-overlay" id="drawer-overlay">
-      <aside
-        class="drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="drawer-title"
-      >
-        <div class="drawer-header">
-          <h2 id="drawer-title" data-i18n="admin.drawer.studentFallback">
-            Student
-          </h2>
-          <div class="drawer-header-actions">
-            <button
-              class="btn-icon"
-              id="drawer-print"
-              title="Print progress report"
-              aria-label="Print progress report"
-              data-i18n-title="admin.drawer.printReport"
-              data-i18n-aria-label="admin.drawer.printReport"
-            >
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-print"></use></svg
-              ></span>
-            </button>
-            <button
-              class="modal-close"
-              id="drawer-close"
-              aria-label="Close"
-              data-i18n-aria-label="common.close"
-            >
-              <span class="material-symbols-outlined"
-                ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-              ></span>
-            </button>
-          </div>
-        </div>
-        <div class="drawer-body" id="drawer-body">
-          <!-- Filled dynamically by admin.js -->
-        </div>
-      </aside>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         SHARED MODAL — repurposed by admin.js for all add/edit forms
-    ═══════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="modal-overlay">
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-      >
-        <div class="modal-header">
-          <h2 id="modal-title">Title</h2>
-          <button
-            class="modal-close"
-            id="modal-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <form id="modal-form" class="modal-body">
-          <!-- Fields injected dynamically by admin.js -->
-        </form>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="modal-cancel"
-            data-i18n="common.cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="modal-form"
-            class="btn btn-primary"
-            id="modal-submit"
-            data-i18n="common.save"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         CONFIRM DELETE MODAL
-    ═══════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="confirm-overlay">
-      <div
-        class="modal modal-sm"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-      >
-        <div class="modal-header">
-          <h2 id="confirm-title" data-i18n="admin.confirm.title">
-            Delete item?
-          </h2>
-        </div>
-        <div class="modal-body">
-          <p id="confirm-message" data-i18n="admin.confirm.message">
-            This action cannot be undone.
-          </p>
-        </div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="confirm-cancel"
-            data-i18n="common.cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="btn btn-danger"
-            id="confirm-delete"
-            data-i18n="common.delete"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         MANAGE ASSIGNMENTS MODAL — gradebook assignment add/edit/delete
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="assignments-overlay">
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manage-title"
-      >
-        <div class="modal-header">
-          <h2 id="manage-title">Assignments</h2>
-          <button
-            class="modal-close"
-            id="manage-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="manage-body"></div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="manage-done"
-            data-i18n="common.done"
-          >
-            Done
-          </button>
-          <button type="button" class="btn btn-primary" id="manage-add">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-add"></use></svg
-            ></span>
-            <span data-i18n="admin.modal.addAssignment">Add Assignment</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         STUDENT GRADES MODAL — per-student detail + grade entry (wide)
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="student-grades-overlay">
-      <div
-        class="modal modal-lg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sg-title"
-      >
-        <div class="modal-header">
-          <h2 id="sg-title">Grades</h2>
-          <button
-            class="modal-close"
-            id="sg-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="sg-body"></div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="sg-cancel"
-            data-i18n="common.cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            id="sg-save"
-            data-i18n="common.save"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         GRADE CATEGORIES MODAL — weighting buckets per class (item 8)
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="categories-overlay">
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="categories-title"
-      >
-        <div class="modal-header">
-          <h2 id="categories-title">Grade categories</h2>
-          <button
-            class="modal-close"
-            id="categories-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="categories-body"></div>
-        <div class="modal-footer">
-          <span class="cat-total" id="categories-total"></span>
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="categories-done"
-            data-i18n="common.done"
-          >
-            Done
-          </button>
-          <button type="button" class="btn btn-primary" id="categories-add">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-add"></use></svg
-            ></span>
-            <span data-i18n="admin.modal.addCategory">Add category</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         POST GRADES MODAL — finalize period averages to the report card (item 1)
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="post-grades-overlay">
-      <div
-        class="modal modal-lg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pg-title"
-      >
-        <div class="modal-header">
-          <h2 id="pg-title">Post grades</h2>
-          <button
-            class="modal-close"
-            id="pg-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="pg-body"></div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="pg-cancel"
-            data-i18n="common.cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            id="pg-save"
-            data-i18n="admin.modal.postGrades"
-          >
-            Post grades
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         COLUMN GRADE ENTRY MODAL — one assignment, every student (item 4)
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="column-grades-overlay">
-      <div
-        class="modal modal-lg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cg-title"
-      >
-        <div class="modal-header">
-          <h2 id="cg-title">Enter scores</h2>
-          <button
-            class="modal-close"
-            id="cg-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="cg-body"></div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="cg-cancel"
-            data-i18n="common.cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            id="cg-save"
-            data-i18n="admin.modal.saveScores"
-          >
-            Save scores
-          </button>
         </div>
       </div>
     </div>

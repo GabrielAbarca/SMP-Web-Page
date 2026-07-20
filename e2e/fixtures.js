@@ -141,9 +141,10 @@ export const studentFix = {
   ],
 };
 
-// Admin-console fixtures (admin.html).
-export const adminFix = {
-  profiles: [{ id: UID, name: "Gabriel", role: "admin" }],
+// Teacher-console fixtures (teacher.html). The profile row carries the
+// teacher role: the console's gate accepts teachers (and admins).
+export const teacherFix = {
+  profiles: [{ id: UID, name: "Sofía Ramírez", role: "teacher" }],
   school_years: [{ id: 1, name: "2025-2026", is_active: true }],
   grading_periods: studentFix.grading_periods,
   teachers: [teacher, { id: 8, first_name: "Marco", last_name: "López" }],
@@ -191,6 +192,13 @@ export const adminFix = {
   discipline_records: [],
   student_grades: [],
   grade_categories: [],
+};
+
+// Admin-console fixtures (admin.html). The shell only reads the signed-in
+// profile and the active school year.
+export const consoleFix = {
+  profiles: [{ id: UID, name: "Gabriel", role: "admin" }],
+  school_years: [{ id: 1, name: "2025-2026", is_active: true }],
 };
 
 function rowMatches(row, params) {

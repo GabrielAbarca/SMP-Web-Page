@@ -6,13 +6,18 @@ Working guide for AI agents (and humans) contributing to **SMP Dashboard**. Read
 
 SMP Dashboard is a school-management web app for Latin American institutions. It is a **vanilla JavaScript (ES modules) multi-page app built with Vite** — there is **no frontend framework** (no React/Vue). Data comes from **Supabase** (Postgres, RLS, Auth, Realtime) and it deploys on **Vercel**.
 
-Three HTML entry points, each with its own controller in `src/js/`:
+Four HTML entry points, each with its own controller in `src/js/`:
 
-| Page          | Purpose                    | Controller       |
-| ------------- | -------------------------- | ---------------- |
-| `login.html`  | Sign-in / sign-up          | `login.js`       |
-| `index.html`  | Student dashboard          | `main.js`        |
-| `admin.html`  | Admin console (CRUD)       | `admin.js`       |
+| Page           | Purpose                              | Controller   |
+| -------------- | ------------------------------------ | ------------ |
+| `login.html`   | Sign-in / sign-up, role routing      | `login.js`   |
+| `index.html`   | Student dashboard                    | `main.js`    |
+| `teacher.html` | Teacher console (classes, gradebook) | `teacher.js` |
+| `admin.html`   | Admin console (school setup & CRUD)  | `admin.js`   |
+
+Roles live in `profiles.role` (`admin` / `teacher` / `student`); `src/js/role.js`
+resolves them and each portal's on-load guard redirects strangers to their own
+portal (admins may also enter the teacher console).
 
 The UI is bilingual (EN/ES) via a lightweight i18n layer.
 
@@ -36,12 +41,13 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
 
 `src/js/` splits into two layers:
 
-- **View controllers** — `admin.js`, `main.js`, `login.js`. DOM glue. These are **excluded from `typecheck`** (see `tsconfig.json`) and typed incrementally; keep them thin and push logic down into the layer below.
+- **View controllers** — `admin.js`, `teacher.js`, `main.js`, `login.js`. DOM glue. These are **excluded from `typecheck`** (see `tsconfig.json`) and typed incrementally; keep them thin and push logic down into the layer below.
 - **Logic layer** (type-checked, prefer JSDoc on new code):
   - `supabaseClient.js` — the Supabase client. **Throws if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing.**
   - `supabaseQueries.js` — all data fetching.
   - `demoMode.js` / `demoDb.js` — demo sandbox (see below).
   - `i18n.js` + `i18n/en.js`, `i18n/es.js` — translations.
+  - `role.js` — `profiles.role` resolution + role→portal routing.
   - `auth.js`, `theme.js`, `ui.js`, `settings.js`, `errorHandler.js`, `speedInsights.js`.
 
 `errorHandler.js` installs a global error banner and **must remain the first import of every page entry point**. Don't reorder it below other imports.

@@ -145,7 +145,9 @@ export default {
     },
     roleStudent: "Estudiante",
     roleTeacher: "Docente",
+    roleAdmin: "Administrador",
     fields: {
+      name: "Nombre",
       firstName: "Nombre",
       lastName: "Apellidos",
       nationalId: "Cédula",
@@ -172,7 +174,7 @@ export default {
       attendance: "Asistencia",
       events: "Eventos",
       settings: "Configuración",
-      adminDashboard: "Panel de administración",
+      teacherConsole: "Consola docente",
       logout: "Cerrar sesión",
     },
     heading: {
@@ -586,6 +588,55 @@ export default {
       pickDate: "Primero elige una fecha.",
       noAttendanceData: "No hay datos de asistencia para guardar.",
       atLeastOne: "Ingresa al menos una nota para publicar.",
+    },
+  },
+
+  console: {
+    nav: {
+      overview: "Resumen",
+      yearPeriods: "Año y períodos",
+      gradesSections: "Grados y secciones",
+      subjects: "Materias",
+      teachers: "Docentes",
+      students: "Estudiantes y matrícula",
+      settings: "Configuración",
+      viewTeacherConsole: "Ver consola docente",
+      logout: "Cerrar sesión",
+    },
+    heading: {
+      overview: "Resumen escolar",
+      yearPeriods: "Año escolar y períodos",
+      gradesSections: "Grados y secciones",
+      subjects: "Materias",
+      teachers: "Docentes",
+      students: "Estudiantes y matrícula",
+      settings: "Configuración",
+    },
+    overview: {
+      subtitle: "Configuración y administración de toda la escuela.",
+      welcome: "Bienvenido, {name}",
+      welcomeFallback: "Bienvenido",
+      intro:
+        "En esta consola se configura y opera la escuela: estructura académica, personas, matrícula y un resumen general.",
+      activeYear: "Año escolar activo",
+      noActiveYear: "Aún no hay un año escolar activo",
+      loading: "Cargando resumen…",
+    },
+    placeholder: {
+      yearPeriods:
+        "Crea el año escolar y sus períodos de evaluación — disponible en la próxima actualización.",
+      gradesSections:
+        "Define los grados y sus secciones — disponible en la próxima actualización.",
+      subjects:
+        "Administra el catálogo de materias y su asignación por grado — disponible en la próxima actualización.",
+      teachers:
+        "Crea cuentas de docentes y asigna clases — disponible en la próxima actualización.",
+      students:
+        "Matricula estudiantes e importa listas desde CSV — disponible en la próxima actualización.",
+    },
+    profile: {
+      signedInAs: "Sesión iniciada como",
+      admin: "Administrador",
     },
   },
 

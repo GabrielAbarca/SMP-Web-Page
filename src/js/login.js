@@ -1,6 +1,7 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
 import { signIn, signUp, getSession } from "./auth.js";
+import { fetchRole, portalPath } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initI18n, applyTranslations, t } from "./i18n.js";
 import { DEMO_MODE, DEMO_CREDENTIALS } from "./demoMode.js";
@@ -10,9 +11,17 @@ import { DEMO_MODE, DEMO_CREDENTIALS } from "./demoMode.js";
 initI18n("login");
 applyTranslations();
 
+// Send a signed-in user to the portal their role resolves to. Demo keeps the
+// pre-role-routing behavior — the shared account tours the app from the
+// student dashboard (the finished admin console flips this landing later).
+async function redirectToPortal() {
+  const target = DEMO_MODE ? "/" : portalPath(await fetchRole());
+  window.location.replace(target);
+}
+
 const currentUser = await getSession();
 if (currentUser) {
-  window.location.replace("/");
+  await redirectToPortal();
 }
 
 let isSignUpMode = false;
@@ -164,10 +173,10 @@ authForm.addEventListener("submit", async (e) => {
       await signUp(name, email, password);
 
       await signIn(email, password);
-      window.location.replace("/");
+      await redirectToPortal();
     } else {
       await signIn(email, password);
-      window.location.replace("/");
+      await redirectToPortal();
     }
   } catch (err) {
     const message =

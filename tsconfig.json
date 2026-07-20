@@ -23,10 +23,11 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/js/**/*.js"],
-  // The three large view-controllers are DOM-glue and typed incrementally in a
+  // The large view-controllers are DOM-glue and typed incrementally in a
   // later pass; the reusable logic layer (queries, demo DB, i18n, …) is checked.
   "exclude": [
     "src/js/admin.js",
+    "src/js/teacher.js",
     "src/js/main.js",
     "src/js/login.js",
     "node_modules",

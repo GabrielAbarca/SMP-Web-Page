@@ -151,7 +151,9 @@ export default {
     },
     roleStudent: "Student",
     roleTeacher: "Teacher",
+    roleAdmin: "Administrator",
     fields: {
+      name: "Name",
       firstName: "First name",
       lastName: "Last name",
       nationalId: "National ID",
@@ -179,7 +181,7 @@ export default {
       attendance: "Attendance",
       events: "Events",
       settings: "Settings",
-      adminDashboard: "Admin Dashboard",
+      teacherConsole: "Teacher Console",
       logout: "Logout",
     },
     heading: {
@@ -592,6 +594,56 @@ export default {
       pickDate: "Pick a date first.",
       noAttendanceData: "No attendance data to save.",
       atLeastOne: "Enter at least one grade to post.",
+    },
+  },
+
+  // ── Admin console (admin.html + admin.js) ───────────────────────
+  console: {
+    nav: {
+      overview: "Overview",
+      yearPeriods: "Year & Periods",
+      gradesSections: "Grades & Sections",
+      subjects: "Subjects",
+      teachers: "Teachers",
+      students: "Students & Enrollment",
+      settings: "Settings",
+      viewTeacherConsole: "View Teacher Console",
+      logout: "Logout",
+    },
+    heading: {
+      overview: "School Overview",
+      yearPeriods: "School Year & Periods",
+      gradesSections: "Grade Levels & Sections",
+      subjects: "Subjects",
+      teachers: "Teachers",
+      students: "Students & Enrollment",
+      settings: "Settings",
+    },
+    overview: {
+      subtitle: "School-wide setup and administration.",
+      welcome: "Welcome, {name}",
+      welcomeFallback: "Welcome",
+      intro:
+        "This console is where the school is configured and operated: academic structure, people, enrollment and a school-wide overview.",
+      activeYear: "Active school year",
+      noActiveYear: "No active school year yet",
+      loading: "Loading overview…",
+    },
+    placeholder: {
+      yearPeriods:
+        "Create the school year and its grading periods — coming in the next update.",
+      gradesSections:
+        "Define grade levels and their class sections — coming in the next update.",
+      subjects:
+        "Manage the subject catalog and grade-level mapping — coming in the next update.",
+      teachers:
+        "Create teacher accounts and class assignments — coming in the next update.",
+      students:
+        "Enroll students and import rosters from CSV — coming in the next update.",
+    },
+    profile: {
+      signedInAs: "Signed in as",
+      admin: "Administrator",
     },
   },
 

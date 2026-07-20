@@ -21,10 +21,13 @@ import es from "./i18n/es.js";
 const DICTS = { en, es };
 
 // Per-view storage keys. login has no settings panel → detection-only,
-// so no key (null): it follows navigator.language each visit.
+// so no key (null): it follows navigator.language each visit. The teacher
+// key predates the admin console and keeps its historical name so stored
+// choices survive the rename.
 const STORAGE_KEYS = {
   student: "smp-lang-student",
   teacher: "smp-lang-admin",
+  admin: "smp-lang-console",
   login: null,
 };
 

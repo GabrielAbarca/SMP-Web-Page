@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import {
   REF,
   studentFix,
-  adminFix,
+  teacherFix,
+  consoleFix,
   routeSupabase,
   sessionSeed,
 } from "./fixtures.js";
@@ -82,19 +83,19 @@ test.describe("student portal", () => {
   });
 });
 
-test.describe("admin console", () => {
+test.describe("teacher console", () => {
   test("loads the teacher workspace in demo mode with zero writes", async ({
     page,
     context,
   }) => {
-    const writes = await routeSupabase(context, adminFix);
+    const writes = await routeSupabase(context, teacherFix);
     await context.addInitScript(
       ([key, value]) => localStorage.setItem(key, value),
       [`sb-${REF}-auth-token`, sessionSeed()],
     );
     const errors = trackErrors(page);
 
-    await page.goto("/admin.html");
+    await page.goto("/teacher.html");
     await page.waitForFunction(
       () =>
         document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
@@ -104,5 +105,59 @@ test.describe("admin console", () => {
 
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
+  });
+});
+
+test.describe("admin console", () => {
+  test("loads the shell for an admin profile with zero writes", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, consoleFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+    await expect(page.locator("#overview-year-text")).toContainText(
+      "2025-2026",
+    );
+    await expect(page.locator(".demo-badge").first()).toBeVisible();
+
+    // Placeholder sections render behind the sidebar navigation.
+    await page.click('.sidebar a[data-page="yearperiods"]');
+    await expect(page.locator("#view-yearperiods")).toHaveClass(/active/);
+    await expect(
+      page.locator("#view-yearperiods .console-placeholder"),
+    ).toBeVisible();
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
+
+  test("bounces a teacher-role profile to the teacher console", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, teacherFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+
+    await page.goto("/admin.html");
+    await page.waitForURL("**/teacher.html", { timeout: 10_000 });
+    await page.waitForFunction(
+      () =>
+        document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
+      { timeout: 10_000 },
+    );
   });
 });
