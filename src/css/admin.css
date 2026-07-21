@@ -352,6 +352,89 @@
     flex: 1 1 120px;
   }
 
+  /* ─── Panel actions (toolbar buttons + filter in a panel head) ──── */
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .panel-actions select {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    background: var(--color-white);
+    color: var(--color-dark);
+    font-size: 0.82rem;
+    outline: none;
+  }
+
+  /* ─── CSV import modal ─────────────────────────────────────────── */
+  .import-help {
+    font-size: 0.82rem;
+    color: var(--color-dark-variant);
+  }
+
+  .map-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .map-row {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .map-label {
+    font-size: 0.85rem;
+    color: var(--color-dark);
+  }
+
+  .map-label .req {
+    color: var(--color-danger);
+  }
+
+  .map-row select {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-size: 0.82rem;
+    outline: none;
+    width: 100%;
+  }
+
+  .import-summary {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+  }
+
+  .import-errors {
+    margin-top: 0.4rem;
+  }
+
+  .import-errors h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .import-errors ul {
+    list-style: disc;
+    padding-left: 1.2rem;
+    font-size: 0.8rem;
+    color: var(--color-dark-variant);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
   /* ─── Toasts ───────────────────────────────────────────────────── */
   .toast-container {
     position: fixed;

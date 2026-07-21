@@ -24,7 +24,8 @@ import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
 import { createDemoGateway } from "./adminDemoDb.js";
-import { initI18n, applyTranslations, t, formatDate } from "./i18n.js";
+import { parseCsv, autoMap } from "./csv.js";
+import { initI18n, applyTranslations, t, tn, formatDate } from "./i18n.js";
 
 // ───────────────────────────────────────────────────────────────
 //  1. AUTH GUARD + ROLE GATE
@@ -67,6 +68,8 @@ const state = {
   /** @type {any[]} */ teachers: [],
   /** @type {any[]} */ subjects: [],
   /** @type {any[]} */ sections: [],
+  /** @type {any[]} */ students: [],
+  /** @type {string} */ studentFilter: "all", // "all" | "unassigned" | section id
 };
 
 // ───────────────────────────────────────────────────────────────
@@ -349,6 +352,7 @@ const LOADERS = {
   gradessections: loadGradesSections,
   subjects: loadSubjects,
   teachers: loadTeachers,
+  students: loadStudents,
   settings: loadSettings,
 };
 
@@ -1630,7 +1634,594 @@ scheduleOverlay.addEventListener("click", (e) => {
 });
 
 // ───────────────────────────────────────────────────────────────
-//  5g. SETTINGS (read-only)
+//  5g. STUDENTS & ENROLLMENT (+ CSV roster import)
+// ───────────────────────────────────────────────────────────────
+const STUDENT_STATUSES = [
+  "active",
+  "inactive",
+  "graduated",
+  "transferred",
+  "withdrawn",
+];
+
+function genderLabel(g) {
+  return g ? t(`enums.gender.${g}`) : "—";
+}
+function coerceGender(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (["m", "male", "masculino", "hombre", "h"].includes(s)) return "M";
+  if (["f", "female", "femenino", "mujer"].includes(s)) return "F";
+  if (s === "o" || s === "other" || s === "otro") return "O";
+  return null;
+}
+/** Normalize a birthdate to ISO yyyy-mm-dd; null if unparseable. */
+function coerceDate(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/); // dd/mm/yyyy
+  if (m) {
+    const [, d, mo, y] = m;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return null;
+}
+
+async function loadStudents() {
+  renderMessageRow("students-body", 7, t("common.loading"));
+  try {
+    if (!state.activeYear) {
+      const years = await data.listSchoolYears();
+      state.activeYear = years.find((y) => y.is_active) ?? null;
+    }
+    const [students, sectionsList] = await Promise.all([
+      data.listStudents(),
+      state.activeYear
+        ? data.listSections(state.activeYear.id)
+        : Promise.resolve([]),
+    ]);
+    state.students = students;
+    state.sections = sectionsList;
+    if (!state.gradeLevels.length)
+      state.gradeLevels = await data.listGradeLevels();
+    renderStudentFilter();
+    renderStudents();
+  } catch (err) {
+    console.error("loadStudents:", err);
+    renderErrorRow("students-body", 7);
+  }
+}
+
+function renderStudentFilter() {
+  const sel = document.getElementById("students-filter");
+  const prev = String(state.studentFilter);
+  sel.innerHTML = "";
+  const opts = [
+    { value: "all", label: t("console.students.allSections") },
+    { value: "unassigned", label: t("console.students.unassigned") },
+    ...state.sections.map((s) => ({
+      value: String(s.id),
+      label: sectionName(s),
+    })),
+  ];
+  opts.forEach((o) => {
+    const el = document.createElement("option");
+    el.value = o.value;
+    el.textContent = o.label;
+    if (o.value === prev) el.selected = true;
+    sel.appendChild(el);
+  });
+}
+
+function filteredStudents() {
+  if (state.studentFilter === "all") return state.students;
+  if (state.studentFilter === "unassigned")
+    return state.students.filter((s) => !s.class_id);
+  return state.students.filter(
+    (s) => String(s.class_id) === String(state.studentFilter),
+  );
+}
+
+function renderStudents() {
+  const list = filteredStudents();
+  const countEl = document.getElementById("students-count");
+  countEl.textContent = tn("console.students.count", list.length, {
+    count: list.length,
+  });
+  const tbody = document.getElementById("students-body");
+  tbody.innerHTML = "";
+  if (!list.length) {
+    renderEmptyRow("students-body", 7, t("console.students.empty"));
+    return;
+  }
+  list.forEach((s) => {
+    const active = s.status === "active";
+    const statusBadge = `<span class="badge ${active ? "badge-success" : "badge-neutral"}">${escapeHtml(t(`enums.studentStatus.${s.status ?? "active"}`))}</span>`;
+    const secName = s.class_id
+      ? (state.sections.find((x) => x.id === s.class_id) &&
+          sectionName(state.sections.find((x) => x.id === s.class_id))) ||
+        "—"
+      : "—";
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(`${s.first_name} ${s.last_name}`),
+          escapeHtml(s.enrollment_number ?? "—"),
+          escapeHtml(s.national_id ?? "—"),
+          escapeHtml(genderLabel(s.gender)),
+          escapeHtml(secName),
+          statusBadge,
+        ],
+        [
+          iconBtn("edit", t("common.edit"), () => openStudentForm(s)),
+          iconBtn(
+            active ? "block" : "check_circle",
+            active
+              ? t("console.students.deactivate")
+              : t("console.students.reactivate"),
+            async () => {
+              await data.updateStudent(s.id, {
+                status: active ? "inactive" : "active",
+              });
+              showToast(t("common.saved"));
+              loadStudents();
+            },
+          ),
+          iconBtn(
+            "delete",
+            t("common.delete"),
+            () =>
+              openConfirm(
+                t("console.students.confirmDelete", {
+                  name: `${s.first_name} ${s.last_name}`,
+                }),
+                async () => {
+                  await data.deleteStudent(s.id);
+                  showToast(t("common.deleted"));
+                  loadStudents();
+                },
+              ),
+            true,
+          ),
+        ],
+      ),
+    );
+  });
+}
+
+function sectionOptions() {
+  return state.sections.map((s) => ({ value: s.id, label: sectionName(s) }));
+}
+
+function openStudentForm(student = null) {
+  openModal({
+    title: student
+      ? t("console.students.editTitle")
+      : t("console.students.addTitle"),
+    fields: [
+      {
+        name: "first_name",
+        label: t("console.students.firstName"),
+        value: student?.first_name,
+        required: true,
+      },
+      {
+        name: "last_name",
+        label: t("console.students.lastName"),
+        value: student?.last_name,
+        required: true,
+      },
+      {
+        name: "enrollment_number",
+        label: t("console.students.enrollmentNumber"),
+        value: student?.enrollment_number,
+        help: t("console.students.enrollmentHelp"),
+      },
+      {
+        name: "national_id",
+        label: t("console.students.nationalId"),
+        value: student?.national_id,
+      },
+      {
+        name: "date_of_birth",
+        label: t("console.students.dateOfBirth"),
+        type: "date",
+        value: student?.date_of_birth,
+      },
+      {
+        name: "gender",
+        label: t("console.students.gender"),
+        type: "select",
+        value: student?.gender,
+        options: ["M", "F", "O"].map((v) => ({
+          value: v,
+          label: t(`enums.gender.${v}`),
+        })),
+      },
+      {
+        name: "email",
+        label: t("console.students.email"),
+        type: "email",
+        value: student?.email,
+      },
+      {
+        name: "phone",
+        label: t("console.students.phone"),
+        value: student?.phone,
+      },
+      {
+        name: "class_id",
+        label: t("console.students.section"),
+        type: "select",
+        value: student?.class_id,
+        options: sectionOptions(),
+      },
+      {
+        name: "status",
+        label: t("console.students.status"),
+        type: "select",
+        value: student?.status ?? "active",
+        required: true,
+        options: STUDENT_STATUSES.map((v) => ({
+          value: v,
+          label: t(`enums.studentStatus.${v}`),
+        })),
+      },
+    ],
+    onSubmit: async (v) => {
+      const enrollment =
+        nullable(v.enrollment_number) ?? generateEnrollment(student);
+      const payload = {
+        first_name: v.first_name.trim(),
+        last_name: v.last_name.trim(),
+        enrollment_number: enrollment,
+        national_id: nullable(v.national_id),
+        date_of_birth: nullable(v.date_of_birth),
+        gender: nullable(v.gender),
+        email: nullable(v.email),
+        phone: nullable(v.phone),
+        class_id: num(v.class_id),
+        status: v.status,
+      };
+      if (student) await data.updateStudent(student.id, payload);
+      else await data.createStudent(payload);
+      showToast(t("common.saved"));
+      loadStudents();
+    },
+  });
+}
+
+// Unique-enough enrollment number when the admin leaves it blank. Existing
+// students keep theirs (edit passes the current value through).
+function generateEnrollment(student) {
+  if (student?.enrollment_number) return student.enrollment_number;
+  const existing = new Set(
+    state.students.map((s) => s.enrollment_number).filter(Boolean),
+  );
+  let candidate;
+  do {
+    candidate = `S-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
+  } while (existing.has(candidate));
+  return candidate;
+}
+
+document
+  .getElementById("btn-add-student")
+  .addEventListener("click", () => openStudentForm());
+document.getElementById("students-filter").addEventListener("change", (e) => {
+  state.studentFilter = e.target.value;
+  renderStudents();
+});
+
+// ── CSV roster import ──────────────────────────────────────────
+const importOverlay = document.getElementById("import-overlay");
+const importBody = document.getElementById("import-body");
+const importFooter = document.getElementById("import-footer");
+
+// Target fields for the roster + their auto-map aliases. Order matters:
+// "id" resolves to enrollment_number, not national_id.
+const IMPORT_FIELDS = [
+  { key: "first_name", required: true },
+  { key: "last_name", required: true },
+  { key: "enrollment_number", required: false },
+  { key: "national_id", required: false },
+  { key: "gender", required: false },
+  { key: "date_of_birth", required: false },
+  { key: "email", required: false },
+  { key: "phone", required: false },
+];
+const IMPORT_ALIASES = {
+  first_name: ["first name", "firstname", "nombre", "nombres", "given name"],
+  last_name: ["last name", "lastname", "apellido", "apellidos", "surname"],
+  enrollment_number: [
+    "enrollment number",
+    "enrollment",
+    "matricula",
+    "matrícula",
+    "student id",
+    "studentid",
+    "codigo",
+    "código",
+    "carnet",
+    "id",
+  ],
+  national_id: [
+    "national id",
+    "nationalid",
+    "cedula",
+    "cédula",
+    "dni",
+    "identificacion",
+    "identificación",
+  ],
+  gender: ["gender", "sex", "genero", "género", "sexo"],
+  date_of_birth: [
+    "date of birth",
+    "dob",
+    "birthdate",
+    "birth date",
+    "fecha de nacimiento",
+    "nacimiento",
+  ],
+  email: ["email", "correo", "e-mail", "mail"],
+  phone: ["phone", "telefono", "teléfono", "celular", "mobile", "tel"],
+};
+
+let importCtx = null;
+
+function openImportModal() {
+  importCtx = { text: "", targetSection: "", parsed: null, mapping: null };
+  importOverlay.classList.add("active");
+  renderImportSource();
+}
+function closeImportModal() {
+  importOverlay.classList.remove("active");
+  importBody.innerHTML = "";
+  importFooter.innerHTML = "";
+  importCtx = null;
+}
+
+function importFooterButtons(buttons) {
+  importFooter.innerHTML = "";
+  buttons.forEach(({ label, kind, onClick, disabled }) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `btn ${kind}`;
+    b.textContent = label;
+    if (disabled) b.disabled = true;
+    else b.addEventListener("click", onClick);
+    importFooter.appendChild(b);
+  });
+}
+
+// Step 1 — paste or upload + choose an optional target section.
+function renderImportSource() {
+  importBody.innerHTML = `
+    <p class="import-help">${escapeHtml(t("console.import.sourceHelp"))}</p>
+    <div class="field-group">
+      <label for="import-file">${escapeHtml(t("console.import.chooseFile"))}</label>
+      <input type="file" id="import-file" accept=".csv,.tsv,.txt,text/csv" />
+    </div>
+    <div class="field-group">
+      <label for="import-text">${escapeHtml(t("console.import.orPaste"))}</label>
+      <textarea id="import-text" rows="6" placeholder="first_name,last_name,enrollment_number&#10;Ana,García,S-101">${escapeHtml(importCtx.text)}</textarea>
+    </div>
+    <div class="field-group">
+      <label for="import-section">${escapeHtml(t("console.import.targetSection"))}</label>
+      <select id="import-section">
+        <option value="">${escapeHtml(t("console.import.noSection"))}</option>
+        ${state.sections.map((s) => `<option value="${s.id}"${String(s.id) === String(importCtx.targetSection) ? " selected" : ""}>${escapeHtml(sectionName(s))}</option>`).join("")}
+      </select>
+    </div>`;
+
+  const fileInput = /** @type {HTMLInputElement} */ (
+    document.getElementById("import-file")
+  );
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    /** @type {HTMLTextAreaElement} */ (
+      document.getElementById("import-text")
+    ).value = text;
+  });
+
+  importFooterButtons([
+    { label: t("common.cancel"), kind: "btn-ghost", onClick: closeImportModal },
+    {
+      label: t("console.import.next"),
+      kind: "btn-primary",
+      onClick: () => {
+        importCtx.text = /** @type {HTMLTextAreaElement} */ (
+          document.getElementById("import-text")
+        ).value;
+        importCtx.targetSection = /** @type {HTMLSelectElement} */ (
+          document.getElementById("import-section")
+        ).value;
+        const parsed = parseCsv(importCtx.text);
+        if (!parsed.headers.length || !parsed.rows.length) {
+          showToast(t("console.import.noData"), "error");
+          return;
+        }
+        importCtx.parsed = parsed;
+        importCtx.mapping = autoMap(parsed.headers, IMPORT_ALIASES);
+        renderImportMapping();
+      },
+    },
+  ]);
+}
+
+// Step 2 — map each target field to a source column.
+function renderImportMapping() {
+  const { headers, rows } = importCtx.parsed;
+  const rowsHtml = IMPORT_FIELDS.map((f) => {
+    const opts = [
+      `<option value="">${escapeHtml(t("common.none"))}</option>`,
+      ...headers.map(
+        (h) =>
+          `<option value="${escapeHtml(h)}"${importCtx.mapping[f.key] === h ? " selected" : ""}>${escapeHtml(h)}</option>`,
+      ),
+    ].join("");
+    return `<div class="map-row">
+        <span class="map-label">${escapeHtml(t(`console.import.fields.${f.key}`))}${f.required ? ' <b class="req">*</b>' : ""}</span>
+        <select data-field="${f.key}">${opts}</select>
+      </div>`;
+  }).join("");
+
+  importBody.innerHTML = `
+    <p class="import-help">${escapeHtml(t("console.import.mapHelp", { count: rows.length }))}</p>
+    <div class="map-grid">${rowsHtml}</div>`;
+
+  importBody.querySelectorAll("select[data-field]").forEach((sel) => {
+    sel.addEventListener("change", (e) => {
+      const el = /** @type {HTMLSelectElement} */ (e.target);
+      importCtx.mapping[el.dataset.field] = el.value;
+    });
+  });
+
+  importFooterButtons([
+    {
+      label: t("console.import.back"),
+      kind: "btn-ghost",
+      onClick: renderImportSource,
+    },
+    {
+      label: t("console.import.preview"),
+      kind: "btn-primary",
+      onClick: renderImportPreview,
+    },
+  ]);
+}
+
+// Build normalized payloads + validation report from the current mapping.
+function buildImportRows() {
+  const { rows } = importCtx.parsed;
+  const map = importCtx.mapping;
+  const get = (row, key) => (map[key] ? (row[map[key]] ?? "").trim() : "");
+  const classId = importCtx.targetSection
+    ? Number(importCtx.targetSection)
+    : null;
+
+  const existing = new Set(
+    state.students.map((s) => s.enrollment_number).filter(Boolean),
+  );
+  const seen = new Set();
+  const valid = [];
+  const errors = [];
+
+  rows.forEach((row, i) => {
+    const first = get(row, "first_name");
+    const last = get(row, "last_name");
+    if (!first || !last) {
+      errors.push({ line: i + 2, reason: t("console.import.errMissingName") });
+      return;
+    }
+    let enrollment = get(row, "enrollment_number");
+    if (enrollment) {
+      if (existing.has(enrollment) || seen.has(enrollment)) {
+        errors.push({
+          line: i + 2,
+          reason: t("console.import.errDupEnrollment", { value: enrollment }),
+        });
+        return;
+      }
+    } else {
+      do {
+        enrollment = `S-${Date.now().toString(36)}-${valid.length}-${Math.floor(Math.random() * 1e4)}`;
+      } while (existing.has(enrollment) || seen.has(enrollment));
+    }
+    seen.add(enrollment);
+    valid.push({
+      first_name: first,
+      last_name: last,
+      enrollment_number: enrollment,
+      national_id: get(row, "national_id") || null,
+      gender: coerceGender(get(row, "gender")),
+      date_of_birth: coerceDate(get(row, "date_of_birth")),
+      email: get(row, "email") || null,
+      phone: get(row, "phone") || null,
+      class_id: classId,
+      status: "active",
+    });
+  });
+  return { valid, errors };
+}
+
+// Step 3 — preview valid rows + validation summary, then import.
+function renderImportPreview() {
+  const { valid, errors } = buildImportRows();
+  const preview = valid.slice(0, 8);
+  const previewRows = preview
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(`${r.first_name} ${r.last_name}`)}</td><td>${escapeHtml(r.enrollment_number)}</td><td>${escapeHtml(r.national_id ?? "—")}</td><td>${escapeHtml(genderLabel(r.gender))}</td></tr>`,
+    )
+    .join("");
+  const errorList = errors
+    .slice(0, 8)
+    .map(
+      (e) =>
+        `<li>${escapeHtml(t("console.import.lineLabel", { line: e.line }))}: ${escapeHtml(e.reason)}</li>`,
+    )
+    .join("");
+
+  importBody.innerHTML = `
+    <div class="import-summary">
+      <span class="badge badge-success">${escapeHtml(t("console.import.willImport", { count: valid.length }))}</span>
+      ${errors.length ? `<span class="badge badge-warning">${escapeHtml(t("console.import.willSkip", { count: errors.length }))}</span>` : ""}
+    </div>
+    ${
+      valid.length
+        ? `<div class="table-scroll"><table class="data-table">
+            <thead><tr>
+              <th>${escapeHtml(t("console.students.name"))}</th>
+              <th>${escapeHtml(t("console.students.enrollmentNumber"))}</th>
+              <th>${escapeHtml(t("console.students.nationalId"))}</th>
+              <th>${escapeHtml(t("console.students.gender"))}</th>
+            </tr></thead><tbody>${previewRows}</tbody></table></div>
+           ${valid.length > preview.length ? `<p class="import-help">${escapeHtml(t("console.import.andMore", { count: valid.length - preview.length }))}</p>` : ""}`
+        : `<p class="import-help">${escapeHtml(t("console.import.nothingValid"))}</p>`
+    }
+    ${errors.length ? `<div class="import-errors"><h3>${escapeHtml(t("console.import.skippedRows"))}</h3><ul>${errorList}</ul>${errors.length > 8 ? `<p class="import-help">${escapeHtml(t("console.import.andMore", { count: errors.length - 8 }))}</p>` : ""}</div>` : ""}`;
+
+  importFooterButtons([
+    {
+      label: t("console.import.back"),
+      kind: "btn-ghost",
+      onClick: renderImportMapping,
+    },
+    {
+      label: t("console.import.doImport", { count: valid.length }),
+      kind: "btn-primary",
+      disabled: valid.length === 0,
+      onClick: async () => {
+        try {
+          await data.bulkCreateStudents(valid);
+          showToast(t("console.import.done", { count: valid.length }));
+          closeImportModal();
+          loadStudents();
+        } catch (err) {
+          showToast(err.message ?? String(err), "error");
+        }
+      },
+    },
+  ]);
+}
+
+document
+  .getElementById("btn-import-csv")
+  .addEventListener("click", openImportModal);
+document
+  .getElementById("import-close")
+  .addEventListener("click", closeImportModal);
+importOverlay.addEventListener("click", (e) => {
+  if (e.target === importOverlay) closeImportModal();
+});
+
+// ───────────────────────────────────────────────────────────────
+//  5h. SETTINGS (read-only)
 // ───────────────────────────────────────────────────────────────
 async function loadSettings() {
   const root = document.getElementById("settings-root");

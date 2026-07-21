@@ -107,6 +107,14 @@ export function createDemoGateway(realGateway, { onWrite = () => {} } = {}) {
       return { ...created };
     },
 
+    async insertMany(table, rows) {
+      const delta = deltaFor(table);
+      const created = rows.map((row) => ({ ...row, id: newId() }));
+      delta.inserts.push(...created);
+      if (created.length) onWrite();
+      return created.map((r) => ({ ...r }));
+    },
+
     async update(table, id, patch) {
       const delta = deltaFor(table);
       const local = delta.inserts.find((r) => r.id === id);

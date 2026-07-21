@@ -426,22 +426,56 @@
           </div>
         </section>
 
-        <!-- ─── STUDENTS & ENROLLMENT (Phase 3 placeholder) ──── -->
+        <!-- ─── STUDENTS & ENROLLMENT ────────────────────────── -->
         <section class="view-section" id="view-students">
           <h1 data-i18n="console.heading.students">
             Students &amp; Enrollment
           </h1>
-          <div class="console-placeholder">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-groups"></use></svg
-            ></span>
-            <p data-i18n="console.placeholder.students">
-              Enroll students and import rosters from CSV — coming in the next
-              update.
-            </p>
-            <span class="badge badge-primary" data-i18n="common.comingSoon"
-              >Coming soon</span
-            >
+          <div class="console-panel">
+            <div class="panel-head">
+              <div>
+                <h2 data-i18n="console.students.title">Students</h2>
+                <p class="panel-sub" id="students-count">—</p>
+              </div>
+              <div class="panel-actions">
+                <select
+                  id="students-filter"
+                  aria-label="Filter by section"
+                  data-i18n-aria-label="console.students.filterBySection"
+                ></select>
+                <button class="btn btn-ghost btn-sm" id="btn-import-csv">
+                  <span class="material-symbols-outlined"
+                    ><svg aria-hidden="true">
+                      <use href="#icon-description"></use></svg
+                  ></span>
+                  <span data-i18n="console.students.import">Import CSV</span>
+                </button>
+                <button class="btn btn-primary btn-sm" id="btn-add-student">
+                  <span class="material-symbols-outlined"
+                    ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                  ></span>
+                  <span data-i18n="console.students.add">Add student</span>
+                </button>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.students.name">Name</th>
+                    <th data-i18n="console.students.enrollmentNumber">
+                      Enrollment #
+                    </th>
+                    <th data-i18n="console.students.nationalId">ID</th>
+                    <th data-i18n="console.students.gender">Gender</th>
+                    <th data-i18n="console.students.section">Section</th>
+                    <th data-i18n="console.students.status">Status</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="students-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -620,6 +654,36 @@
             Done
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CSV IMPORT MODAL — roster bulk import (multi-step, JS-driven)
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="import-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-title"
+      >
+        <div class="modal-header">
+          <h2 id="import-title" data-i18n="console.import.title">
+            Import roster (CSV)
+          </h2>
+          <button
+            class="modal-close"
+            id="import-close"
+            aria-label="Close"
+            data-i18n-aria-label="common.close"
+          >
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
+            ></span>
+          </button>
+        </div>
+        <div class="modal-body" id="import-body"></div>
+        <div class="modal-footer" id="import-footer"></div>
       </div>
     </div>
 
