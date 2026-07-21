@@ -65,6 +65,59 @@
     display: inline-flex;
   }
 
+  /* ─── Overview stat cards ──────────────────────────────────────── */
+  .overview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-4) 0;
+  }
+
+  .stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    padding: 1.2rem 1.4rem;
+    box-shadow: var(--box-shadow);
+  }
+
+  .stat-card .stat-icon {
+    display: inline-flex;
+    padding: 0.6rem;
+    border-radius: 50%;
+  }
+
+  .stat-card .stat-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .stat-icon-primary {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  }
+  .stat-icon-success {
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  }
+  .stat-icon-warning {
+    color: var(--color-warning-strong, var(--color-warning));
+    background: color-mix(in srgb, var(--color-warning) 20%, transparent);
+  }
+
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--color-dark-variant);
+    margin-bottom: 0.15rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    line-height: 1.1;
+  }
+
   /* ─── "Coming soon" placeholder panels ─────────────────────────── */
   .console-placeholder {
     background: var(--color-white);

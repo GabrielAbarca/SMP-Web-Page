@@ -624,6 +624,16 @@ export default {
       activeYear: "Año escolar activo",
       noActiveYear: "Aún no hay un año escolar activo",
       loading: "Cargando resumen…",
+      enrollment: "Matrícula total",
+      attendanceToday: "Asistencia de hoy",
+      atRisk: "Estudiantes en riesgo",
+      atRiskTitle: "Ausencias en riesgo",
+      atRiskSub: "Estudiantes con 3 o más ausencias registradas.",
+      atRiskEmpty: "No hay estudiantes en riesgo.",
+      student: "Estudiante",
+      section: "Sección",
+      absences: "Ausencias",
+      noData: "Sin datos",
     },
     placeholder: {
       yearPeriods:

@@ -631,6 +631,16 @@ export default {
       activeYear: "Active school year",
       noActiveYear: "No active school year yet",
       loading: "Loading overview…",
+      enrollment: "Total enrollment",
+      attendanceToday: "Attendance today",
+      atRisk: "At-risk students",
+      atRiskTitle: "At-risk absences",
+      atRiskSub: "Students with 3 or more recorded absences.",
+      atRiskEmpty: "No at-risk students.",
+      student: "Student",
+      section: "Section",
+      absences: "Absences",
+      noData: "No data",
     },
     placeholder: {
       yearPeriods:

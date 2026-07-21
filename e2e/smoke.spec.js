@@ -228,4 +228,93 @@ test.describe("admin console", () => {
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
   });
+
+  test("overview shows enrollment, attendance rate and at-risk absences", async ({
+    page,
+    context,
+  }) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const seeded = {
+      ...consoleFix,
+      grade_levels: [{ id: 1, name: "7th Grade", numeric_level: 7 }],
+      classes: [
+        {
+          id: 21,
+          school_year_id: 1,
+          grade_level_id: 1,
+          section: "A",
+          display_name: "7A",
+        },
+      ],
+      students: [
+        {
+          id: 101,
+          first_name: "Ana",
+          last_name: "García",
+          status: "active",
+          class_id: 21,
+        },
+        {
+          id: 102,
+          first_name: "Luis",
+          last_name: "Martínez",
+          status: "active",
+          class_id: 21,
+        },
+        {
+          id: 103,
+          first_name: "María",
+          last_name: "Rojas",
+          status: "inactive",
+          class_id: 21,
+        },
+      ],
+      attendance: [
+        {
+          id: 1,
+          student_id: 101,
+          class_id: 21,
+          date: today,
+          status: "present",
+        },
+        { id: 2, student_id: 102, class_id: 21, date: today, status: "absent" },
+        {
+          id: 3,
+          student_id: 101,
+          class_id: 21,
+          date: "2026-01-01",
+          status: "absent",
+        },
+        {
+          id: 4,
+          student_id: 101,
+          class_id: 21,
+          date: "2026-01-02",
+          status: "absent",
+        },
+        {
+          id: 5,
+          student_id: 101,
+          class_id: 21,
+          date: "2026-01-03",
+          status: "absent",
+        },
+      ],
+    };
+    const writes = await routeSupabase(context, seeded);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await expect(page.locator("#stat-enrollment")).toHaveText("2");
+    await expect(page.locator("#stat-attendance")).toHaveText("50%");
+    await expect(page.locator("#stat-atrisk")).toHaveText("1");
+    await expect(page.locator("#atrisk-body")).toContainText("Ana García");
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
 });

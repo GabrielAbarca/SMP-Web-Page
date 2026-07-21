@@ -208,5 +208,12 @@ export function createAdminData(gateway) {
     deleteStudent: (/** @type {number} */ id) => gateway.remove("students", id),
     /** Bulk-create students (CSV roster import). @param {object[]} rows */
     bulkCreateStudents: (rows) => gateway.insertMany("students", rows),
+
+    // ── Overview (school-wide reads) ──────────────────────────
+    /** Attendance rows for a single date (today's attendance rate). */
+    listAttendanceOn: (/** @type {string} */ date) =>
+      gateway.select("attendance", { match: { date } }),
+    /** All attendance rows (aggregated client-side for the at-risk list). */
+    listAllAttendance: () => gateway.select("attendance"),
   };
 }
