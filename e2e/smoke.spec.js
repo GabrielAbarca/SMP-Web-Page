@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import {
   REF,
   studentFix,
-  adminFix,
+  teacherFix,
+  consoleFix,
   routeSupabase,
   sessionSeed,
 } from "./fixtures.js";
@@ -82,19 +83,19 @@ test.describe("student portal", () => {
   });
 });
 
-test.describe("admin console", () => {
+test.describe("teacher console", () => {
   test("loads the teacher workspace in demo mode with zero writes", async ({
     page,
     context,
   }) => {
-    const writes = await routeSupabase(context, adminFix);
+    const writes = await routeSupabase(context, teacherFix);
     await context.addInitScript(
       ([key, value]) => localStorage.setItem(key, value),
       [`sb-${REF}-auth-token`, sessionSeed()],
     );
     const errors = trackErrors(page);
 
-    await page.goto("/admin.html");
+    await page.goto("/teacher.html");
     await page.waitForFunction(
       () =>
         document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
@@ -104,5 +105,69 @@ test.describe("admin console", () => {
 
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
+  });
+});
+
+test.describe("admin console", () => {
+  test("loads the shell, does academic-structure CRUD, and never writes", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, consoleFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+    await expect(page.locator("#overview-year-text")).toContainText(
+      "2025-2026",
+    );
+    await expect(page.locator(".demo-badge").first()).toBeVisible();
+
+    // Year & Periods: the seeded year renders; adding one shows optimistically.
+    await page.click('.sidebar a[data-page="yearperiods"]');
+    await expect(page.locator("#years-body")).toContainText("2025-2026");
+    await page.click("#btn-add-year");
+    await page.fill("#modal-field-name", "2026-2027");
+    await page.fill("#modal-field-start_date", "2026-09-01");
+    await page.fill("#modal-field-end_date", "2027-06-30");
+    await page.click("#modal-submit");
+    await expect(page.locator("#years-body")).toContainText("2026-2027");
+
+    // Students & Enrollment stays a Phase 3 placeholder.
+    await page.click('.sidebar a[data-page="students"]');
+    await expect(
+      page.locator("#view-students .console-placeholder"),
+    ).toBeVisible();
+
+    expect(errors).toEqual([]);
+    // Demo mode: the write landed in the in-browser overlay, not Supabase.
+    expect(writes).toEqual([]);
+  });
+
+  test("bounces a teacher-role profile to the teacher console", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, teacherFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+
+    await page.goto("/admin.html");
+    await page.waitForURL("**/teacher.html", { timeout: 10_000 });
+    await page.waitForFunction(
+      () =>
+        document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
+      { timeout: 10_000 },
+    );
   });
 });

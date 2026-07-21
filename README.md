@@ -148,7 +148,7 @@ Quality gates run automatically in **CI** (GitHub Actions) on every push and pul
 | **Linting**     | ESLint (flat config)                                              |
 | **Type safety** | JSDoc + TypeScript `checkJs` — no compile step                    |
 | **Unit tests**  | Vitest — query/aggregation, i18n and demo-sandbox logic (`test/`) |
-| **End-to-end**  | Playwright — login, student portal and admin console (`e2e/`)     |
+| **End-to-end**  | Playwright — login, student, teacher and admin portals (`e2e/`)   |
 
 The end-to-end suite is fully self-contained: it boots the app with placeholder environment variables and mocks Supabase at the network layer, so it needs no real backend or credentials — and it verifies the demo sandbox's **zero-write** guarantee.
 
@@ -164,7 +164,10 @@ The end-to-end suite is fully self-contained: it boots the app with placeholder 
 
 ## 🗺️ Roadmap
 
-- [ ] Role-based login (admin · teacher · student views)
+- [x] Role-based login (admin · teacher · student views)
+- [x] Admin console — academic structure CRUD (years, periods, grade levels,
+      sections, subjects, teacher assignments, schedules)
+- [ ] Admin console — accounts, enrollment & CSV roster import
 - [ ] PDF report export
 - [ ] Mobile-responsive layout
 - [ ] Notification system for events and grade updates

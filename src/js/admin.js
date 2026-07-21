@@ -1,49 +1,33 @@
 // ═══════════════════════════════════════════════════════════════
-//  admin.js — Simple Manage Pro | Teacher Console
+//  admin.js — Simple Manage Pro | Admin Console
 //
-//  A single authenticated teacher's workspace. Everything scopes to
-//  the teacher resolved from app_config via demo_teacher_id() (demo:
-//  no per-teacher auth). Modeled on PowerSchool's PowerTeacher Pro.
+//  The school director/coordinator portal: where a school gets
+//  configured and operated. Role-gated, bilingual, demo-overlay safe.
 //
 //  Architecture:
-//  1. Auth guard + teacher identity
-//  2. Data layer  (db object — all Supabase queries)
-//  3. UI helpers  (toast, modal, confirm, drawer, table helpers)
-//  4. Navigation  (class-first: My Classes → class workspace)
-//  5. My Classes landing
-//  6. Class workspace shell + sub-tabs
-//  7. Roster      (+ student detail drawer)
-//  8. Gradebook   (assignments + per-student scores — the core)
-//  9. Attendance
-// 10. Schedule
-// 11. Subjects    (global catalog — retained)
+//  1. Auth guard + role gate (admin only)
+//  2. Data layer  (gateway → real Supabase or demo overlay)
+//  3. UI helpers  (toast, modal form, confirm, tables)
+//  4. Navigation  (sidebar → view sections)
+//  5. Sections    (overview, year & periods, grades & sections,
+//                  subjects, teachers & assignments, schedules, settings)
 // ═══════════════════════════════════════════════════════════════
 
 import "./errorHandler.js";
 import "./speedInsights.js";
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
+import { fetchRole, portalPath } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
-import {
-  skeletonRows,
-  skeletonBlock,
-  skeletonCards,
-  skeletonCardItems,
-  initSidebarToggle,
-} from "./ui.js";
+import { initSidebarToggle } from "./ui.js";
 import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
-import { wrapDbForDemo } from "./demoDb.js";
-import {
-  initI18n,
-  applyTranslations,
-  t,
-  tn,
-  formatDate as i18nFormatDate,
-} from "./i18n.js";
+import { supabaseGateway, createAdminData } from "./adminData.js";
+import { createDemoGateway } from "./adminDemoDb.js";
+import { initI18n, applyTranslations, t, formatDate } from "./i18n.js";
 
 // ───────────────────────────────────────────────────────────────
-//  1. AUTH GUARD + TEACHER IDENTITY
+//  1. AUTH GUARD + ROLE GATE
 // ───────────────────────────────────────────────────────────────
 const session = await getSession();
 if (!session) {
@@ -51,581 +35,86 @@ if (!session) {
   throw new Error("Unauthenticated");
 }
 
-const { data: adminProfile, error: profileError } = await supabase
-  .from("profiles")
-  .select("name, role")
-  .eq("id", session.user.id)
-  .single();
-
-if (profileError || adminProfile?.role !== "admin") {
-  window.location.replace("/");
+const role = await fetchRole();
+if (role !== "admin") {
+  window.location.replace(portalPath(role));
   throw new Error("Unauthorized");
-}
-
-// Resolve the current teacher (demo: fixed via app_config → demo_teacher_id()).
-// Every teacher-scoped query below filters to TEACHER_ID in ACTIVE_YEAR.
-let TEACHER_ID = null;
-let ACTIVE_YEAR = null;
-let PERIODS = [];
-
-// ── Role gating (visual/demo only) ──────────────────────────────
-// There is no per-user auth yet — this console always runs as the demo teacher.
-// IS_ADMIN is the SINGLE flag every admin-restricted control routes through, and
-// the only line a future real auth check would replace. Do not hardcode the
-// disabled state into individual buttons; gate them through this flag instead.
-const IS_ADMIN = false;
-
-// Core, reusable treatment for any admin-restricted control. When IS_ADMIN is
-// false, render the element enabled-but-inert: dimmed, not-allowed, aria-disabled,
-// a hover tooltip, and a no-op click so the underlying action never runs. NOTE:
-// the native `disabled` attribute is intentionally avoided — it suppresses mouse
-// events, which would kill the hover tooltip.
-function applyAdminLock(el) {
-  el.classList.add("admin-only");
-  el.setAttribute("aria-disabled", "true");
-  el.title = t("common.adminOnly");
-  el.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
-}
-
-// Wire a click action behind the flag in one call. Admin: run the real handler.
-// Non-admin: lock the control (inert) and never attach the real handler.
-function bindAdminAction(el, handler) {
-  if (IS_ADMIN) el.addEventListener("click", handler);
-  else applyAdminLock(el);
-  return el;
 }
 
 // ───────────────────────────────────────────────────────────────
 //  2. DATA LAYER
 // ───────────────────────────────────────────────────────────────
-const realDb = {
-  // ── Identity / context ──────────────────────────────────────
-  async getTeacherId() {
-    const { data, error } = await supabase.rpc("demo_teacher_id");
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchActiveYear() {
-    const { data, error } = await supabase
-      .from("school_years")
-      .select("id, name, is_active")
-      .eq("is_active", true)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchTeacher(id) {
-    const { data, error } = await supabase
-      .from("teachers")
-      .select("id, first_name, last_name, specialization")
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  // Full teacher record for the read-only Settings view (display only).
-  async fetchTeacherFull(id) {
-    const { data, error } = await supabase
-      .from("teachers")
-      .select(
-        "id, first_name, last_name, national_id, email, phone, address, " +
-          "hire_date, specialization, status",
-      )
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchGradingPeriods(yearId) {
-    let q = supabase
-      .from("grading_periods")
-      .select("id, name, period_order, start_date, end_date")
-      .order("period_order");
-    if (yearId) q = q.eq("school_year_id", yearId);
-    const { data, error } = await q;
-    if (error) throw error;
-    return data;
-  },
-
-  // ── My Classes ──────────────────────────────────────────────
-  async fetchMyClasses(teacherId, yearId) {
-    const { data, error } = await supabase
-      .from("class_subject_teachers")
-      .select(
-        `
-        id, class_id, subject_id,
-        classes!class_id(id, display_name, section, grade_levels!grade_level_id(name)),
-        subjects!subject_id(id, name, color)
-      `,
-      )
-      .eq("teacher_id", teacherId)
-      .eq("school_year_id", yearId)
-      .order("class_id");
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchActiveCountByClass() {
-    const { data, error } = await supabase
-      .from("students")
-      .select("class_id")
-      .eq("status", "active");
-    if (error) throw error;
-    return (data ?? []).reduce((acc, s) => {
-      if (s.class_id) acc[s.class_id] = (acc[s.class_id] || 0) + 1;
-      return acc;
-    }, {});
-  },
-
-  // ── Roster / students ───────────────────────────────────────
-  async fetchRoster(classId) {
-    const { data, error } = await supabase
-      .from("students")
-      .select(
-        "id, first_name, last_name, email, phone, status, enrollment_number, " +
-          "national_id, date_of_birth, gender, address, photo_url, enrollment_date",
-      )
-      .eq("class_id", classId)
-      .order("last_name");
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchStudentContacts(studentId) {
-    const { data, error } = await supabase
-      .from("student_guardians")
-      .select(
-        `
-        is_primary,
-        guardians!guardian_id(first_name, last_name, relationship, phone, alt_phone, email)
-      `,
-      )
-      .eq("student_id", studentId);
-    if (error) throw error;
-    return data;
-  },
-
-  async insertStudent(payload) {
-    const { error } = await supabase.from("students").insert(payload);
-    if (error) throw error;
-  },
-
-  async updateStudent(id, payload) {
-    const { error } = await supabase
-      .from("students")
-      .update(payload)
-      .eq("id", id);
-    if (error) throw error;
-  },
-
-  async deleteStudent(id) {
-    const { error } = await supabase.from("students").delete().eq("id", id);
-    if (error) throw error;
-  },
-
-  // ── Assignments (gradebook) ─────────────────────────────────
-  async fetchAssignments(cstId, periodId) {
-    const { data, error } = await supabase
-      .from("assignments")
-      .select("id, name, due_date, max_score, note, created_at, category_id")
-      .eq("class_subject_teacher_id", cstId)
-      .eq("grading_period_id", periodId)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return data;
-  },
-
-  async insertAssignment(payload) {
-    const { error } = await supabase.from("assignments").insert(payload);
-    if (error) throw error;
-  },
-
-  async updateAssignment(id, payload) {
-    const { error } = await supabase
-      .from("assignments")
-      .update({ ...payload, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw error;
-  },
-
-  async deleteAssignment(id) {
-    // assignment_grades.assignment_id is ON DELETE CASCADE — scores go with it.
-    const { error } = await supabase.from("assignments").delete().eq("id", id);
-    if (error) throw error;
-  },
-
-  // Full grade records for one student — powers the per-student grade modal.
-  async fetchStudentAssignmentGrades(assignmentIds, studentId) {
-    if (!assignmentIds.length) return [];
-    const { data, error } = await supabase
-      .from("assignment_grades")
-      .select("assignment_id, score, note, graded_at, created_at")
-      .in("assignment_id", assignmentIds)
-      .eq("student_id", studentId);
-    if (error) throw error;
-    return data;
-  },
-
-  // Rows are passed through verbatim — caller owns score/note/graded_at so it
-  // can null graded_at when a score is cleared. created_at is never sent, so the
-  // DB default fills it on insert and the existing value survives on update.
-  async upsertAssignmentGrades(rows) {
-    const { error } = await supabase
-      .from("assignment_grades")
-      .upsert(rows, { onConflict: "assignment_id,student_id" });
-    if (error) throw error;
-  },
-
-  // Computed overall grade per student — read from the view, never recompute.
-  async fetchPeriodGrades(cstId, periodId) {
-    const { data, error } = await supabase
-      .from("student_period_grades")
-      .select("student_id, period_score, graded_count, total_assignments")
-      .eq("class_subject_teacher_id", cstId)
-      .eq("grading_period_id", periodId)
-      .not("student_id", "is", null);
-    if (error) throw error;
-    return data;
-  },
-
-  // Every period's score for a section in one shot — powers the roster's
-  // P1/P2/P3 columns + weighted Overall (pivoted client-side by period_order).
-  async fetchAllPeriodGrades(cstId) {
-    const { data, error } = await supabase
-      .from("student_period_grades")
-      .select("student_id, grading_period_id, period_score")
-      .eq("class_subject_teacher_id", cstId)
-      .not("student_id", "is", null);
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Attendance ──────────────────────────────────────────────
-  async fetchAttendanceSheet(classId, date) {
-    const [studentsRes, recordsRes] = await Promise.all([
-      supabase
-        .from("students")
-        .select("id, first_name, last_name")
-        .eq("class_id", classId)
-        .eq("status", "active")
-        .order("last_name"),
-      supabase
-        .from("attendance")
-        .select("student_id, status, notes")
-        .eq("class_id", classId)
-        .eq("date", date),
-    ]);
-    if (studentsRes.error) throw studentsRes.error;
-    if (recordsRes.error) throw recordsRes.error;
-
-    const recordMap = Object.fromEntries(
-      (recordsRes.data ?? []).map((r) => [r.student_id, r]),
-    );
-    // No default status — an unsaved sheet shows every status button inactive.
-    // A saved record keeps its real status so loaded attendance renders highlighted.
-    return (studentsRes.data ?? []).map((s) => ({
-      ...s,
-      status: recordMap[s.id]?.status ?? null,
-      notes: recordMap[s.id]?.notes ?? "",
-    }));
-  },
-
-  async upsertAttendance(classId, date, rows, recordedBy) {
-    const payload = rows.map((r) => ({
-      student_id: r.id,
-      class_id: classId,
-      date,
-      status: r.status,
-      notes: r.notes || null,
-      recorded_by: recordedBy ?? null,
-    }));
-    const { error } = await supabase
-      .from("attendance")
-      .upsert(payload, { onConflict: "student_id,class_id,date" });
-    if (error) throw error;
-  },
-
-  // ── Schedule ────────────────────────────────────────────────
-  async fetchScheduleByClass(classId) {
-    const { data, error } = await supabase
-      .from("schedules")
-      .select(
-        `
-        id, day_of_week, start_time, end_time,
-        subjects!subject_id(id, name, color),
-        teachers!teacher_id(id, first_name, last_name),
-        rooms!room_id(id, name)
-      `,
-      )
-      .eq("class_id", classId)
-      .order("day_of_week")
-      .order("start_time");
-    if (error) throw error;
-    return data;
-  },
-
-  async insertSchedule(payload) {
-    const { error } = await supabase.from("schedules").insert(payload);
-    if (error) throw error;
-  },
-
-  async deleteSchedule(id) {
-    const { error } = await supabase.from("schedules").delete().eq("id", id);
-    if (error) throw error;
-  },
-
-  // ── Shared reference data (for forms) ───────────────────────
-  async fetchSubjects() {
-    const { data, error } = await supabase
-      .from("subjects")
-      .select("id, name, code, color")
-      .order("name");
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchTeachers() {
-    const { data, error } = await supabase
-      .from("teachers")
-      .select("id, first_name, last_name")
-      .order("last_name");
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchRooms() {
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("id, name, capacity")
-      .order("name");
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Subjects catalog (global — retained) ────────────────────
-  async fetchSubjectsDetailed() {
-    const { data, error } = await supabase
-      .from("subjects")
-      .select(
-        `
-        id, name, code, description, color,
-        grade_level_subjects(grade_levels(name))
-      `,
-      )
-      .order("name");
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Student 360 (read-only) ─────────────────────────────────
-  async fetchStudentAttendance(studentId) {
-    const { data, error } = await supabase
-      .from("attendance")
-      .select("status")
-      .eq("student_id", studentId);
-    if (error) throw error;
-    return data;
-  },
-
-  async fetchStudentDiscipline(studentId) {
-    const { data, error } = await supabase
-      .from("discipline_records")
-      .select("id, date, type, severity, resolved, description, resolution")
-      .eq("student_id", studentId)
-      .order("date", { ascending: false });
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Discipline (write — item 2) ─────────────────────────────
-  // Teacher-filed behavior records. reported_by_teacher stamps authorship;
-  // reported_by_staff stays null (this console is teacher-scoped).
-  async insertDiscipline(payload) {
-    const { error } = await supabase.from("discipline_records").insert(payload);
-    if (error) throw error;
-  },
-
-  async updateDiscipline(id, payload) {
-    const { error } = await supabase
-      .from("discipline_records")
-      .update(payload)
-      .eq("id", id);
-    if (error) throw error;
-  },
-
-  // Per-subject grades come from student_grades (the full-school record the
-  // student portal shows), NOT the assignment-derived view. Read-only.
-  async fetchStudentSubjectGrades(studentId, periodId) {
-    const { data, error } = await supabase
-      .from("student_grades")
-      .select(
-        "score, class_subject_teachers!class_subject_teacher_id(subjects!subject_id(name, color))",
-      )
-      .eq("student_id", studentId)
-      .eq("grading_period_id", periodId);
-    if (error) throw error;
-    return data;
-  },
-
-  // Every posted subject grade for a student, all periods — powers the printable
-  // progress report (item 6). Read-only, the full-school student_grades record.
-  async fetchStudentAllSubjectGrades(studentId) {
-    const { data, error } = await supabase
-      .from("student_grades")
-      .select(
-        "score, grading_period_id, notes, class_subject_teachers!class_subject_teacher_id(subjects!subject_id(name))",
-      )
-      .eq("student_id", studentId);
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Post grades (item 1) ────────────────────────────────────
-  // The grades already posted to the report card for this section + period, so
-  // the posting panel can show what's live and pre-fill overrides/comments.
-  async fetchPostedGrades(cstId, periodId) {
-    const { data, error } = await supabase
-      .from("student_grades")
-      .select("student_id, score, notes, submitted_at")
-      .eq("class_subject_teacher_id", cstId)
-      .eq("grading_period_id", periodId);
-    if (error) throw error;
-    return data;
-  },
-
-  // Commit final period grades to the official student_grades record the student
-  // portal reads. Upsert on the unique (student, cst, period) key.
-  async upsertStudentGrades(rows) {
-    const { error } = await supabase.from("student_grades").upsert(rows, {
-      onConflict: "student_id,class_subject_teacher_id,grading_period_id",
-    });
-    if (error) throw error;
-  },
-
-  // ── Grade categories (item 8) ───────────────────────────────
-  async fetchCategories(cstId) {
-    const { data, error } = await supabase
-      .from("grade_categories")
-      .select("id, name, weight")
-      .eq("class_subject_teacher_id", cstId)
-      .order("name");
-    if (error) throw error;
-    return data;
-  },
-
-  async insertCategory(payload) {
-    const { error } = await supabase.from("grade_categories").insert(payload);
-    if (error) throw error;
-  },
-
-  async updateCategory(id, payload) {
-    const { error } = await supabase
-      .from("grade_categories")
-      .update(payload)
-      .eq("id", id);
-    if (error) throw error;
-  },
-
-  async deleteCategory(id) {
-    // assignments.category_id is ON DELETE SET NULL — assignments survive and
-    // fall back to flat weighting.
-    const { error } = await supabase
-      .from("grade_categories")
-      .delete()
-      .eq("id", id);
-    if (error) throw error;
-  },
-
-  // ── Column grade entry (item 4) ─────────────────────────────
-  // Every student's score for ONE assignment, for the whole-class entry grid.
-  async fetchAssignmentColumn(assignmentId) {
-    const { data, error } = await supabase
-      .from("assignment_grades")
-      .select("student_id, score, note, graded_at")
-      .eq("assignment_id", assignmentId);
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Absence summary (item 3) ────────────────────────────────
-  // Raw status rows for a section; aggregated client-side into per-student counts.
-  async fetchClassAttendance(classId) {
-    const { data, error } = await supabase
-      .from("attendance")
-      .select("student_id, status")
-      .eq("class_id", classId);
-    if (error) throw error;
-    return data;
-  },
-
-  // ── Today (item 7) ──────────────────────────────────────────
-  async fetchScheduleToday(teacherId, dayOfWeek) {
-    const { data, error } = await supabase
-      .from("schedules")
-      .select(
-        `
-        id, class_id, subject_id, day_of_week, start_time, end_time,
-        classes!class_id(display_name),
-        subjects!subject_id(name, color),
-        rooms!room_id(name)
-      `,
-      )
-      .eq("teacher_id", teacherId)
-      .eq("day_of_week", dayOfWeek)
-      .order("start_time");
-    if (error) throw error;
-    return data;
-  },
-};
-
 // Demo sandbox: writes land in an in-memory session overlay instead of the
-// shared backend; reads stay live with the overlay applied (see demoDb.js).
-// A refresh restores pristine data. The first write shows a one-time notice.
+// shared backend; reads stay live with the overlay applied. A refresh restores
+// pristine data. The first write shows a one-time notice.
 let demoNoticeShown = false;
-const db = DEMO_MODE
-  ? wrapDbForDemo(realDb, {
+const gateway = DEMO_MODE
+  ? createDemoGateway(supabaseGateway, {
       onWrite: () => {
         if (demoNoticeShown) return;
         demoNoticeShown = true;
         showToast(t("admin.demo.sandboxNotice"));
       },
     })
-  : realDb;
+  : supabaseGateway;
+const data = createAdminData(gateway);
+
+// Reference lists reused across sections, refreshed by the loaders that own them.
+const state = {
+  /** @type {any} */ activeYear: null,
+  /** @type {any[]} */ gradeLevels: [],
+  /** @type {any[]} */ rooms: [],
+  /** @type {any[]} */ teachers: [],
+  /** @type {any[]} */ subjects: [],
+  /** @type {any[]} */ sections: [],
+};
 
 // ───────────────────────────────────────────────────────────────
 //  3. UI HELPERS
 // ───────────────────────────────────────────────────────────────
-
-// ── Toast ──────────────────────────────────────────────────────
 const toastContainer = document.getElementById("toast-container");
 
 function showToast(message, type = "success") {
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
   const icon = type === "success" ? "check_circle" : "error";
-  toast.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>${message}`;
+  toast.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>${escapeHtml(message)}`;
   toastContainer.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
 }
 
-// ── Generic Modal ──────────────────────────────────────────────
+function escapeHtml(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[c],
+  );
+}
+
+function num(v) {
+  return v === "" || v == null ? null : Number(v);
+}
+function nullable(v) {
+  const s = String(v ?? "").trim();
+  return s === "" ? null : s;
+}
+
+// ── Generic modal form ─────────────────────────────────────────
 const modalOverlay = document.getElementById("modal-overlay");
 const modalTitle = document.getElementById("modal-title");
 const modalForm = document.getElementById("modal-form");
-const modalClose = document.getElementById("modal-close");
-const modalCancel = document.getElementById("modal-cancel");
-const modalSubmit = document.getElementById("modal-submit");
-
 let currentSubmitHandler = null;
 
+/**
+ * Open the shared modal with a field spec. `onSubmit` receives an object of
+ * name → value (checkbox groups yield arrays); returning resolves & closes.
+ */
 function openModal({
   title,
   fields,
@@ -633,39 +122,60 @@ function openModal({
   submitLabel = t("common.save"),
 }) {
   modalTitle.textContent = title;
-  modalSubmit.textContent = submitLabel;
+  document.getElementById("modal-submit").textContent = submitLabel;
   modalForm.innerHTML = "";
 
   fields.forEach((field) => {
     const group = document.createElement("div");
     group.className = "field-group";
 
-    const label = document.createElement("label");
-    label.textContent = field.label;
-    label.htmlFor = `modal-field-${field.name}`;
-    group.appendChild(label);
+    if (field.type !== "checkboxes") {
+      const label = document.createElement("label");
+      label.textContent = field.label;
+      label.htmlFor = `modal-field-${field.name}`;
+      group.appendChild(label);
+    }
 
     let input;
-
     if (field.type === "select") {
       input = document.createElement("select");
       input.id = `modal-field-${field.name}`;
       input.name = field.name;
       if (field.required) input.required = true;
-
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.textContent = field.required
+      const ph = document.createElement("option");
+      ph.value = "";
+      ph.textContent = field.required
         ? t("common.selectPlaceholder", { label: field.label.toLowerCase() })
         : t("common.none");
-      input.appendChild(placeholder);
-
+      input.appendChild(ph);
       (field.options ?? []).forEach((opt) => {
         const o = document.createElement("option");
         o.value = opt.value;
         o.textContent = opt.label;
         if (String(opt.value) === String(field.value)) o.selected = true;
         input.appendChild(o);
+      });
+    } else if (field.type === "checkboxes") {
+      const legend = document.createElement("span");
+      legend.className = "field-legend";
+      legend.textContent = field.label;
+      group.appendChild(legend);
+      input = document.createElement("div");
+      input.className = "checkbox-grid";
+      const checked = new Set((field.value ?? []).map(String));
+      (field.options ?? []).forEach((opt) => {
+        const wrap = document.createElement("label");
+        wrap.className = "checkbox-item";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.name = field.name;
+        cb.value = opt.value;
+        if (checked.has(String(opt.value))) cb.checked = true;
+        wrap.appendChild(cb);
+        const span = document.createElement("span");
+        span.textContent = opt.label;
+        wrap.appendChild(span);
+        input.appendChild(wrap);
       });
     } else if (field.type === "textarea") {
       input = document.createElement("textarea");
@@ -687,10 +197,6 @@ function openModal({
       if (field.step != null) input.step = field.step;
     }
 
-    // Disabled fields render but are excluded from FormData on submit — used for
-    // read-only context like national_id (registrar-owned).
-    if (field.disabled) input.disabled = true;
-
     group.appendChild(input);
 
     if (field.help) {
@@ -699,7 +205,6 @@ function openModal({
       help.textContent = field.help;
       group.appendChild(help);
     }
-
     modalForm.appendChild(group);
   });
 
@@ -708,18 +213,28 @@ function openModal({
 
   currentSubmitHandler = async (e) => {
     e.preventDefault();
-    const formData = Object.fromEntries(new FormData(modalForm));
-    modalSubmit.disabled = true;
+    const values = {};
+    fields.forEach((field) => {
+      if (field.type === "checkboxes") {
+        values[field.name] = [
+          ...modalForm.querySelectorAll(`input[name="${field.name}"]:checked`),
+        ].map((el) => el.value);
+      } else {
+        const el = modalForm.querySelector(`[name="${field.name}"]`);
+        values[field.name] = el ? el.value : "";
+      }
+    });
+    const submitBtn = document.getElementById("modal-submit");
+    submitBtn.disabled = true;
     try {
-      await onSubmit(formData);
+      await onSubmit(values);
       closeModal();
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err.message ?? String(err), "error");
     } finally {
-      modalSubmit.disabled = false;
+      submitBtn.disabled = false;
     }
   };
-
   modalForm.addEventListener("submit", currentSubmitHandler);
   modalOverlay.classList.add("active");
 }
@@ -733,18 +248,16 @@ function closeModal() {
   }
 }
 
-modalClose.addEventListener("click", closeModal);
-modalCancel.addEventListener("click", closeModal);
+document.getElementById("modal-close").addEventListener("click", closeModal);
+document.getElementById("modal-cancel").addEventListener("click", closeModal);
 modalOverlay.addEventListener("click", (e) => {
   if (e.target === modalOverlay) closeModal();
 });
 
-// ── Confirm Modal ──────────────────────────────────────────────
+// ── Confirm modal ──────────────────────────────────────────────
 const confirmOverlay = document.getElementById("confirm-overlay");
 const confirmMessage = document.getElementById("confirm-message");
-const confirmDelete = document.getElementById("confirm-delete");
-const confirmCancel = document.getElementById("confirm-cancel");
-
+const confirmDeleteBtn = document.getElementById("confirm-delete");
 let confirmHandler = null;
 
 function openConfirm(message, onConfirm) {
@@ -752,414 +265,112 @@ function openConfirm(message, onConfirm) {
   confirmHandler = onConfirm;
   confirmOverlay.classList.add("active");
 }
-
 function closeConfirm() {
   confirmOverlay.classList.remove("active");
   confirmHandler = null;
 }
-
-confirmDelete.addEventListener("click", async () => {
+confirmDeleteBtn.addEventListener("click", async () => {
   if (!confirmHandler) return;
-  confirmDelete.disabled = true;
+  confirmDeleteBtn.disabled = true;
   try {
     await confirmHandler();
     closeConfirm();
   } catch (err) {
-    showToast(err.message, "error");
+    showToast(err.message ?? String(err), "error");
   } finally {
-    confirmDelete.disabled = false;
+    confirmDeleteBtn.disabled = false;
   }
 });
-confirmCancel.addEventListener("click", closeConfirm);
+document
+  .getElementById("confirm-cancel")
+  .addEventListener("click", closeConfirm);
 confirmOverlay.addEventListener("click", (e) => {
   if (e.target === confirmOverlay) closeConfirm();
 });
 
-// ── Student drawer ─────────────────────────────────────────────
-const drawerOverlay = document.getElementById("drawer-overlay");
-const drawerTitle = document.getElementById("drawer-title");
-const drawerBody = document.getElementById("drawer-body");
-
-function openDrawer() {
-  drawerOverlay.classList.add("active");
-}
-function closeDrawer() {
-  drawerOverlay.classList.remove("active");
-}
-document.getElementById("drawer-close").addEventListener("click", closeDrawer);
-drawerOverlay.addEventListener("click", (e) => {
-  if (e.target === drawerOverlay) closeDrawer();
-});
-
-// ── Gradebook: Manage Assignments + per-student grade modals ────
-const assignmentsOverlay = document.getElementById("assignments-overlay");
-const manageTitle = document.getElementById("manage-title");
-const manageBody = document.getElementById("manage-body");
-
-document
-  .getElementById("manage-close")
-  .addEventListener("click", closeManageAssignments);
-document
-  .getElementById("manage-done")
-  .addEventListener("click", closeManageAssignments);
-document
-  .getElementById("manage-add")
-  .addEventListener("click", () => openAddAssignment());
-assignmentsOverlay.addEventListener("click", (e) => {
-  if (e.target === assignmentsOverlay) closeManageAssignments();
-});
-
-const sgOverlay = document.getElementById("student-grades-overlay");
-const sgTitle = document.getElementById("sg-title");
-const sgBody = document.getElementById("sg-body");
-const sgSave = document.getElementById("sg-save");
-
-document
-  .getElementById("sg-close")
-  .addEventListener("click", closeStudentGradesModal);
-document
-  .getElementById("sg-cancel")
-  .addEventListener("click", closeStudentGradesModal);
-sgSave.addEventListener("click", saveStudentGrades);
-sgOverlay.addEventListener("click", (e) => {
-  if (e.target === sgOverlay) closeStudentGradesModal();
-});
-
-// Per-assignment grade unlock: clicking an Edit button unlocks ONLY that one
-// score input (delegated because sgBody is re-rendered on every open).
-sgBody.addEventListener("click", (e) => {
-  const btn = e.target.closest(".sg-edit-btn");
-  if (!btn) return;
-  const input = sgBody.querySelector(
-    `.sg-score[data-assignment="${btn.dataset.assignment}"]`,
-  );
-  if (input) {
-    input.readOnly = false;
-    input.classList.remove("sg-locked");
-    input.focus();
-    input.select();
-  }
-  btn.remove();
-});
-
-// ── Grade categories modal (item 8) ────────────────────────────
-const categoriesOverlay = document.getElementById("categories-overlay");
-const categoriesTitle = document.getElementById("categories-title");
-const categoriesBody = document.getElementById("categories-body");
-const categoriesTotal = document.getElementById("categories-total");
-
-document
-  .getElementById("categories-close")
-  .addEventListener("click", closeCategoriesModal);
-document
-  .getElementById("categories-done")
-  .addEventListener("click", closeCategoriesModal);
-document
-  .getElementById("categories-add")
-  .addEventListener("click", () => openCategoryForm());
-categoriesOverlay.addEventListener("click", (e) => {
-  if (e.target === categoriesOverlay) closeCategoriesModal();
-});
-
-// ── Post grades modal (item 1) ─────────────────────────────────
-const pgOverlay = document.getElementById("post-grades-overlay");
-const pgTitle = document.getElementById("pg-title");
-const pgBody = document.getElementById("pg-body");
-const pgSave = document.getElementById("pg-save");
-
-document.getElementById("pg-close").addEventListener("click", closePostGrades);
-document.getElementById("pg-cancel").addEventListener("click", closePostGrades);
-pgSave.addEventListener("click", savePostGrades);
-pgOverlay.addEventListener("click", (e) => {
-  if (e.target === pgOverlay) closePostGrades();
-});
-
-// ── Column grade entry modal (item 4) ──────────────────────────
-const cgOverlay = document.getElementById("column-grades-overlay");
-const cgTitle = document.getElementById("cg-title");
-const cgBody = document.getElementById("cg-body");
-const cgSave = document.getElementById("cg-save");
-
-document
-  .getElementById("cg-close")
-  .addEventListener("click", closeColumnGrades);
-document
-  .getElementById("cg-cancel")
-  .addEventListener("click", closeColumnGrades);
-cgSave.addEventListener("click", saveColumnGrades);
-cgOverlay.addEventListener("click", (e) => {
-  if (e.target === cgOverlay) closeColumnGrades();
-});
-
-// Print progress report from the open student drawer (item 6).
-document
-  .getElementById("drawer-print")
-  .addEventListener("click", printStudentReport);
-
-// Discipline add/edit launched from the drawer (item 2). Delegated because the
-// drawer body is re-rendered on every open.
-drawerBody.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-action]");
-  if (!btn) return;
-  if (btn.dataset.action === "add-discipline") {
-    openAddDiscipline();
-  } else if (btn.dataset.action === "edit-discipline") {
-    const rec = (_drawerData.discipline ?? []).find(
-      (r) => String(r.id) === btn.dataset.id,
-    );
-    if (rec) openEditDiscipline(rec);
-  }
-});
-
 // ── Table helpers ──────────────────────────────────────────────
-function renderEmptyRow(tbodyId, colspan, message = t("common.noRecords")) {
+function renderMessageRow(tbodyId, colspan, message) {
   const tbody = document.getElementById(tbodyId);
   if (tbody)
-    tbody.innerHTML = `<tr><td colspan="${colspan}" class="loading-cell">${message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="loading-cell">${escapeHtml(message)}</td></tr>`;
 }
-
+function renderEmptyRow(tbodyId, colspan, message = t("common.noRecords")) {
+  renderMessageRow(tbodyId, colspan, message);
+}
 function renderErrorRow(tbodyId, colspan) {
-  renderEmptyRow(tbodyId, colspan, t("common.loadFailed"));
+  renderMessageRow(tbodyId, colspan, t("common.loadFailed"));
 }
 
-function makeActionBtn(
-  icon,
-  label,
-  onClick,
-  danger = false,
-  adminOnly = false,
-) {
+function iconBtn(icon, label, onClick, danger = false) {
   const btn = document.createElement("button");
   btn.className = `btn-icon${danger ? " danger" : ""}`;
   btn.type = "button";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
   btn.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>`;
-  // Admin-restricted icon buttons reuse the single gate: applyAdminLock sets the
-  // tooltip to the Spanish message and makes the click a no-op. Everyone else
-  // gets the normal label tooltip + real handler.
-  if (adminOnly && !IS_ADMIN) {
-    applyAdminLock(btn);
-  } else {
-    btn.title = label;
-    btn.addEventListener("click", onClick);
-  }
+  btn.addEventListener("click", onClick);
   return btn;
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      })[c],
-  );
-}
-
-// Weekday labels indexed by day_of_week (1=Mon … 5=Fri). Resolved at call
-// time so the active language applies (rebuilt fresh on the post-switch reload).
-function dayName(dow) {
-  const keys = ["", "monday", "tuesday", "wednesday", "thursday", "friday"];
-  return keys[dow] ? t(`common.days.${keys[dow]}`) : "";
-}
-function dayOptions() {
-  return ["monday", "tuesday", "wednesday", "thursday", "friday"].map(
-    (k, i) => ({ value: i + 1, label: t(`common.days.${k}`) }),
-  );
-}
-
-// Distinct class options across the teacher's subject-sections.
-function teacherClassOptions() {
-  const seen = new Set();
-  const opts = [];
-  myClassesCache.forEach((cst) => {
-    if (seen.has(cst.class_id)) return;
-    seen.add(cst.class_id);
-    opts.push({
-      value: cst.class_id,
-      label: cst.classes?.display_name ?? `Class ${cst.class_id}`,
-    });
+/** Build a row with cells (HTML strings) and an actions cell of buttons. */
+function tableRow(cells, actionButtons = []) {
+  const tr = document.createElement("tr");
+  cells.forEach((html) => {
+    const td = document.createElement("td");
+    td.innerHTML = html;
+    tr.appendChild(td);
   });
-  return opts;
+  if (actionButtons.length) {
+    const td = document.createElement("td");
+    td.className = "actions-col";
+    actionButtons.forEach((b) => td.appendChild(b));
+    tr.appendChild(td);
+  }
+  return tr;
 }
 
-// Current grading period = the one whose date range contains today,
-// otherwise the first period (demo seed dates may be in the past).
-// Single source of truth for the gradebook default AND the roster Overall.
-function getCurrentPeriodId() {
-  const today = new Date().toISOString().split("T")[0];
-  const inRange = PERIODS.find(
-    (p) => p.start_date <= today && today <= p.end_date,
-  );
-  return (inRange ?? PERIODS[0])?.id ?? "";
+function optionsFrom(list, labelFn, valueKey = "id") {
+  return list.map((item) => ({ value: item[valueKey], label: labelFn(item) }));
 }
 
-// Grade colour band: red <70, amber 70–74.99, green ≥75. Reuses the
-// shared .score-low / .score-mid / .score-high classes from style.css.
-function gradeBandClass(score) {
-  if (score == null) return "";
-  const n = Number(score);
-  if (n < 70) return "score-low";
-  if (n < 75) return "score-mid";
-  return "score-high";
-}
-
-// Render one grade cell: colored value, or a neutral placeholder when ungraded
-// (never a colored zero). Used by the roster grade columns + Overall.
-function gradeCellHtml(score) {
-  return score == null
-    ? '<span class="text-muted">—</span>'
-    : `<b class="${gradeBandClass(score)}">${Number(score).toFixed(1)}</b>`;
-}
-
-// Weighted Overall across the periods that have a grade, renormalizing the
-// grading_periods.weight values so a missing period is excluded (never 0).
-function weightedOverall(scoreByOrder) {
-  let sum = 0;
-  let wTot = 0;
-  PERIODS.forEach((p) => {
-    const s = scoreByOrder[p.period_order];
-    if (s == null) return;
-    const w = Number(p.weight) || 0;
-    sum += Number(s) * w;
-    wTot += w;
-  });
-  return wTot > 0 ? sum / wTot : null;
-}
-
-// Display status for one (student, assignment) grade record. No submission date
-// exists in the schema, so "Late" derives from graded_at vs the due_date.
-function gradeStatus(grade, dueDate) {
-  if (!grade || grade.score == null)
-    return { label: t("enums.gradeStatus.notGraded"), cls: "badge-neutral" };
-  if (dueDate && grade.graded_at && grade.graded_at.slice(0, 10) > dueDate)
-    return { label: t("enums.gradeStatus.late"), cls: "badge-warning" };
-  return { label: t("enums.gradeStatus.graded"), cls: "badge-success" };
-}
-
-// "2024-12-13" / ISO timestamp → locale-aware friendly date, or "—" when absent.
-function formatDate(value) {
-  if (!value) return "—";
-  return i18nFormatDate(value);
-}
+const fmtDate = (v) => (v ? formatDate(v) : "—");
 
 // ───────────────────────────────────────────────────────────────
-//  4. NAVIGATION (class-first)
+//  4. NAVIGATION
 // ───────────────────────────────────────────────────────────────
 const sections = document.querySelectorAll(".view-section");
 const navLinks = document.querySelectorAll(".sidebar a[data-page]");
+const loaded = { settings: false };
+let PROFILE = null;
 
-let myClassesCache = [];
-let currentClass = null; // { cstId, classId, subjectId, names, color }
-const loaded = { today: false, subjects: false, settings: false };
+const LOADERS = {
+  overview: loadOverview,
+  yearperiods: loadYearPeriods,
+  gradessections: loadGradesSections,
+  subjects: loadSubjects,
+  teachers: loadTeachers,
+  settings: loadSettings,
+};
 
 function showSection(page) {
   sections.forEach((s) => s.classList.remove("active"));
   navLinks.forEach((a) => a.classList.remove("active"));
-
-  const target = document.getElementById(`view-${page}`);
-  if (target) target.classList.add("active");
-
-  // Class workspace keeps "My Classes" highlighted in the sidebar.
-  const navPage = page === "class" ? "myclasses" : page;
+  document.getElementById(`view-${page}`)?.classList.add("active");
   document
-    .querySelector(`.sidebar a[data-page="${navPage}"]`)
+    .querySelector(`.sidebar a[data-page="${page}"]`)
     ?.classList.add("active");
 
-  // Today's schedule is static for the session, so load it once (a reload
-  // refreshes it). My Classes stays live because its student counts are mutable.
-  if (page === "today" && !loaded.today) {
-    loaded.today = true;
-    loadToday();
-  }
-  if (page === "myclasses") loadMyClasses();
-  if (page === "subjects" && !loaded.subjects) {
-    loaded.subjects = true;
-    loadSubjects();
-  }
-  if (page === "settings" && !loaded.settings) {
-    loaded.settings = true;
-    loadSettings();
-  }
-}
-
-// Read-only Settings for the teacher context. Resolves the demo teacher record
-// and builds the normalized adapter consumed by the shared renderer.
-async function loadSettings() {
-  const root = document.getElementById("settings-root");
-  if (!root) return;
-
-  let teacher;
-  try {
-    teacher = await db.fetchTeacherFull(TEACHER_ID);
-  } catch (err) {
-    console.error("loadSettings:", err);
-    loaded.settings = false; // allow a retry on next visit
-    root.innerHTML = `<div class="loading-cell">${t("common.couldNotLoadProfile")}</div>`;
+  if (page === "settings") {
+    if (!loaded.settings) {
+      loaded.settings = true;
+      loadSettings();
+    }
     return;
   }
-
-  const tr = teacher;
-  const statusLabel = (v) => (v ? t(`enums.studentStatus.${v}`) : null);
-
-  const adapter = {
-    context: "teacher",
-    identity: {
-      displayName: `${tr.first_name} ${tr.last_name}`,
-      subtitle: `${t("settings.roleTeacher")}${tr.specialization ? " · " + tr.specialization : ""}`,
-      avatarIcon: "co_present",
-      roleBadge: {
-        text: t("settings.roleTeacher"),
-        className: "badge-primary",
-      },
-    },
-    personal: [
-      {
-        label: t("settings.fields.firstName"),
-        value: tr.first_name,
-        icon: "badge",
-      },
-      {
-        label: t("settings.fields.lastName"),
-        value: tr.last_name,
-        icon: "badge",
-      },
-      {
-        label: t("settings.fields.nationalId"),
-        value: tr.national_id,
-        icon: "fingerprint",
-      },
-      {
-        label: t("settings.fields.specialization"),
-        value: tr.specialization,
-        icon: "menu_book",
-      },
-      { label: t("settings.fields.email"), value: tr.email, icon: "mail" },
-      { label: t("settings.fields.phone"), value: tr.phone, icon: "call" },
-      { label: t("settings.fields.address"), value: tr.address, icon: "home" },
-      {
-        label: t("settings.fields.hireDate"),
-        value: tr.hire_date ? formatDate(tr.hire_date) : null,
-        icon: "event",
-      },
-      {
-        label: t("settings.fields.status"),
-        value: statusLabel(tr.status),
-        icon: "info",
-      },
-    ],
-    username: tr.email,
-    email: tr.email,
-  };
-
-  renderSettings(root, adapter);
+  LOADERS[page]?.();
 }
 
 const closeNav = initSidebarToggle();
-
 navLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
@@ -1167,2438 +378,1291 @@ navLinks.forEach((link) => {
     closeNav();
   });
 });
-
 document.getElementById("logout-btn")?.addEventListener("click", async () => {
   await signOut();
   window.location.replace("/login.html");
 });
 document.querySelector(".profile-photo")?.addEventListener("click", () => {
   showSection("settings");
-  // Snap to Account & Profile (default sub-tab on first render; re-select it
-  // when re-opening after the user switched to another settings sub-tab).
   document
     .querySelector('#settings-root .settings-rail-item[data-section="account"]')
     ?.click();
 });
+
 initTheme();
 bindThemeToggle(document.querySelector(".theme-toggler"));
-
-// Resolve this view's language (stored "smp-lang-admin" → browser → English)
-// and translate the static markup before any section renders.
-initI18n("teacher");
+initI18n("admin");
 applyTranslations();
 
-document.getElementById("class-back-btn")?.addEventListener("click", () => {
-  showSection("myclasses");
-});
-
-document.querySelectorAll(".class-subtab").forEach((btn) => {
-  btn.addEventListener("click", () => openClassTab(btn.dataset.tab));
-});
-
 // ───────────────────────────────────────────────────────────────
-//  5. MY CLASSES LANDING
+//  5a. OVERVIEW
 // ───────────────────────────────────────────────────────────────
-async function loadMyClasses() {
-  const grid = document.getElementById("myclasses-grid");
-  const subtitle = document.getElementById("myclasses-subtitle");
-  grid.innerHTML = skeletonCardItems(3);
-
+async function loadOverview() {
+  const welcomeTitle = document.getElementById("overview-welcome-title");
+  const yearText = document.getElementById("overview-year-text");
   try {
-    const [classes, counts] = await Promise.all([
-      db.fetchMyClasses(TEACHER_ID, ACTIVE_YEAR.id),
-      db.fetchActiveCountByClass(),
+    const [profile, years] = await Promise.all([
+      PROFILE ? Promise.resolve(PROFILE) : fetchProfile(),
+      data.listSchoolYears(),
     ]);
-    myClassesCache = classes;
+    PROFILE = profile;
+    state.activeYear = years.find((y) => y.is_active) ?? null;
 
-    const totalStudents = [...new Set(classes.map((c) => c.class_id))].reduce(
-      (sum, classId) => sum + (counts[classId] ?? 0),
-      0,
-    );
-    subtitle.textContent = t("admin.myclasses.summary", {
-      year: ACTIVE_YEAR.name,
-      sections: tn("admin.sections", classes.length),
-      students: tn("admin.students", totalStudents),
-    });
-
-    renderQuickStats(classes.length, totalStudents);
-    renderMyClasses(classes, counts);
+    const name = profile?.name ?? "";
+    document.getElementById("admin-name").textContent =
+      name || t("console.profile.admin");
+    welcomeTitle.textContent = name
+      ? t("console.overview.welcome", { name })
+      : t("console.overview.welcomeFallback");
+    yearText.textContent = state.activeYear?.name
+      ? `${t("console.overview.activeYear")}: ${state.activeYear.name}`
+      : t("console.overview.noActiveYear");
   } catch (err) {
-    console.error(err);
-    grid.innerHTML = `<div class="loading-cell">${t("admin.myclasses.loadFailed")}</div>`;
+    console.error("loadOverview:", err);
+    yearText.textContent = t("common.loadFailed");
   }
 }
 
-function renderMyClasses(classes, counts) {
-  const grid = document.getElementById("myclasses-grid");
-  if (!classes.length) {
-    grid.innerHTML = `<div class="loading-cell">${t("admin.myclasses.empty")}</div>`;
+async function fetchProfile() {
+  const { data: row, error } = await supabase
+    .from("profiles")
+    .select("name, role")
+    .eq("id", session.user.id)
+    .single();
+  if (error) throw error;
+  return row;
+}
+
+// ───────────────────────────────────────────────────────────────
+//  5b. YEAR & PERIODS
+// ───────────────────────────────────────────────────────────────
+async function loadYearPeriods() {
+  renderMessageRow("years-body", 5, t("common.loading"));
+  try {
+    const years = await data.listSchoolYears();
+    state.activeYear = years.find((y) => y.is_active) ?? null;
+    renderYears(years);
+    await loadPeriods();
+  } catch (err) {
+    console.error("loadYearPeriods:", err);
+    renderErrorRow("years-body", 5);
+  }
+}
+
+function renderYears(years) {
+  const tbody = document.getElementById("years-body");
+  tbody.innerHTML = "";
+  if (!years.length) {
+    renderEmptyRow("years-body", 5, t("console.years.empty"));
     return;
   }
-
-  grid.innerHTML = "";
-  classes.forEach((cst) => {
-    const color = cst.subjects?.color || "var(--color-primary)";
-    const count = counts[cst.class_id] ?? 0;
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "class-card";
-    card.style.setProperty("--accent", color);
-    card.innerHTML = `
-      <span class="class-card-accent"></span>
-      <div class="class-card-body">
-        <h3 class="class-card-subject">${escapeHtml(cst.subjects?.name ?? "—")}</h3>
-        <p class="class-card-section">${escapeHtml(cst.classes?.display_name ?? "—")} · ${escapeHtml(
-          cst.classes?.grade_levels?.name ?? "",
-        )}</p>
-        <p class="class-card-count">
-          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-group"></use></svg></span>
-          ${tn("admin.students", count)}
-        </p>
-      </div>
-      <span class="material-symbols-outlined class-card-arrow"><svg aria-hidden="true"><use href="#icon-chevron_right"></use></svg></span>
-    `;
-    card.addEventListener("click", () => openClassWorkspace(cst));
-    grid.appendChild(card);
-  });
-}
-
-function renderQuickStats(sectionCount, totalStudents) {
-  const el = document.getElementById("quick-stats-list");
-  el.innerHTML = `
-    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-co_present"></use></svg></span>${tn("admin.sections", sectionCount)}</span>
-    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-group"></use></svg></span>${tn("admin.students", totalStudents)}</span>
-    <span class="qstat"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_today"></use></svg></span>${escapeHtml(ACTIVE_YEAR.name)}</span>`;
-}
-
-// ───────────────────────────────────────────────────────────────
-//  6. CLASS WORKSPACE SHELL
-// ───────────────────────────────────────────────────────────────
-function openClassWorkspace(cst, initialTab = "roster") {
-  currentClass = {
-    cstId: cst.id,
-    classId: cst.class_id,
-    subjectId: cst.subject_id,
-    className: cst.classes?.display_name ?? "—",
-    subjectName: cst.subjects?.name ?? "—",
-    color: cst.subjects?.color || "var(--color-primary)",
-    gradeLevel: cst.classes?.grade_levels?.name ?? "",
-  };
-
-  document.getElementById("class-ws-title").textContent =
-    `${currentClass.subjectName} · ${currentClass.className}`;
-  document.getElementById("class-ws-subtitle").textContent =
-    `${currentClass.gradeLevel} · ${ACTIVE_YEAR.name}`;
-  document.getElementById("class-ws-dot").style.background = currentClass.color;
-
-  showSection("class");
-  openClassTab(initialTab);
-}
-
-function openClassTab(tab) {
-  document
-    .querySelectorAll(".class-subtab")
-    .forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
-
-  const content = document.getElementById("class-tab-content");
-  const renderers = {
-    roster: renderRosterTab,
-    gradebook: renderGradebookTab,
-    attendance: renderAttendanceTab,
-    schedule: renderScheduleTab,
-  };
-  (renderers[tab] ?? renderRosterTab)(content);
-}
-
-// ───────────────────────────────────────────────────────────────
-//  7. ROSTER TAB (+ student drawer)
-// ───────────────────────────────────────────────────────────────
-function renderRosterTab(content) {
-  content.innerHTML = `
-    <div class="view-toolbar">
-      <div class="search-bar">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-search"></use></svg></span>
-        <input type="search" id="roster-search" placeholder="${t("admin.roster.searchPlaceholder")}" />
-      </div>
-      <button class="btn btn-primary" id="btn-add-student">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person_add"></use></svg></span> ${t("admin.roster.addStudent")}
-      </button>
-    </div>
-    <div class="recent-activity">
-      <div class="roster-list" id="roster-list">
-        <div class="roster-head">
-          <div class="roster-row-cells">
-            <span>${t("admin.roster.name")}</span>
-            <span>${t("admin.roster.p1")}</span>
-            <span>${t("admin.roster.p2")}</span>
-            <span>${t("admin.roster.p3")}</span>
-            <span>${t("admin.roster.overall")}</span>
-          </div>
-        </div>
-        <div id="roster-body">
-          ${skeletonBlock(5)}
-        </div>
-      </div>
-    </div>`;
-
-  bindAdminAction(document.getElementById("btn-add-student"), openAddStudent);
-
-  let searchTimeout;
-  document.getElementById("roster-search").addEventListener("input", (e) => {
-    clearTimeout(searchTimeout);
-    const q = e.target.value.trim().toLowerCase();
-    searchTimeout = setTimeout(() => renderRosterTable(filterRoster(q)), 250);
-  });
-
-  loadRoster();
-}
-
-let _rosterCache = [];
-let _rosterPeriodGrades = {}; // student_id → { [period_order]: period_score }
-
-async function loadRoster() {
-  try {
-    const [roster, periodGrades] = await Promise.all([
-      db.fetchRoster(currentClass.classId),
-      db.fetchAllPeriodGrades(currentClass.cstId),
-    ]);
-    _rosterCache = roster;
-
-    const orderByPeriodId = Object.fromEntries(
-      PERIODS.map((p) => [p.id, p.period_order]),
-    );
-    _rosterPeriodGrades = {};
-    periodGrades.forEach((g) => {
-      const order = orderByPeriodId[g.grading_period_id];
-      if (order == null) return;
-      (_rosterPeriodGrades[g.student_id] ??= {})[order] = g.period_score;
-    });
-
-    renderRosterTable(_rosterCache);
-  } catch (err) {
-    console.error(err);
-    const body = document.getElementById("roster-body");
-    if (body)
-      body.innerHTML = `<div class="loading-cell">${t("common.loadFailed")}</div>`;
-  }
-}
-
-function filterRoster(q) {
-  if (!q) return _rosterCache;
-  return _rosterCache.filter(
-    (s) =>
-      s.first_name?.toLowerCase().includes(q) ||
-      s.last_name?.toLowerCase().includes(q) ||
-      s.email?.toLowerCase().includes(q) ||
-      s.enrollment_number?.toLowerCase().includes(q),
-  );
-}
-
-function renderRosterTable(students) {
-  const body = document.getElementById("roster-body");
-  if (!body) return;
-  if (!students.length) {
-    body.innerHTML = `<div class="loading-cell">${t("admin.roster.empty")}</div>`;
-    return;
-  }
-
-  body.innerHTML = "";
-  students.forEach((student) => {
-    const fullName = `${student.last_name}, ${student.first_name}`;
-    const scores = _rosterPeriodGrades[student.id] ?? {};
-    const overall = weightedOverall(scores);
-
-    const row = document.createElement("div");
-    row.className = "roster-row";
-
-    // Clickable unit — the whole cells block opens the student-360 drawer.
-    const cells = document.createElement("div");
-    cells.className = "roster-row-cells";
-    cells.setAttribute("role", "button");
-    cells.tabIndex = 0;
-    cells.innerHTML = `
-      <span class="roster-name">${escapeHtml(fullName)}</span>
-      <span class="roster-grade">${gradeCellHtml(scores[1])}</span>
-      <span class="roster-grade">${gradeCellHtml(scores[2])}</span>
-      <span class="roster-grade">${gradeCellHtml(scores[3])}</span>
-      <span class="roster-grade">${gradeCellHtml(overall)}</span>`;
-    cells.addEventListener("click", () => openStudentDrawer(student));
-    cells.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openStudentDrawer(student);
-      }
-    });
-
-    // Action rail — lives outside the clickable cells; revealed on hover/focus.
-    const rail = document.createElement("div");
-    rail.className = "roster-row-rail";
-    rail.appendChild(
-      makeActionBtn(
-        "edit",
-        t("common.edit"),
-        (e) => {
-          e.stopPropagation();
-          openEditStudent(student);
-        },
-        false,
-        true,
-      ),
-    );
-    rail.appendChild(
-      makeActionBtn(
-        "delete",
-        t("common.delete"),
-        (e) => {
-          e.stopPropagation();
-          confirmDeleteStudent(
-            student.id,
-            `${student.first_name} ${student.last_name}`,
-          );
-        },
-        true,
-        true,
-      ),
-    );
-
-    row.append(cells, rail);
-    body.appendChild(row);
-  });
-}
-
-let _drawerStudent = null;
-let _drawerData = {};
-
-async function openStudentDrawer(student) {
-  _drawerStudent = student;
-  drawerTitle.textContent = `${student.first_name} ${student.last_name}`;
-  drawerBody.innerHTML = skeletonBlock();
-  openDrawer();
-
-  const periodId = getCurrentPeriodId();
-  const periodName = PERIODS.find((p) => p.id === periodId)?.name ?? "";
-
-  // Each section degrades independently — one failure shouldn't blank the rest.
-  const [contacts, attendance, discipline, subjectGrades] = await Promise.all([
-    db.fetchStudentContacts(student.id).catch(() => []),
-    db.fetchStudentAttendance(student.id).catch(() => []),
-    db.fetchStudentDiscipline(student.id).catch(() => []),
-    db.fetchStudentSubjectGrades(student.id, periodId).catch(() => []),
-  ]);
-  _drawerData = { contacts, attendance, discipline, subjectGrades };
-
-  const photo = student.photo_url
-    ? `<img class="drawer-photo" src="${escapeHtml(student.photo_url)}" alt="" referrerpolicy="no-referrer" />`
-    : `<div class="drawer-photo drawer-photo-empty"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-person"></use></svg></span></div>`;
-
-  drawerBody.innerHTML = `
-    <div class="drawer-section drawer-identity">
-      ${photo}
-      <ul class="drawer-contact">
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-badge"></use></svg></span> ${escapeHtml(student.enrollment_number ?? "—")}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fingerprint"></use></svg></span> ${escapeHtml(student.national_id ?? "—")}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-cake"></use></svg></span> ${escapeHtml(formatDate(student.date_of_birth))}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-wc"></use></svg></span> ${escapeHtml(genderLabel(student.gender))}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span> ${escapeHtml(student.email ?? "—")}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(student.phone ?? "—")}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-home"></use></svg></span> ${escapeHtml(student.address ?? "—")}</li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-info"></use></svg></span> ${escapeHtml(student.status ?? "—")}</li>
-      </ul>
-    </div>
-    <div class="drawer-section">
-      <h3>${t("admin.drawer.attendance")}</h3>
-      ${renderDrawerAttendance(attendance)}
-    </div>
-    <div class="drawer-section">
-      <h3>${periodName ? t("admin.drawer.gradesWithPeriod", { period: escapeHtml(periodName) }) : t("admin.drawer.grades")}</h3>
-      ${renderDrawerSubjectGrades(subjectGrades)}
-    </div>
-    <div class="drawer-section">
-      <div class="drawer-section-head">
-        <h3>${t("admin.drawer.discipline")}</h3>
-        <button type="button" class="link-btn" data-action="add-discipline">${t("admin.drawer.addRecord")}</button>
-      </div>
-      ${renderDrawerDiscipline(discipline)}
-    </div>
-    <div class="drawer-section">
-      <h3>${t("admin.drawer.guardians")}</h3>
-      ${renderDrawerGuardians(contacts)}
-    </div>`;
-}
-
-function renderDrawerGuardians(contacts) {
-  if (!contacts.length)
-    return `<p class="drawer-muted">${t("admin.drawer.noGuardians")}</p>`;
-  return contacts
-    .map((c) => {
-      const g = c.guardians ?? {};
-      const primary = c.is_primary
-        ? `<span class="badge badge-primary">${t("admin.drawer.primary")}</span>`
-        : "";
-      return `
-      <div class="drawer-card">
-        <div class="drawer-card-head">
-          <b>${escapeHtml(g.first_name ?? "")} ${escapeHtml(g.last_name ?? "")}</b>
-          <span class="drawer-rel">${escapeHtml(g.relationship ?? t("admin.drawer.guardianRel"))}</span>
-          ${primary}
-        </div>
-        <ul class="drawer-contact">
-          ${g.phone ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(g.phone)}</li>` : ""}
-          ${g.alt_phone ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-call"></use></svg></span> ${escapeHtml(g.alt_phone)} (${t("admin.drawer.alt")})</li>` : ""}
-          ${g.email ? `<li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></span> ${escapeHtml(g.email)}</li>` : ""}
-        </ul>
-      </div>`;
-    })
-    .join("");
-}
-
-function renderDrawerAttendance(rows) {
-  if (!rows.length)
-    return `<p class="drawer-muted">${t("admin.drawer.noAttendance")}</p>`;
-  const counts = { present: 0, absent: 0, late: 0, excused: 0 };
-  rows.forEach((r) => {
-    if (counts[r.status] != null) counts[r.status] += 1;
-  });
-  const rate = Math.round(((counts.present + counts.late) / rows.length) * 100);
-  return `
-    <div class="drawer-attendance">
-      <span class="att-chip att-present">${counts.present} ${t("enums.attendanceWord.present")}</span>
-      <span class="att-chip att-absent">${counts.absent} ${t("enums.attendanceWord.absent")}</span>
-      <span class="att-chip att-late">${counts.late} ${t("enums.attendanceWord.late")}</span>
-      <span class="att-chip att-excused">${counts.excused} ${t("enums.attendanceWord.excused")}</span>
-    </div>
-    <p class="drawer-muted">${tn("admin.drawer.attendanceRate", rows.length, { rate, count: rows.length })}</p>`;
-}
-
-function renderDrawerSubjectGrades(rows) {
-  if (!rows.length)
-    return `<p class="drawer-muted">${t("admin.drawer.noGrades")}</p>`;
-  return `<ul class="drawer-grades">${rows
-    .map((r) => {
-      const subject = r.class_subject_teachers?.subjects?.name ?? "—";
-      const score = r.score;
-      const cell =
-        score == null
-          ? '<span class="text-muted">—</span>'
-          : `<b class="${gradeBandClass(score)}">${Number(score).toFixed(1)}</b>`;
-      return `<li><span>${escapeHtml(subject)}</span>${cell}</li>`;
-    })
-    .sort()
-    .join("")}</ul>`;
-}
-
-function renderDrawerDiscipline(rows) {
-  if (!rows.length)
-    return `<p class="drawer-muted">${t("admin.drawer.noDiscipline")}</p>`;
-  const sevBadge = {
-    low: "badge-neutral",
-    medium: "badge-warning",
-    high: "badge-danger",
-  };
-  return rows
-    .map((r) => {
-      const sev = sevBadge[r.severity] ?? "badge-neutral";
-      const sevLabel = r.severity
-        ? t(`enums.disciplineSeverity.${r.severity}`)
-        : "—";
-      const state = r.resolved
-        ? `<span class="badge badge-success">${t("enums.disciplineState.resolved")}</span>`
-        : `<span class="badge badge-warning">${t("enums.disciplineState.open")}</span>`;
-      return `
-      <div class="drawer-card">
-        <div class="drawer-card-head">
-          <b>${escapeHtml(r.type ?? t("admin.drawer.incident"))}</b>
-          <span class="badge ${sev}">${escapeHtml(sevLabel)}</span>
-          ${state}
-          <button type="button" class="btn-icon drawer-card-edit" title="${t("common.edit")}"
-            data-action="edit-discipline" data-id="${r.id}">
-            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-edit"></use></svg></span>
-          </button>
-        </div>
-        <p class="drawer-muted">${escapeHtml(r.date ?? "")}${r.description ? " · " + escapeHtml(r.description) : ""}</p>
-        ${r.resolved && r.resolution ? `<p class="drawer-muted">${t("admin.drawer.resolutionPrefix")}${escapeHtml(r.resolution)}</p>` : ""}
-      </div>`;
-    })
-    .join("");
-}
-
-async function openAddStudent() {
-  openModal({
-    title: t("admin.form.addStudentTitle", { class: currentClass.className }),
-    submitLabel: t("admin.roster.addStudent"),
-    fields: [
-      {
-        name: "enrollment_number",
-        label: t("admin.form.enrollmentShort"),
-        type: "text",
-        required: true,
-        placeholder: t("admin.form.enrollmentPlaceholder"),
-      },
-      {
-        name: "first_name",
-        label: t("admin.form.firstName"),
-        type: "text",
-        required: true,
-      },
-      {
-        name: "last_name",
-        label: t("admin.form.lastName"),
-        type: "text",
-        required: true,
-      },
-      { name: "email", label: t("admin.form.email"), type: "email" },
-      { name: "phone", label: t("admin.form.phone"), type: "text" },
-      {
-        name: "date_of_birth",
-        label: t("admin.form.dateOfBirth"),
-        type: "date",
-      },
-      {
-        name: "gender",
-        label: t("admin.form.gender"),
-        type: "select",
-        options: genderOptions(),
-      },
-      {
-        name: "enrollment_date",
-        label: t("admin.form.enrollmentDate"),
-        type: "date",
-        value: new Date().toISOString().split("T")[0],
-      },
-      { name: "address", label: t("admin.form.address"), type: "textarea" },
-      { name: "photo_url", label: t("admin.form.photoUrl"), type: "url" },
-      {
-        name: "class_id",
-        label: t("admin.form.class"),
-        type: "select",
-        required: true,
-        value: currentClass.classId,
-        options: teacherClassOptions(),
-      },
-    ],
-    onSubmit: async (formData) => {
-      await db.insertStudent({
-        enrollment_number: formData.enrollment_number.trim(),
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        email: formData.email?.trim() || null,
-        phone: formData.phone?.trim() || null,
-        date_of_birth: formData.date_of_birth || null,
-        gender: formData.gender || null,
-        enrollment_date: formData.enrollment_date || null,
-        address: formData.address?.trim() || null,
-        photo_url: formData.photo_url?.trim() || null,
-        class_id: Number(formData.class_id),
-        status: "active",
-      });
-      showToast(
-        t("admin.toast.studentAdded", {
-          name: `${formData.first_name} ${formData.last_name}`,
+  const activeIds = years.filter((y) => y.is_active).map((y) => y.id);
+  years.forEach((y) => {
+    const status = y.is_active
+      ? `<span class="badge badge-success">${t("console.years.active")}</span>`
+      : `<span class="badge badge-neutral">${t("console.years.inactive")}</span>`;
+    const actions = [];
+    if (!y.is_active) {
+      actions.push(
+        iconBtn("check_circle", t("console.years.setActive"), async () => {
+          try {
+            await data.setActiveYear(y.id, activeIds);
+            showToast(t("console.years.activated"));
+            loadYearPeriods();
+          } catch (err) {
+            showToast(err.message ?? String(err), "error");
+          }
         }),
       );
-      loadRoster();
-    },
-  });
-}
-
-function openEditStudent(student) {
-  openModal({
-    title: t("admin.form.editStudentTitle"),
-    submitLabel: t("admin.form.saveChanges"),
-    fields: [
-      {
-        name: "first_name",
-        label: t("admin.form.firstName"),
-        type: "text",
-        required: true,
-        value: student.first_name,
-      },
-      {
-        name: "last_name",
-        label: t("admin.form.lastName"),
-        type: "text",
-        required: true,
-        value: student.last_name,
-      },
-      {
-        name: "email",
-        label: t("admin.form.email"),
-        type: "email",
-        value: student.email ?? "",
-      },
-      {
-        name: "phone",
-        label: t("admin.form.phone"),
-        type: "text",
-        value: student.phone ?? "",
-      },
-      {
-        name: "national_id",
-        label: t("admin.form.nationalIdFull"),
-        type: "text",
-        value: student.national_id ?? "",
-        disabled: true,
-        help: t("admin.form.nationalIdHelp"),
-      },
-      {
-        name: "date_of_birth",
-        label: t("admin.form.dateOfBirth"),
-        type: "date",
-        value: student.date_of_birth ?? "",
-      },
-      {
-        name: "gender",
-        label: t("admin.form.gender"),
-        type: "select",
-        value: student.gender ?? "",
-        options: genderOptions(),
-      },
-      {
-        name: "enrollment_date",
-        label: t("admin.form.enrollmentDate"),
-        type: "date",
-        value: student.enrollment_date ?? "",
-      },
-      {
-        name: "address",
-        label: t("admin.form.address"),
-        type: "textarea",
-        value: student.address ?? "",
-      },
-      {
-        name: "photo_url",
-        label: t("admin.form.photoUrl"),
-        type: "url",
-        value: student.photo_url ?? "",
-      },
-      {
-        name: "class_id",
-        label: t("admin.form.class"),
-        type: "select",
-        required: true,
-        value: currentClass.classId,
-        options: teacherClassOptions(),
-      },
-      {
-        name: "status",
-        label: t("admin.form.status"),
-        type: "select",
-        required: true,
-        value: student.status,
-        options: [
-          { value: "active", label: t("enums.studentStatus.active") },
-          { value: "inactive", label: t("enums.studentStatus.inactive") },
-          { value: "graduated", label: t("enums.studentStatus.graduated") },
-          { value: "transferred", label: t("enums.studentStatus.transferred") },
-          { value: "withdrawn", label: t("enums.studentStatus.withdrawn") },
-        ],
-      },
-    ],
-    onSubmit: async (formData) => {
-      // national_id is a disabled field — excluded from FormData, never updated.
-      await db.updateStudent(student.id, {
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        email: formData.email?.trim() || null,
-        phone: formData.phone?.trim() || null,
-        date_of_birth: formData.date_of_birth || null,
-        gender: formData.gender || null,
-        enrollment_date: formData.enrollment_date || null,
-        address: formData.address?.trim() || null,
-        photo_url: formData.photo_url?.trim() || null,
-        class_id: Number(formData.class_id),
-        status: formData.status,
-      });
-      showToast(
-        t("admin.toast.studentUpdated", {
-          name: `${formData.first_name} ${formData.last_name}`,
-        }),
-      );
-      loadRoster();
-    },
-  });
-}
-
-function confirmDeleteStudent(id, name) {
-  openConfirm(t("admin.confirm.deleteStudent", { name }), async () => {
-    await db.deleteStudent(id);
-    showToast(t("admin.toast.studentDeleted", { name }));
-    loadRoster();
-  });
-}
-
-// ───────────────────────────────────────────────────────────────
-//  8. GRADEBOOK TAB (assignments + scores — the core)
-// ───────────────────────────────────────────────────────────────
-let gradebookState = null; // { cstId, periodId, assignments, students }
-
-function renderGradebookTab(content) {
-  const periodOptions = PERIODS.map(
-    (p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`,
-  ).join("");
-
-  content.innerHTML = `
-    <div class="view-toolbar">
-      <div class="toolbar-filters">
-        <label for="gradebook-period">${t("admin.gradebook.period")}</label>
-        <select id="gradebook-period">${periodOptions}</select>
-      </div>
-      <div class="toolbar-actions">
-        <button class="btn btn-ghost" id="btn-categories">
-          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-category"></use></svg></span> ${t("admin.gradebook.categories")}
-        </button>
-        <button class="btn btn-secondary" id="btn-manage-assignments">
-          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-list_alt"></use></svg></span> ${t("admin.gradebook.manage")}
-        </button>
-        <button class="btn btn-primary" id="btn-add-assignment">
-          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span> ${t("admin.gradebook.addAssignment")}
-        </button>
-        <button class="btn btn-primary" id="btn-post-grades">
-          <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-grading"></use></svg></span> ${t("admin.gradebook.postGrades")}
-        </button>
-      </div>
-    </div>
-    <div class="recent-activity">
-      <div id="gradebook-grid">${skeletonBlock(4)}</div>
-    </div>`;
-
-  const periodSelect = document.getElementById("gradebook-period");
-  periodSelect.value = getCurrentPeriodId();
-  periodSelect.addEventListener("change", loadGradebook);
-
-  document
-    .getElementById("btn-add-assignment")
-    .addEventListener("click", openAddAssignment);
-  document
-    .getElementById("btn-manage-assignments")
-    .addEventListener("click", openManageAssignments);
-  document
-    .getElementById("btn-categories")
-    .addEventListener("click", openCategoriesModal);
-  document
-    .getElementById("btn-post-grades")
-    .addEventListener("click", openPostGrades);
-
-  loadGradebook();
-}
-
-async function loadGradebook() {
-  const grid = document.getElementById("gradebook-grid");
-  const periodId = Number(document.getElementById("gradebook-period").value);
-  const cstId = currentClass.cstId;
-  grid.innerHTML = skeletonBlock(4);
-
-  try {
-    const [assignments, roster, periodGrades, categories] = await Promise.all([
-      db.fetchAssignments(cstId, periodId),
-      db.fetchRoster(currentClass.classId),
-      db.fetchPeriodGrades(cstId, periodId),
-      db.fetchCategories(cstId),
-    ]);
-    const students = roster.filter((s) => s.status === "active");
-
-    gradebookState = { cstId, periodId, assignments, students, categories };
-    renderGradebook(assignments, students, periodGrades);
-
-    // Keep an open Manage Assignments list in sync after add/edit/delete.
-    if (assignmentsOverlay.classList.contains("active"))
-      renderManageAssignments();
-  } catch (err) {
-    console.error(err);
-    grid.innerHTML = `<div class="loading-cell">${t("admin.gradebook.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-  }
-}
-
-// Clean, scannable table: one row per student → name, current-period grade
-// (colored by the standard bands), completion count. Grade entry lives in the
-// per-student modal opened by clicking the row.
-function renderGradebook(assignments, students, periodGrades) {
-  const grid = document.getElementById("gradebook-grid");
-
-  if (!assignments.length) {
-    grid.innerHTML = `
-      <div class="empty-state">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-assignment"></use></svg></span>
-        <p>${t("admin.gradebook.noAssignments")}</p>
-        <p class="empty-sub">${t("admin.gradebook.noAssignmentsSub")}</p>
-      </div>`;
-    return;
-  }
-  if (!students.length) {
-    grid.innerHTML = `<div class="loading-cell">${t("admin.gradebook.noActiveStudents")}</div>`;
-    return;
-  }
-
-  const overallMap = {};
-  periodGrades.forEach((p) => {
-    overallMap[p.student_id] = p;
-  });
-  const total = assignments.length;
-
-  const bodyRows = students
-    .map((s) => {
-      const o = overallMap[s.id];
-      const score = o && o.period_score != null ? Number(o.period_score) : null;
-      const graded = o ? o.graded_count : 0;
-      return `<tr class="row-clickable" data-student="${s.id}">
-        <td>${escapeHtml(s.last_name)}, ${escapeHtml(s.first_name)}</td>
-        <td>${gradeCellHtml(score)}</td>
-        <td class="text-muted">${t("admin.gradebook.gradedCount", { graded, total })}</td>
-      </tr>`;
-    })
-    .join("");
-
-  grid.innerHTML = `
-    <table class="data-table gradebook-table">
-      <thead>
-        <tr><th>${t("admin.gradebook.student")}</th><th>${t("admin.gradebook.grade")}</th><th>${t("admin.gradebook.completion")}</th></tr>
-      </thead>
-      <tbody>${bodyRows}</tbody>
-    </table>`;
-
-  grid.querySelectorAll("tr.row-clickable").forEach((tr) => {
-    tr.addEventListener("click", () => {
-      const s = students.find((x) => String(x.id) === tr.dataset.student);
-      if (s) openStudentGradesModal(s);
-    });
-  });
-}
-
-function openAddAssignment() {
-  openModal({
-    title: t("admin.form.addAssignmentTitle", {
-      subject: currentClass.subjectName,
-      class: currentClass.className,
-    }),
-    submitLabel: t("admin.gradebook.addAssignment"),
-    fields: [
-      {
-        name: "name",
-        label: t("admin.form.name"),
-        type: "text",
-        required: true,
-        placeholder: t("admin.form.assignmentNamePlaceholder"),
-      },
-      { name: "due_date", label: t("admin.form.dueDate"), type: "date" },
-      {
-        name: "max_score",
-        label: t("admin.form.maxScore"),
-        type: "number",
-        required: true,
-        value: "100",
-        min: 1,
-        step: "0.01",
-      },
-      {
-        name: "category_id",
-        label: t("admin.form.category"),
-        type: "select",
-        options: categoryOptions(),
-        help: t("admin.form.categoryHelp"),
-      },
-      { name: "note", label: t("admin.form.note"), type: "textarea" },
-    ],
-    onSubmit: async (formData) => {
-      await db.insertAssignment({
-        class_subject_teacher_id: currentClass.cstId,
-        grading_period_id: gradebookState.periodId,
-        name: formData.name.trim(),
-        due_date: formData.due_date || null,
-        max_score: Number(formData.max_score),
-        category_id: formData.category_id ? Number(formData.category_id) : null,
-        note: formData.note?.trim() || null,
-      });
-      showToast(t("admin.toast.assignmentCreated", { name: formData.name }));
-      loadGradebook();
-    },
-  });
-}
-
-function openEditAssignment(assignment) {
-  openModal({
-    title: t("admin.form.editAssignmentTitle"),
-    submitLabel: t("admin.form.saveChanges"),
-    fields: [
-      {
-        name: "name",
-        label: t("admin.form.name"),
-        type: "text",
-        required: true,
-        value: assignment.name,
-      },
-      {
-        name: "due_date",
-        label: t("admin.form.dueDate"),
-        type: "date",
-        value: assignment.due_date ?? "",
-      },
-      {
-        name: "max_score",
-        label: t("admin.form.maxScore"),
-        type: "number",
-        required: true,
-        value: assignment.max_score,
-        min: 1,
-        step: "0.01",
-      },
-      {
-        name: "category_id",
-        label: t("admin.form.category"),
-        type: "select",
-        value: assignment.category_id ?? "",
-        options: categoryOptions(),
-      },
-      {
-        name: "note",
-        label: t("admin.form.note"),
-        type: "textarea",
-        value: assignment.note ?? "",
-      },
-    ],
-    onSubmit: async (formData) => {
-      await db.updateAssignment(assignment.id, {
-        name: formData.name.trim(),
-        due_date: formData.due_date || null,
-        max_score: Number(formData.max_score),
-        category_id: formData.category_id ? Number(formData.category_id) : null,
-        note: formData.note?.trim() || null,
-      });
-      showToast(t("admin.toast.assignmentUpdated", { name: formData.name }));
-      loadGradebook();
-    },
-  });
-}
-
-function confirmDeleteAssignment(assignment) {
-  openConfirm(
-    t("admin.confirm.deleteAssignment", { name: assignment.name }),
-    async () => {
-      await db.deleteAssignment(assignment.id);
-      showToast(t("admin.toast.assignmentDeleted", { name: assignment.name }));
-      loadGradebook();
-    },
-  );
-}
-
-// ── Manage Assignments modal ───────────────────────────────────
-// Assignment add/edit/delete moved here when the gradebook became student
-// rows. Reuses the same add/edit/delete flows; the generic form modal stacks
-// on top, and loadGradebook() re-renders this list while it's open.
-function openManageAssignments() {
-  renderManageAssignments();
-  assignmentsOverlay.classList.add("active");
-}
-
-function closeManageAssignments() {
-  assignmentsOverlay.classList.remove("active");
-}
-
-function renderManageAssignments() {
-  const assignments = gradebookState?.assignments ?? [];
-  const periodName =
-    PERIODS.find((p) => p.id === gradebookState?.periodId)?.name ?? "";
-  manageTitle.textContent = t("admin.manage.title", { period: periodName });
-
-  if (!assignments.length) {
-    manageBody.innerHTML = `<p class="drawer-muted">${t("admin.manage.empty")}</p>`;
-    return;
-  }
-
-  const catById = Object.fromEntries(
-    (gradebookState?.categories ?? []).map((c) => [c.id, c.name]),
-  );
-
-  manageBody.innerHTML = "";
-  assignments.forEach((a) => {
-    const item = document.createElement("div");
-    item.className = "manage-item";
-
-    const catName = a.category_id ? catById[a.category_id] : null;
-    const info = document.createElement("div");
-    info.className = "manage-item-info";
-    info.innerHTML = `
-      <b>${escapeHtml(a.name)}</b>
-      <span class="manage-item-meta">/ ${a.max_score}${
-        a.due_date ? " · due " + formatDate(a.due_date) : ""
-      }${catName ? " · " + escapeHtml(catName) : ""}</span>`;
-
-    const actions = document.createElement("div");
-    actions.className = "manage-item-actions";
-    actions.appendChild(
-      makeActionBtn("edit_note", t("admin.manage.enterScores"), () =>
-        openColumnGrades(a),
-      ),
-    );
-    actions.appendChild(
-      makeActionBtn("edit", t("common.edit"), () => openEditAssignment(a)),
-    );
-    actions.appendChild(
-      makeActionBtn(
-        "delete",
-        t("common.delete"),
-        () => confirmDeleteAssignment(a),
-        true,
-      ),
-    );
-
-    item.append(info, actions);
-    manageBody.appendChild(item);
-  });
-}
-
-// ── Per-student grade modal (detail view + grade entry) ─────────
-let _studentGradesState = null;
-
-async function openStudentGradesModal(student) {
-  if (!gradebookState) return;
-  const { assignments, periodId } = gradebookState;
-  const periodName = PERIODS.find((p) => p.id === periodId)?.name ?? "";
-
-  _studentGradesState = { student, assignments, gradeByAssignment: {} };
-  sgTitle.textContent = `${student.first_name} ${student.last_name}`;
-  sgBody.innerHTML = skeletonBlock();
-  sgOverlay.classList.add("active");
-
-  if (!assignments.length) {
-    sgBody.innerHTML = `<p class="drawer-muted">${t("admin.sg.noAssignments", { period: escapeHtml(periodName) })}</p>`;
-    return;
-  }
-
-  let grades;
-  try {
-    grades = await db.fetchStudentAssignmentGrades(
-      assignments.map((a) => a.id),
-      student.id,
-    );
-  } catch (err) {
-    sgBody.innerHTML = `<div class="loading-cell">${t("admin.sg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-    return;
-  }
-
-  const gradeByAssignment = Object.fromEntries(
-    grades.map((g) => [g.assignment_id, g]),
-  );
-  _studentGradesState.gradeByAssignment = gradeByAssignment;
-
-  const rows = assignments
-    .map((a) => {
-      const g = gradeByAssignment[a.id];
-      const score = g?.score ?? "";
-      const note = g?.note ?? "";
-      const status = gradeStatus(g, a.due_date);
-      // Accidental-overwrite guard: an already-graded score renders locked
-      // (read-only) behind a per-assignment Edit button. Ungraded scores stay
-      // directly editable. This is per-assignment, never a whole-modal toggle.
-      const graded = g && g.score != null;
-      const scoreField = graded
-        ? `<input class="sg-score sg-locked" type="number" min="0" max="${a.max_score}" step="0.01"
-            data-assignment="${a.id}" data-original="${score}" value="${score}" readonly />
-          <button type="button" class="sg-edit-btn" data-assignment="${a.id}" title="${t("admin.sg.editScore")}" aria-label="${t("admin.sg.editScore")}">
-            <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-edit"></use></svg></span>
-          </button>`
-        : `<input class="sg-score" type="number" min="0" max="${a.max_score}" step="0.01"
-            data-assignment="${a.id}" data-original="${score}" value="${score}" placeholder="—" />`;
-      return `
-      <div class="sg-row">
-        <span class="sg-cell sg-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span>
-        <span class="sg-cell sg-num">${a.max_score}</span>
-        <span class="sg-cell sg-muted">${formatDate(a.due_date)}</span>
-        <span class="sg-cell sg-score-cell">
-          ${scoreField}
-        </span>
-        <span class="sg-cell"><span class="badge ${status.cls}">${status.label}</span></span>
-        <span class="sg-cell sg-muted">${formatDate(g?.created_at)}</span>
-        <span class="sg-cell sg-muted">${formatDate(g?.graded_at)}</span>
-        <span class="sg-cell">
-          <input class="sg-note" type="text" data-assignment="${a.id}"
-            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="${t("admin.sg.notePlaceholder")}" />
-        </span>
-      </div>`;
-    })
-    .join("");
-
-  sgBody.innerHTML = `
-    <p class="sg-period">${tn("admin.sg.periodLine", assignments.length, { period: escapeHtml(periodName), count: assignments.length })}</p>
-    <div class="sg-scroll">
-      <div class="sg-grid">
-        <div class="sg-row sg-head">
-          <span class="sg-cell">${t("admin.sg.assignment")}</span>
-          <span class="sg-cell sg-num">${t("admin.sg.max")}</span>
-          <span class="sg-cell">${t("admin.sg.due")}</span>
-          <span class="sg-cell">${t("admin.sg.score")}</span>
-          <span class="sg-cell">${t("admin.sg.status")}</span>
-          <span class="sg-cell">${t("admin.sg.dateAdded")}</span>
-          <span class="sg-cell">${t("admin.sg.dateGraded")}</span>
-          <span class="sg-cell">${t("admin.sg.note")}</span>
-        </div>
-        ${rows}
-      </div>
-    </div>`;
-}
-
-function closeStudentGradesModal() {
-  sgOverlay.classList.remove("active");
-  sgBody.innerHTML = "";
-  _studentGradesState = null;
-}
-
-async function saveStudentGrades() {
-  if (!_studentGradesState) return;
-  const { student, assignments, gradeByAssignment } = _studentGradesState;
-  const maxMap = Object.fromEntries(
-    assignments.map((a) => [a.id, Number(a.max_score)]),
-  );
-
-  const rows = [];
-  let errorMsg = null;
-
-  document.querySelectorAll("#sg-body .sg-score").forEach((input) => {
-    const aId = Number(input.dataset.assignment);
-    const noteInput = document.querySelector(
-      `#sg-body .sg-note[data-assignment="${aId}"]`,
-    );
-    const scoreVal = input.value.trim();
-    const noteVal = (noteInput?.value ?? "").trim();
-    const scoreChanged = scoreVal !== (input.dataset.original ?? "");
-    const noteChanged = noteVal !== (noteInput?.dataset.original ?? "");
-    if (!scoreChanged && !noteChanged) return;
-
-    let score = null;
-    if (scoreVal !== "") {
-      score = Number(scoreVal);
-      const max = maxMap[aId];
-      if (Number.isNaN(score) || score < 0 || score > max) {
-        errorMsg ??= t("admin.validation.scoreRange", { max });
-        return;
-      }
     }
-
-    const existing = gradeByAssignment[aId];
-    rows.push({
-      assignment_id: aId,
-      student_id: student.id,
-      score,
-      note: noteVal || null,
-      // Re-stamp graded_at only when the score itself changes; otherwise keep
-      // the existing timestamp (note-only edits shouldn't move "Date graded").
-      graded_at: scoreChanged
-        ? score == null
-          ? null
-          : new Date().toISOString()
-        : (existing?.graded_at ?? null),
-    });
-  });
-
-  if (errorMsg) {
-    showToast(errorMsg, "error");
-    return;
-  }
-  if (!rows.length) {
-    showToast(t("admin.validation.noChanges"), "error");
-    return;
-  }
-
-  sgSave.disabled = true;
-  try {
-    await db.upsertAssignmentGrades(rows);
-    showToast(
-      tn("admin.toast.gradesSaved", rows.length, {
-        count: rows.length,
-        name: student.first_name,
-      }),
-    );
-    closeStudentGradesModal();
-    loadGradebook(); // refresh current-period grade + completion from the view
-  } catch (err) {
-    showToast(err.message, "error");
-  } finally {
-    sgSave.disabled = false;
-  }
-}
-
-// ───────────────────────────────────────────────────────────────
-//  9. ATTENDANCE TAB
-// ───────────────────────────────────────────────────────────────
-let _attendanceRows = [];
-
-function renderAttendanceTab(content) {
-  const today = new Date().toISOString().split("T")[0];
-  content.innerHTML = `
-    <div class="absence-summary recent-activity" id="absence-summary">
-      ${skeletonBlock(2)}
-    </div>
-    <div class="view-toolbar">
-      <div class="toolbar-filters">
-        <label for="attendance-date">${t("admin.attendance.date")}</label>
-        <input type="date" id="attendance-date" value="${today}" />
-      </div>
-      <button class="btn btn-secondary" id="btn-save-attendance">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-save"></use></svg></span> ${t("admin.attendance.save")}
-      </button>
-    </div>
-    <div class="recent-activity">
-      <table class="data-table" id="attendance-table">
-        <thead>
-          <tr><th>${t("admin.attendance.student")}</th><th>${t("admin.attendance.status")}</th><th>${t("admin.attendance.notes")}</th></tr>
-        </thead>
-        <tbody id="attendance-body">
-          ${skeletonRows(5, 3)}
-        </tbody>
-      </table>
-    </div>`;
-
-  const dateInput = document.getElementById("attendance-date");
-  dateInput.addEventListener("change", () =>
-    loadAttendanceSheet(dateInput.value),
-  );
-
-  const tbody = document.getElementById("attendance-body");
-  tbody.addEventListener("click", (e) => {
-    const btn = e.target.closest(".attendance-status-btn");
-    if (!btn) return;
-    const idx = Number(btn.dataset.idx);
-    _attendanceRows[idx].status = btn.dataset.status;
-    btn
-      .closest(".attendance-status-group")
-      .querySelectorAll(".attendance-status-btn")
-      .forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-  });
-  tbody.addEventListener("input", (e) => {
-    const input = e.target.closest(".attendance-notes-input");
-    if (!input) return;
-    _attendanceRows[Number(input.dataset.idx)].notes = input.value;
-  });
-
-  document
-    .getElementById("btn-save-attendance")
-    .addEventListener("click", saveAttendance);
-
-  loadAttendanceSheet(today);
-  loadAbsenceSummary();
-}
-
-async function loadAttendanceSheet(date) {
-  const tbody = document.getElementById("attendance-body");
-  tbody.innerHTML = skeletonRows(5, 3);
-  try {
-    _attendanceRows = await db.fetchAttendanceSheet(currentClass.classId, date);
-    _attendanceRows.forEach((row) => {
-      row._original = { status: row.status, notes: row.notes ?? "" };
-    });
-    renderAttendanceSheet(_attendanceRows);
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="3" class="loading-cell">${t("admin.attendance.error", { msg: escapeHtml(err.message) })}</td></tr>`;
-  }
-}
-
-function renderAttendanceSheet(rows) {
-  const tbody = document.getElementById("attendance-body");
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="3" class="loading-cell">${t("admin.gradebook.noActiveStudents")}</td></tr>`;
-    return;
-  }
-
-  const STATUSES = ["present", "absent", "late", "excused"];
-  tbody.innerHTML = "";
-  rows.forEach((row, idx) => {
-    const tr = document.createElement("tr");
-    const statusButtons = STATUSES.map((s) => {
-      const active = row.status === s ? " active" : "";
-      return `<button type="button" class="btn btn-sm attendance-status-btn${active}"
-        data-idx="${idx}" data-status="${s}">${t(`enums.attendance.${s}`)}</button>`;
-    }).join("");
-
-    tr.innerHTML = `
-      <td>${escapeHtml(row.last_name)}, ${escapeHtml(row.first_name)}</td>
-      <td><div class="attendance-status-group">${statusButtons}</div></td>
-      <td><input type="text" class="attendance-notes-input" data-idx="${idx}"
-        value="${escapeHtml(row.notes ?? "")}" placeholder="${t("admin.attendance.notePlaceholder")}"></td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-async function saveAttendance() {
-  const date = document.getElementById("attendance-date").value;
-  if (!date) {
-    showToast(t("admin.validation.pickDate"), "error");
-    return;
-  }
-  if (!_attendanceRows.length) {
-    showToast(t("admin.validation.noAttendanceData"), "error");
-    return;
-  }
-
-  // Require a chosen/loaded status — a row the teacher never picked stays null and
-  // is never upserted (attendance.status is non-null in the DB).
-  const changed = _attendanceRows.filter(
-    (row) =>
-      row.status &&
-      (!row._original ||
-        row._original.status !== row.status ||
-        row._original.notes !== (row.notes ?? "")),
-  );
-  if (!changed.length) {
-    showToast(t("admin.validation.noChanges"), "error");
-    return;
-  }
-
-  try {
-    await db.upsertAttendance(currentClass.classId, date, changed, TEACHER_ID);
-    changed.forEach((row) => {
-      row._original = { status: row.status, notes: row.notes ?? "" };
-    });
-    showToast(
-      tn("admin.toast.attendanceSaved", changed.length, {
-        count: changed.length,
-      }),
-    );
-    loadAbsenceSummary(); // counts may have shifted a student over the threshold
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-}
-
-// ───────────────────────────────────────────────────────────────
-//  10. SCHEDULE TAB
-// ───────────────────────────────────────────────────────────────
-function renderScheduleTab(content) {
-  content.innerHTML = `
-    <div class="view-toolbar">
-      <div class="toolbar-filters">
-        <label>${t("admin.schedule.weeklyFor", { class: escapeHtml(currentClass.className) })}</label>
-      </div>
-      <button class="btn btn-primary" id="btn-add-schedule">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span> ${t("admin.schedule.add")}
-      </button>
-    </div>
-    <div class="recent-activity">
-      <div id="schedule-grid">${skeletonBlock(4)}</div>
-    </div>`;
-
-  bindAdminAction(document.getElementById("btn-add-schedule"), openAddSchedule);
-
-  loadSchedule();
-}
-
-async function loadSchedule() {
-  const container = document.getElementById("schedule-grid");
-  try {
-    const entries = await db.fetchScheduleByClass(currentClass.classId);
-    renderScheduleTable(entries);
-  } catch (err) {
-    container.innerHTML = `<div class="loading-cell">${t("admin.schedule.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-  }
-}
-
-function renderScheduleTable(entries) {
-  const container = document.getElementById("schedule-grid");
-  if (!entries.length) {
-    container.innerHTML = `<div class="loading-cell">${t("admin.schedule.empty")}</div>`;
-    return;
-  }
-
-  const table = document.createElement("table");
-  table.className = "data-table";
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>${t("admin.schedule.day")}</th><th>${t("admin.schedule.start")}</th><th>${t("admin.schedule.end")}</th>
-        <th>${t("admin.schedule.subject")}</th><th>${t("admin.schedule.teacher")}</th><th>${t("admin.schedule.room")}</th>
-        <th class="actions-col">${t("admin.schedule.actions")}</th>
-      </tr>
-    </thead>`;
-  const tbody = document.createElement("tbody");
-
-  entries.forEach((entry) => {
-    const tr = document.createElement("tr");
-    const dot = entry.subjects?.color
-      ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;
-           background:${entry.subjects.color};margin-right:6px;vertical-align:middle;"></span>`
-      : "";
-
-    const actionsCell = document.createElement("td");
-    actionsCell.className = "actions-col";
-    actionsCell.appendChild(
-      makeActionBtn(
+    actions.push(iconBtn("edit", t("common.edit"), () => openYearForm(y)));
+    actions.push(
+      iconBtn(
         "delete",
         t("common.delete"),
-        () => {
-          openConfirm(t("admin.confirm.deleteSchedule"), async () => {
-            await db.deleteSchedule(entry.id);
-            showToast(t("admin.toast.scheduleDeleted"));
-            loadSchedule();
-          });
-        },
-        true,
+        () =>
+          openConfirm(
+            t("console.years.confirmDelete", { name: y.name }),
+            async () => {
+              await data.deleteSchoolYear(y.id);
+              showToast(t("console.years.deleted"));
+              loadYearPeriods();
+            },
+          ),
         true,
       ),
     );
-
-    tr.innerHTML = `
-      <td>${dayName(entry.day_of_week) || entry.day_of_week}</td>
-      <td>${escapeHtml(entry.start_time)}</td>
-      <td>${escapeHtml(entry.end_time)}</td>
-      <td>${dot}${escapeHtml(entry.subjects?.name ?? "—")}</td>
-      <td>${entry.teachers ? escapeHtml(entry.teachers.first_name + " " + entry.teachers.last_name) : "—"}</td>
-      <td>${escapeHtml(entry.rooms?.name ?? "—")}</td>`;
-    tr.appendChild(actionsCell);
-    tbody.appendChild(tr);
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(y.name),
+          fmtDate(y.start_date),
+          fmtDate(y.end_date),
+          status,
+        ],
+        actions,
+      ),
+    );
   });
-
-  table.appendChild(tbody);
-  container.innerHTML = "";
-  container.appendChild(table);
 }
 
-async function openAddSchedule() {
-  let subjects, teachers, rooms;
-  try {
-    [subjects, teachers, rooms] = await Promise.all([
-      db.fetchSubjects(),
-      db.fetchTeachers(),
-      db.fetchRooms(),
-    ]);
-  } catch (err) {
-    showToast(
-      t("admin.schedule.formDataFailed", { msg: err.message }),
-      "error",
-    );
-    return;
-  }
-
+function openYearForm(year = null) {
   openModal({
-    title: t("admin.schedule.addTitle", { class: currentClass.className }),
-    submitLabel: t("admin.schedule.addEntry"),
+    title: year ? t("console.years.editTitle") : t("console.years.addTitle"),
     fields: [
       {
-        name: "day_of_week",
-        label: t("admin.form.day"),
-        type: "select",
+        name: "name",
+        label: t("console.years.name"),
+        value: year?.name,
         required: true,
-        options: dayOptions(),
+        placeholder: "2025-2026",
       },
       {
-        name: "start_time",
-        label: t("admin.form.startTime"),
-        type: "time",
-        required: true,
-      },
-      {
-        name: "end_time",
-        label: t("admin.form.endTime"),
-        type: "time",
+        name: "start_date",
+        label: t("console.years.start"),
+        type: "date",
+        value: year?.start_date,
         required: true,
       },
       {
-        name: "subject_id",
-        label: t("admin.form.subject"),
-        type: "select",
+        name: "end_date",
+        label: t("console.years.end"),
+        type: "date",
+        value: year?.end_date,
         required: true,
-        value: currentClass.subjectId,
-        options: subjects.map((s) => ({ value: s.id, label: s.name })),
-      },
-      {
-        name: "teacher_id",
-        label: t("admin.form.teacher"),
-        type: "select",
-        required: true,
-        value: TEACHER_ID,
-        options: teachers.map((tc) => ({
-          value: tc.id,
-          label: `${tc.last_name}, ${tc.first_name}`,
-        })),
-      },
-      {
-        name: "room_id",
-        label: t("admin.form.room"),
-        type: "select",
-        options: rooms.map((r) => ({ value: r.id, label: r.name })),
       },
     ],
-    onSubmit: async (formData) => {
-      await db.insertSchedule({
-        class_id: currentClass.classId,
-        day_of_week: Number(formData.day_of_week),
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        subject_id: Number(formData.subject_id),
-        teacher_id: Number(formData.teacher_id),
-        room_id: formData.room_id ? Number(formData.room_id) : null,
-      });
-      showToast(t("admin.toast.scheduleAdded"));
-      loadSchedule();
+    onSubmit: async (v) => {
+      const payload = {
+        name: v.name.trim(),
+        start_date: v.start_date,
+        end_date: v.end_date,
+      };
+      if (year) await data.updateSchoolYear(year.id, payload);
+      else await data.createSchoolYear({ ...payload, is_active: false });
+      showToast(t("common.saved"));
+      loadYearPeriods();
     },
   });
 }
 
-// ───────────────────────────────────────────────────────────────
-//  11. SUBJECTS SECTION (global catalog — retained)
-// ───────────────────────────────────────────────────────────────
-let _cachedSubjects = [];
-let subjectsFilter = { search: "" };
-
-async function loadSubjects() {
-  renderEmptyRow("subjects-body", 4, t("admin.subjects.loading"));
+async function loadPeriods() {
+  const label = document.getElementById("periods-year-label");
+  const addBtn = document.getElementById("btn-add-period");
+  if (!state.activeYear) {
+    label.textContent = t("console.periods.noYear");
+    addBtn.disabled = true;
+    renderEmptyRow("periods-body", 6, t("console.periods.noYear"));
+    return;
+  }
+  addBtn.disabled = false;
+  label.textContent = state.activeYear.name;
+  renderMessageRow("periods-body", 6, t("common.loading"));
   try {
-    _cachedSubjects = await db.fetchSubjectsDetailed();
-    renderSubjectsTable();
+    const periods = await data.listPeriods(state.activeYear.id);
+    renderPeriods(periods);
   } catch (err) {
-    console.error(err);
-    renderErrorRow("subjects-body", 4);
+    console.error("loadPeriods:", err);
+    renderErrorRow("periods-body", 6);
   }
 }
 
-function renderSubjectsTable() {
-  const tbody = document.getElementById("subjects-body");
-  let filtered = _cachedSubjects;
-
-  if (subjectsFilter.search) {
-    const q = subjectsFilter.search.toLowerCase();
-    filtered = filtered.filter(
-      (s) =>
-        s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q),
-    );
-  }
-
-  if (!filtered.length) {
-    renderEmptyRow("subjects-body", 4, t("admin.subjects.noMatch"));
-    return;
-  }
-
+function renderPeriods(periods) {
+  const tbody = document.getElementById("periods-body");
   tbody.innerHTML = "";
-  filtered.forEach((subject) => {
-    const gradeLevelNames =
-      [
-        ...new Set(
-          (subject.grade_level_subjects ?? [])
-            .map((gls) => gls.grade_levels?.name)
-            .filter(Boolean),
-        ),
-      ].join(", ") || "—";
-
-    const colorSwatch = subject.color
-      ? `<span class="color-swatch" style="background:${subject.color};
-           display:inline-block;width:16px;height:16px;border-radius:3px;
-           vertical-align:middle;margin-right:6px;"></span>${escapeHtml(subject.color)}`
-      : "—";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><code>${escapeHtml(subject.code ?? "—")}</code></td>
-      <td>${escapeHtml(subject.name)}</td>
-      <td>${colorSwatch}</td>
-      <td>${escapeHtml(gradeLevelNames)}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-let subjectsSearchTimeout;
-document.getElementById("subjects-search")?.addEventListener("input", (e) => {
-  clearTimeout(subjectsSearchTimeout);
-  subjectsSearchTimeout = setTimeout(() => {
-    subjectsFilter.search = e.target.value.trim();
-    if (_cachedSubjects.length) renderSubjectsTable();
-  }, 350);
-});
-
-// Subjects is read-only for teachers — no add/edit/delete. The school's
-// subject structure is registrar-managed, outside a teacher's role.
-
-// ───────────────────────────────────────────────────────────────
-//  12. SHARED SMALL HELPERS (added features)
-// ───────────────────────────────────────────────────────────────
-// Gender select options, built at call time so labels follow the active language.
-function genderOptions() {
-  return [
-    { value: "M", label: t("enums.gender.M") },
-    { value: "F", label: t("enums.gender.F") },
-    { value: "O", label: t("enums.gender.O") },
-  ];
-}
-
-function genderLabel(g) {
-  return g === "M" || g === "F" || g === "O" ? t(`enums.gender.${g}`) : "—";
-}
-
-// Category dropdown options for the assignment form, from the loaded gradebook.
-function categoryOptions() {
-  return (gradebookState?.categories ?? []).map((c) => ({
-    value: c.id,
-    label: `${c.name} (${Number(c.weight)}%)`,
-  }));
-}
-
-// ───────────────────────────────────────────────────────────────
-//  13. GRADE CATEGORIES (item 8)
-// ───────────────────────────────────────────────────────────────
-function openCategoriesModal() {
-  if (!currentClass) return;
-  categoriesTitle.textContent = t("admin.categories.title", {
-    subject: currentClass.subjectName,
-    class: currentClass.className,
-  });
-  renderCategories();
-  categoriesOverlay.classList.add("active");
-}
-
-function closeCategoriesModal() {
-  categoriesOverlay.classList.remove("active");
-}
-
-function renderCategories() {
-  const cats = gradebookState?.categories ?? [];
-  if (!cats.length) {
-    categoriesBody.innerHTML = `<p class="drawer-muted">${t("admin.categories.empty")}</p>`;
-    categoriesTotal.textContent = "";
+  if (!periods.length) {
+    renderEmptyRow("periods-body", 6, t("console.periods.empty"));
     return;
   }
-
-  categoriesBody.innerHTML = "";
-  cats.forEach((c) => {
-    const item = document.createElement("div");
-    item.className = "manage-item";
-    const info = document.createElement("div");
-    info.className = "manage-item-info";
-    info.innerHTML = `<b>${escapeHtml(c.name)}</b><span class="manage-item-meta">${t("admin.categories.weight", { weight: Number(c.weight) })}</span>`;
-    const actions = document.createElement("div");
-    actions.className = "manage-item-actions";
-    actions.appendChild(
-      makeActionBtn("edit", t("common.edit"), () => openCategoryForm(c)),
-    );
-    actions.appendChild(
-      makeActionBtn(
+  periods.forEach((p) => {
+    const actions = [
+      iconBtn("edit", t("common.edit"), () => openPeriodForm(p)),
+      iconBtn(
         "delete",
         t("common.delete"),
-        () => confirmDeleteCategory(c),
+        () =>
+          openConfirm(
+            t("console.periods.confirmDelete", { name: p.name }),
+            async () => {
+              await data.deletePeriod(p.id);
+              showToast(t("console.periods.deleted"));
+              loadPeriods();
+            },
+          ),
         true,
       ),
+    ];
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(p.period_order),
+          escapeHtml(p.name),
+          fmtDate(p.start_date),
+          fmtDate(p.end_date),
+          p.weight != null ? `${escapeHtml(p.weight)}%` : "—",
+        ],
+        actions,
+      ),
     );
-    item.append(info, actions);
-    categoriesBody.appendChild(item);
   });
-
-  const total = cats.reduce((s, c) => s + Number(c.weight || 0), 0);
-  const off = Math.round(total * 100) / 100 !== 100;
-  categoriesTotal.innerHTML = `${t("admin.categories.total")}<b class="${off ? "score-mid" : "score-high"}">${total}%</b>${
-    off ? t("admin.categories.totalOff") : ""
-  }`;
 }
 
-function openCategoryForm(category = null) {
-  const editing = !!category;
+function openPeriodForm(period = null) {
   openModal({
-    title: editing
-      ? t("admin.categories.editTitle")
-      : t("admin.categories.addTitle"),
-    submitLabel: editing ? t("common.save") : t("admin.categories.add"),
+    title: period
+      ? t("console.periods.editTitle")
+      : t("console.periods.addTitle"),
     fields: [
       {
         name: "name",
-        label: t("admin.form.name"),
-        type: "text",
+        label: t("console.periods.name"),
+        value: period?.name,
         required: true,
-        value: category?.name ?? "",
-        placeholder: t("admin.categories.namePlaceholder"),
+        placeholder: t("console.periods.namePlaceholder"),
+      },
+      {
+        name: "period_order",
+        label: t("console.periods.order"),
+        type: "number",
+        value: period?.period_order,
+        required: true,
+        min: 1,
+      },
+      {
+        name: "start_date",
+        label: t("console.periods.start"),
+        type: "date",
+        value: period?.start_date,
+        required: true,
+      },
+      {
+        name: "end_date",
+        label: t("console.periods.end"),
+        type: "date",
+        value: period?.end_date,
+        required: true,
       },
       {
         name: "weight",
-        label: t("admin.form.weightPct"),
+        label: t("console.periods.weight"),
         type: "number",
-        required: true,
-        value: category?.weight ?? "",
+        value: period?.weight ?? 33.33,
         min: 0,
+        max: 100,
         step: "0.01",
       },
     ],
-    onSubmit: async (formData) => {
+    onSubmit: async (v) => {
       const payload = {
-        name: formData.name.trim(),
-        weight: Number(formData.weight),
+        name: v.name.trim(),
+        period_order: num(v.period_order),
+        start_date: v.start_date,
+        end_date: v.end_date,
+        weight: num(v.weight),
       };
-      if (editing) {
-        await db.updateCategory(category.id, payload);
-      } else {
-        await db.insertCategory({
+      if (period) await data.updatePeriod(period.id, payload);
+      else
+        await data.createPeriod({
           ...payload,
-          class_subject_teacher_id: currentClass.cstId,
+          school_year_id: state.activeYear.id,
         });
-      }
-      showToast(
-        editing
-          ? t("admin.toast.categoryUpdated", { name: payload.name })
-          : t("admin.toast.categoryAdded", { name: payload.name }),
-      );
-      await refreshAfterCategoryChange();
+      showToast(t("common.saved"));
+      loadPeriods();
     },
   });
 }
 
-function confirmDeleteCategory(category) {
-  openConfirm(
-    t("admin.confirm.deleteCategory", { name: category.name }),
-    async () => {
-      await db.deleteCategory(category.id);
-      showToast(t("admin.toast.categoryDeleted", { name: category.name }));
-      await refreshAfterCategoryChange();
-    },
-  );
-}
-
-// Reload the gradebook (refetches categories + grades, since weighting changed)
-// and re-render the categories list if it's still open.
-async function refreshAfterCategoryChange() {
-  await loadGradebook();
-  if (categoriesOverlay.classList.contains("active")) renderCategories();
-}
+document
+  .getElementById("btn-add-year")
+  .addEventListener("click", () => openYearForm());
+document
+  .getElementById("btn-add-period")
+  .addEventListener("click", () => openPeriodForm());
 
 // ───────────────────────────────────────────────────────────────
-//  14. POST GRADES (item 1) — finalize period grade to the report card
+//  5c. GRADES & SECTIONS
 // ───────────────────────────────────────────────────────────────
-let _postGradesState = null;
+async function loadGradesSections() {
+  await Promise.all([loadGradeLevels(), loadRooms()]);
+  await loadSections();
+}
 
-async function openPostGrades() {
-  if (!gradebookState) return;
-  const { cstId, periodId, students } = gradebookState;
-  const periodName = PERIODS.find((p) => p.id === periodId)?.name ?? "";
-  pgTitle.textContent = t("admin.pg.title", { period: periodName });
-  pgBody.innerHTML = skeletonBlock();
-  pgOverlay.classList.add("active");
-
-  let computed, posted;
+async function loadGradeLevels() {
+  renderMessageRow("grades-body", 3, t("common.loading"));
   try {
-    [computed, posted] = await Promise.all([
-      db.fetchPeriodGrades(cstId, periodId),
-      db.fetchPostedGrades(cstId, periodId),
-    ]);
-  } catch (err) {
-    pgBody.innerHTML = `<div class="loading-cell">${t("admin.pg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-    return;
-  }
-
-  const computedById = Object.fromEntries(
-    computed.map((c) => [c.student_id, c]),
-  );
-  const postedById = Object.fromEntries(posted.map((p) => [p.student_id, p]));
-  _postGradesState = { cstId, periodId };
-
-  if (!students.length) {
-    pgBody.innerHTML = `<p class="drawer-muted">${t("admin.pg.noStudents")}</p>`;
-    return;
-  }
-
-  const rows = students
-    .map((s) => {
-      const comp = computedById[s.id];
-      const computedScore =
-        comp && comp.period_score != null ? Number(comp.period_score) : null;
-      const post = postedById[s.id];
-      const postedScore =
-        post && post.score != null ? Number(post.score) : null;
-      const prefill =
-        postedScore != null
-          ? postedScore
-          : computedScore != null
-            ? computedScore.toFixed(1)
-            : "";
-      const note = post?.notes ?? "";
-      const postedCell =
-        postedScore != null
-          ? `<b class="${gradeBandClass(postedScore)}">${postedScore.toFixed(1)}</b>`
-          : '<span class="text-muted">—</span>';
-      return `
-      <div class="pg-row">
-        <span class="pg-cell pg-name">${escapeHtml(s.last_name)}, ${escapeHtml(s.first_name)}</span>
-        <span class="pg-cell pg-center">${gradeCellHtml(computedScore)}</span>
-        <span class="pg-cell pg-center">${postedCell}</span>
-        <span class="pg-cell">
-          <input class="pg-score" type="number" min="0" max="100" step="0.01"
-            data-student="${s.id}" data-computed="${computedScore != null ? computedScore.toFixed(2) : ""}"
-            value="${prefill}" placeholder="—" />
-        </span>
-        <span class="pg-cell">
-          <input class="pg-note" type="text" data-student="${s.id}"
-            value="${escapeHtml(note)}" placeholder="${t("admin.pg.commentPlaceholder")}" />
-        </span>
-      </div>`;
-    })
-    .join("");
-
-  pgBody.innerHTML = `
-    <p class="sg-period">${t("admin.pg.intro", { period: escapeHtml(periodName) })}</p>
-    <div class="sg-scroll">
-      <div class="pg-grid">
-        <div class="pg-row pg-head">
-          <span class="pg-cell">${t("admin.pg.student")}</span>
-          <span class="pg-cell pg-center">${t("admin.pg.computed")}</span>
-          <span class="pg-cell pg-center">${t("admin.pg.posted")}</span>
-          <span class="pg-cell">${t("admin.pg.toPost")}</span>
-          <span class="pg-cell">${t("admin.pg.comment")}</span>
-        </div>
-        ${rows}
-      </div>
-    </div>
-    <div class="pg-actions">
-      <button type="button" class="link-btn" id="pg-fill-computed">${t("admin.pg.reset")}</button>
-    </div>`;
-
-  document.getElementById("pg-fill-computed").addEventListener("click", () => {
-    pgBody.querySelectorAll(".pg-score").forEach((inp) => {
-      const c = inp.dataset.computed;
-      if (c !== "") inp.value = Number(c).toFixed(1);
-    });
-  });
-}
-
-function closePostGrades() {
-  pgOverlay.classList.remove("active");
-  pgBody.innerHTML = "";
-  _postGradesState = null;
-}
-
-async function savePostGrades() {
-  if (!_postGradesState) return;
-  const { cstId, periodId } = _postGradesState;
-
-  const rows = [];
-  let errorMsg = null;
-  const now = new Date().toISOString();
-
-  pgBody.querySelectorAll(".pg-score").forEach((input) => {
-    const studentId = Number(input.dataset.student);
-    const noteInput = pgBody.querySelector(
-      `.pg-note[data-student="${studentId}"]`,
-    );
-    const scoreVal = input.value.trim();
-    const noteVal = (noteInput?.value ?? "").trim();
-    if (scoreVal === "") return; // skip students with no grade to post
-
-    const score = Number(scoreVal);
-    if (Number.isNaN(score) || score < 0 || score > 100) {
-      errorMsg ??= t("admin.validation.postRange");
+    state.gradeLevels = await data.listGradeLevels();
+    const tbody = document.getElementById("grades-body");
+    tbody.innerHTML = "";
+    if (!state.gradeLevels.length) {
+      renderEmptyRow("grades-body", 3, t("console.grades.empty"));
       return;
     }
-    rows.push({
-      student_id: studentId,
-      class_subject_teacher_id: cstId,
-      grading_period_id: periodId,
-      score,
-      notes: noteVal || null,
-      submitted_at: now,
+    state.gradeLevels.forEach((g) => {
+      tbody.appendChild(
+        tableRow(
+          [escapeHtml(g.numeric_level), escapeHtml(g.name)],
+          [
+            iconBtn("edit", t("common.edit"), () => openGradeForm(g)),
+            iconBtn(
+              "delete",
+              t("common.delete"),
+              () =>
+                openConfirm(
+                  t("console.grades.confirmDelete", { name: g.name }),
+                  async () => {
+                    await data.deleteGradeLevel(g.id);
+                    showToast(t("common.deleted"));
+                    loadGradeLevels();
+                  },
+                ),
+              true,
+            ),
+          ],
+        ),
+      );
     });
+  } catch (err) {
+    console.error("loadGradeLevels:", err);
+    renderErrorRow("grades-body", 3);
+  }
+}
+
+function openGradeForm(grade = null) {
+  openModal({
+    title: grade ? t("console.grades.editTitle") : t("console.grades.addTitle"),
+    fields: [
+      {
+        name: "numeric_level",
+        label: t("console.grades.level"),
+        type: "number",
+        value: grade?.numeric_level,
+        required: true,
+        min: 1,
+      },
+      {
+        name: "name",
+        label: t("console.grades.name"),
+        value: grade?.name,
+        required: true,
+        placeholder: t("console.grades.namePlaceholder"),
+      },
+    ],
+    onSubmit: async (v) => {
+      const payload = {
+        numeric_level: num(v.numeric_level),
+        name: v.name.trim(),
+      };
+      if (grade) await data.updateGradeLevel(grade.id, payload);
+      else await data.createGradeLevel(payload);
+      showToast(t("common.saved"));
+      loadGradeLevels();
+    },
   });
+}
 
-  if (errorMsg) {
-    showToast(errorMsg, "error");
-    return;
-  }
-  if (!rows.length) {
-    showToast(t("admin.validation.atLeastOne"), "error");
-    return;
-  }
-
-  pgSave.disabled = true;
+async function loadRooms() {
+  renderMessageRow("rooms-body", 4, t("common.loading"));
   try {
-    await db.upsertStudentGrades(rows);
-    showToast(
-      tn("admin.toast.gradesPosted", rows.length, { count: rows.length }),
-    );
-    closePostGrades();
-  } catch (err) {
-    showToast(err.message, "error");
-  } finally {
-    pgSave.disabled = false;
-  }
-}
-
-// ───────────────────────────────────────────────────────────────
-//  15. COLUMN GRADE ENTRY (item 4) — one assignment, every student
-// ───────────────────────────────────────────────────────────────
-let _columnState = null;
-
-async function openColumnGrades(assignment) {
-  if (!gradebookState) return;
-  const students = gradebookState.students; // active students only
-  cgTitle.textContent = t("admin.cg.title", { assignment: assignment.name });
-  cgBody.innerHTML = skeletonBlock();
-  cgOverlay.classList.add("active");
-
-  let existing;
-  try {
-    existing = await db.fetchAssignmentColumn(assignment.id);
-  } catch (err) {
-    cgBody.innerHTML = `<div class="loading-cell">${t("admin.pg.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-    return;
-  }
-  const byStudent = Object.fromEntries(existing.map((g) => [g.student_id, g]));
-  _columnState = { assignment, byStudent };
-
-  if (!students.length) {
-    cgBody.innerHTML = `<p class="drawer-muted">${t("admin.pg.noStudents")}</p>`;
-    return;
-  }
-
-  const rows = students
-    .map((s) => {
-      const g = byStudent[s.id];
-      const score = g?.score ?? "";
-      const note = g?.note ?? "";
-      return `
-      <div class="cg-row">
-        <span class="cg-cell cg-name">${escapeHtml(s.last_name)}, ${escapeHtml(s.first_name)}</span>
-        <span class="cg-cell">
-          <input class="cg-score" type="number" min="0" max="${assignment.max_score}" step="0.01"
-            data-student="${s.id}" data-original="${score}" value="${score}" placeholder="—" />
-        </span>
-        <span class="cg-cell">
-          <input class="cg-note" type="text" data-student="${s.id}"
-            data-original="${escapeHtml(note)}" value="${escapeHtml(note)}" placeholder="${t("admin.cg.notePlaceholder")}" />
-        </span>
-      </div>`;
-    })
-    .join("");
-
-  cgBody.innerHTML = `
-    <p class="sg-period">${t("admin.cg.outOf", { max: assignment.max_score })}${
-      assignment.due_date
-        ? " · " + t("admin.cg.dueOn", { date: formatDate(assignment.due_date) })
-        : ""
-    } · ${tn("admin.students", students.length)}</p>
-    <div class="sg-scroll">
-      <div class="cg-grid">
-        <div class="cg-row cg-head">
-          <span class="cg-cell">${t("admin.cg.student")}</span>
-          <span class="cg-cell">${t("admin.cg.score")}</span>
-          <span class="cg-cell">${t("admin.cg.note")}</span>
-        </div>
-        ${rows}
-      </div>
-    </div>`;
-}
-
-function closeColumnGrades() {
-  cgOverlay.classList.remove("active");
-  cgBody.innerHTML = "";
-  _columnState = null;
-}
-
-async function saveColumnGrades() {
-  if (!_columnState) return;
-  const { assignment, byStudent } = _columnState;
-  const max = Number(assignment.max_score);
-
-  const rows = [];
-  let errorMsg = null;
-
-  cgBody.querySelectorAll(".cg-score").forEach((input) => {
-    const studentId = Number(input.dataset.student);
-    const noteInput = cgBody.querySelector(
-      `.cg-note[data-student="${studentId}"]`,
-    );
-    const scoreVal = input.value.trim();
-    const noteVal = (noteInput?.value ?? "").trim();
-    const scoreChanged = scoreVal !== (input.dataset.original ?? "");
-    const noteChanged = noteVal !== (noteInput?.dataset.original ?? "");
-    if (!scoreChanged && !noteChanged) return;
-
-    let score = null;
-    if (scoreVal !== "") {
-      score = Number(scoreVal);
-      if (Number.isNaN(score) || score < 0 || score > max) {
-        errorMsg ??= t("admin.validation.scoreRange", { max });
-        return;
-      }
+    state.rooms = await data.listRooms();
+    const tbody = document.getElementById("rooms-body");
+    tbody.innerHTML = "";
+    if (!state.rooms.length) {
+      renderEmptyRow("rooms-body", 4, t("console.rooms.empty"));
+      return;
     }
-    const existing = byStudent[studentId];
-    rows.push({
-      assignment_id: assignment.id,
-      student_id: studentId,
-      score,
-      note: noteVal || null,
-      // Same graded_at rule as the per-student modal: re-stamp only on a score
-      // change; null it when the score is cleared.
-      graded_at: scoreChanged
-        ? score == null
-          ? null
-          : new Date().toISOString()
-        : (existing?.graded_at ?? null),
+    state.rooms.forEach((r) => {
+      tbody.appendChild(
+        tableRow(
+          [
+            escapeHtml(r.name),
+            r.capacity != null ? escapeHtml(r.capacity) : "—",
+            `<span class="badge badge-neutral">${escapeHtml(t(`console.rooms.types.${r.type ?? "classroom"}`))}</span>`,
+          ],
+          [
+            iconBtn("edit", t("common.edit"), () => openRoomForm(r)),
+            iconBtn(
+              "delete",
+              t("common.delete"),
+              () =>
+                openConfirm(
+                  t("console.rooms.confirmDelete", { name: r.name }),
+                  async () => {
+                    await data.deleteRoom(r.id);
+                    showToast(t("common.deleted"));
+                    loadRooms();
+                  },
+                ),
+              true,
+            ),
+          ],
+        ),
+      );
     });
-  });
-
-  if (errorMsg) {
-    showToast(errorMsg, "error");
-    return;
-  }
-  if (!rows.length) {
-    showToast(t("admin.validation.noChanges"), "error");
-    return;
-  }
-
-  cgSave.disabled = true;
-  try {
-    await db.upsertAssignmentGrades(rows);
-    showToast(
-      tn("admin.toast.scoresSaved", rows.length, { count: rows.length }),
-    );
-    closeColumnGrades();
-    loadGradebook();
   } catch (err) {
-    showToast(err.message, "error");
-  } finally {
-    cgSave.disabled = false;
+    console.error("loadRooms:", err);
+    renderErrorRow("rooms-body", 4);
   }
 }
 
-// ───────────────────────────────────────────────────────────────
-//  16. DISCIPLINE (item 2) — create/edit from the student drawer
-// ───────────────────────────────────────────────────────────────
-// Discipline severity options, built at call time so labels follow the language.
-function disciplineSeverityOptions() {
-  return [
-    { value: "low", label: t("enums.disciplineSeverity.low") },
-    { value: "medium", label: t("enums.disciplineSeverity.medium") },
-    { value: "high", label: t("enums.disciplineSeverity.high") },
-  ];
-}
+const ROOM_TYPES = [
+  "classroom",
+  "lab",
+  "gym",
+  "library",
+  "auditorium",
+  "office",
+];
 
-function openAddDiscipline() {
-  const student = _drawerStudent;
-  if (!student) return;
-  const today = new Date().toISOString().split("T")[0];
+function openRoomForm(room = null) {
   openModal({
-    title: t("admin.discipline.addTitle", {
-      name: `${student.first_name} ${student.last_name}`,
-    }),
-    submitLabel: t("admin.discipline.addRecord"),
+    title: room ? t("console.rooms.editTitle") : t("console.rooms.addTitle"),
     fields: [
       {
-        name: "date",
-        label: t("admin.form.date"),
-        type: "date",
+        name: "name",
+        label: t("console.rooms.name"),
+        value: room?.name,
         required: true,
-        value: today,
+      },
+      {
+        name: "capacity",
+        label: t("console.rooms.capacity"),
+        type: "number",
+        value: room?.capacity,
+        min: 0,
       },
       {
         name: "type",
-        label: t("admin.form.type"),
-        type: "text",
-        required: true,
-        placeholder: t("admin.discipline.typePlaceholder"),
-      },
-      {
-        name: "severity",
-        label: t("admin.form.severity"),
+        label: t("console.rooms.type"),
         type: "select",
+        value: room?.type ?? "classroom",
         required: true,
-        value: "low",
-        options: disciplineSeverityOptions(),
-      },
-      {
-        name: "description",
-        label: t("admin.form.description"),
-        type: "textarea",
+        options: ROOM_TYPES.map((v) => ({
+          value: v,
+          label: t(`console.rooms.types.${v}`),
+        })),
       },
     ],
-    onSubmit: async (formData) => {
-      await db.insertDiscipline({
-        student_id: student.id,
-        date: formData.date,
-        type: formData.type.trim(),
-        severity: formData.severity,
-        description: formData.description?.trim() || null,
-        reported_by_teacher: TEACHER_ID,
-      });
-      showToast(t("admin.toast.disciplineAdded"));
-      await refreshDrawer();
+    onSubmit: async (v) => {
+      const payload = {
+        name: v.name.trim(),
+        capacity: num(v.capacity),
+        type: v.type,
+      };
+      if (room) await data.updateRoom(room.id, payload);
+      else await data.createRoom(payload);
+      showToast(t("common.saved"));
+      loadRooms();
     },
   });
 }
 
-function openEditDiscipline(record) {
-  openModal({
-    title: t("admin.discipline.editTitle"),
-    submitLabel: t("common.save"),
-    fields: [
-      {
-        name: "date",
-        label: t("admin.form.date"),
-        type: "date",
-        required: true,
-        value: record.date ?? "",
-      },
-      {
-        name: "type",
-        label: t("admin.form.type"),
-        type: "text",
-        required: true,
-        value: record.type ?? "",
-      },
-      {
-        name: "severity",
-        label: t("admin.form.severity"),
-        type: "select",
-        required: true,
-        value: record.severity ?? "low",
-        options: disciplineSeverityOptions(),
-      },
-      {
-        name: "description",
-        label: t("admin.form.description"),
-        type: "textarea",
-        value: record.description ?? "",
-      },
-      {
-        name: "resolved",
-        label: t("admin.form.status"),
-        type: "select",
-        value: record.resolved ? "yes" : "no",
-        options: [
-          { value: "no", label: t("enums.disciplineState.open") },
-          { value: "yes", label: t("enums.disciplineState.resolved") },
-        ],
-      },
-      {
-        name: "resolution",
-        label: t("admin.form.resolutionIf"),
-        type: "textarea",
-        value: record.resolution ?? "",
-      },
-    ],
-    onSubmit: async (formData) => {
-      const resolved = formData.resolved === "yes";
-      await db.updateDiscipline(record.id, {
-        date: formData.date,
-        type: formData.type.trim(),
-        severity: formData.severity,
-        description: formData.description?.trim() || null,
-        resolved,
-        resolution: resolved ? formData.resolution?.trim() || null : null,
-      });
-      showToast(t("admin.toast.disciplineUpdated"));
-      await refreshDrawer();
-    },
-  });
-}
-
-// Re-open the drawer for the current student to reflect a discipline change.
-async function refreshDrawer() {
-  if (_drawerStudent) await openStudentDrawer(_drawerStudent);
-}
-
-// ───────────────────────────────────────────────────────────────
-//  17. ABSENCE SUMMARY (item 3)
-// ───────────────────────────────────────────────────────────────
-const ABSENCE_THRESHOLD = 5; // absent + late at/above this flags an at-risk student
-
-async function loadAbsenceSummary() {
-  const container = document.getElementById("absence-summary");
-  if (!container) return;
+async function loadSections() {
+  const label = document.getElementById("sections-year-label");
+  const addBtn = document.getElementById("btn-add-section");
+  if (!state.activeYear) {
+    const years = await data.listSchoolYears();
+    state.activeYear = years.find((y) => y.is_active) ?? null;
+  }
+  if (!state.activeYear) {
+    label.textContent = t("console.sections.noYear");
+    addBtn.disabled = true;
+    renderEmptyRow("sections-body", 6, t("console.sections.noYear"));
+    return;
+  }
+  addBtn.disabled = false;
+  label.textContent = state.activeYear.name;
+  renderMessageRow("sections-body", 6, t("common.loading"));
   try {
-    const [rows, roster] = await Promise.all([
-      db.fetchClassAttendance(currentClass.classId),
-      db.fetchRoster(currentClass.classId),
+    const [sectionsList, teachers] = await Promise.all([
+      data.listSections(state.activeYear.id),
+      state.teachers.length
+        ? Promise.resolve(state.teachers)
+        : data.listTeachers(),
     ]);
-    renderAbsenceSummary(rows, roster, container);
+    state.sections = sectionsList;
+    state.teachers = teachers;
+    renderSections(sectionsList);
   } catch (err) {
-    container.innerHTML = `<div class="loading-cell">${t("admin.absence.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
+    console.error("loadSections:", err);
+    renderErrorRow("sections-body", 6);
   }
 }
 
-function renderAbsenceSummary(rows, roster, container) {
-  const nameById = Object.fromEntries(
-    roster.map((s) => [s.id, `${s.last_name}, ${s.first_name}`]),
-  );
-  const counts = {};
-  rows.forEach((r) => {
-    const c = (counts[r.student_id] ??= {
-      present: 0,
-      absent: 0,
-      late: 0,
-      excused: 0,
-    });
-    if (c[r.status] != null) c[r.status] += 1;
-  });
-
-  const flagged = Object.entries(counts)
-    .map(([id, c]) => ({ id: Number(id), ...c, missed: c.absent + c.late }))
-    .filter((s) => s.missed >= ABSENCE_THRESHOLD)
-    .sort((a, b) => b.missed - a.missed);
-
-  if (!flagged.length) {
-    container.innerHTML = `
-      <div class="absence-summary-head">
-        <h3><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-monitoring"></use></svg></span> ${t("admin.absence.title")}</h3>
-      </div>
-      <p class="drawer-muted">${t("admin.absence.empty", { threshold: ABSENCE_THRESHOLD })}</p>`;
-    return;
-  }
-
-  const chips = flagged
-    .map(
-      (s) => `
-      <div class="absence-chip${s.absent >= ABSENCE_THRESHOLD ? " absence-high" : ""}">
-        <b>${escapeHtml(nameById[s.id] ?? t("admin.absence.studentFallback", { id: s.id }))}</b>
-        <span>${s.absent} ${t("enums.attendanceWord.absent")} · ${s.late} ${t("enums.attendanceWord.late")}${s.excused ? " · " + s.excused + " " + t("enums.attendanceWord.excused") : ""}</span>
-      </div>`,
-    )
-    .join("");
-
-  container.innerHTML = `
-    <div class="absence-summary-head">
-      <h3><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-monitoring"></use></svg></span> ${t("admin.absence.title")}</h3>
-      <span class="badge badge-warning">${t("admin.absence.atRisk", { count: flagged.length, threshold: ABSENCE_THRESHOLD })}</span>
-    </div>
-    <div class="absence-grid">${chips}</div>`;
+function gradeName(id) {
+  const g = state.gradeLevels.find((x) => x.id === id);
+  return g ? g.name : "—";
+}
+function roomName(id) {
+  const r = state.rooms.find((x) => x.id === id);
+  return r ? r.name : "—";
+}
+function teacherName(id) {
+  const tch = state.teachers.find((x) => x.id === id);
+  return tch ? `${tch.first_name} ${tch.last_name}` : "—";
+}
+function sectionName(sec) {
+  return sec.display_name || `${gradeName(sec.grade_level_id)} ${sec.section}`;
 }
 
-// ───────────────────────────────────────────────────────────────
-//  18. TODAY START PAGE (item 7)
-// ───────────────────────────────────────────────────────────────
-async function loadToday() {
-  const grid = document.getElementById("today-grid");
-  const subtitle = document.getElementById("today-subtitle");
-  if (!grid) return;
-  if (!ACTIVE_YEAR || !TEACHER_ID) {
-    grid.innerHTML = `<div class="loading-cell">${t("admin.today.contextNotLoaded")}</div>`;
+function renderSections(list) {
+  const tbody = document.getElementById("sections-body");
+  tbody.innerHTML = "";
+  if (!list.length) {
+    renderEmptyRow("sections-body", 6, t("console.sections.empty"));
     return;
   }
-
-  const now = new Date();
-  const jsDow = now.getDay(); // 0 Sun … 6 Sat
-  subtitle.textContent = i18nFormatDate(now, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  if (jsDow === 0 || jsDow === 6) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-weekend"></use></svg></span><p>${t("admin.today.weekend")}</p></div>`;
-    return;
-  }
-
-  grid.innerHTML = skeletonCards(3);
-  try {
-    // myClassesCache lets us map a schedule row to its class_subject_teacher so
-    // the action buttons can open the class workspace.
-    if (!myClassesCache.length) {
-      myClassesCache = await db.fetchMyClasses(TEACHER_ID, ACTIVE_YEAR.id);
-    }
-    const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
-    renderToday(entries, grid);
-  } catch (err) {
-    loaded.today = false; // allow a retry on next visit
-    grid.innerHTML = `<div class="loading-cell">${t("admin.today.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
-  }
-}
-
-function renderToday(entries, grid) {
-  // Only show schedule rows the teacher actually grades (has a
-  // class_subject_teacher assignment for); other teachers' classes are hidden.
-  const mine = entries
-    .map((e) => ({
-      entry: e,
-      cst: myClassesCache.find(
-        (c) => c.class_id === e.class_id && c.subject_id === e.subject_id,
+  list.forEach((s) => {
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(gradeName(s.grade_level_id)),
+          escapeHtml(s.section),
+          escapeHtml(
+            s.homeroom_teacher_id ? teacherName(s.homeroom_teacher_id) : "—",
+          ),
+          escapeHtml(s.room_id ? roomName(s.room_id) : "—"),
+          s.max_capacity != null ? escapeHtml(s.max_capacity) : "—",
+        ],
+        [
+          iconBtn("schedule", t("console.schedule.manage"), () =>
+            openScheduleModal(s),
+          ),
+          iconBtn("edit", t("common.edit"), () => openSectionForm(s)),
+          iconBtn(
+            "delete",
+            t("common.delete"),
+            () =>
+              openConfirm(
+                t("console.sections.confirmDelete", { name: sectionName(s) }),
+                async () => {
+                  await data.deleteSection(s.id);
+                  showToast(t("common.deleted"));
+                  loadSections();
+                },
+              ),
+            true,
+          ),
+        ],
       ),
-    }))
-    .filter((m) => m.cst);
-
-  if (!mine.length) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_available"></use></svg></span><p>${t("admin.today.noClasses")}</p></div>`;
-    return;
-  }
-
-  grid.innerHTML = "";
-  const list = document.createElement("div");
-  list.className = "today-list";
-
-  mine.forEach(({ entry: e, cst }) => {
-    const color = e.subjects?.color || "var(--color-primary)";
-    const card = document.createElement("div");
-    card.className = "today-card";
-    card.style.setProperty("--accent", color);
-    card.innerHTML = `
-      <span class="today-card-accent"></span>
-      <div class="today-card-time">
-        <b>${escapeHtml((e.start_time ?? "").slice(0, 5))}</b>
-        <span>${escapeHtml((e.end_time ?? "").slice(0, 5))}</span>
-      </div>
-      <div class="today-card-body">
-        <h3>${escapeHtml(e.subjects?.name ?? "—")}</h3>
-        <p>${escapeHtml(e.classes?.display_name ?? "—")}${
-          e.rooms?.name ? " · " + escapeHtml(e.rooms.name) : ""
-        }</p>
-      </div>
-      <div class="today-card-actions"></div>`;
-
-    const actions = card.querySelector(".today-card-actions");
-    const att = document.createElement("button");
-    att.type = "button";
-    att.className = "btn btn-sm btn-secondary";
-    att.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg></span> ${t("admin.today.attendance")}`;
-    att.addEventListener("click", () => openClassWorkspace(cst, "attendance"));
-    const gb = document.createElement("button");
-    gb.type = "button";
-    gb.className = "btn btn-sm btn-primary";
-    gb.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-school"></use></svg></span> ${t("admin.today.gradebook")}`;
-    gb.addEventListener("click", () => openClassWorkspace(cst, "gradebook"));
-    actions.append(att, gb);
-    list.appendChild(card);
+    );
   });
-
-  grid.appendChild(list);
 }
 
-// ───────────────────────────────────────────────────────────────
-//  19. PRINTABLE PROGRESS REPORT (item 6)
-// ───────────────────────────────────────────────────────────────
-async function printStudentReport() {
-  const student = _drawerStudent;
-  if (!student) return;
+function openSectionForm(section = null) {
+  if (!state.gradeLevels.length) {
+    showToast(t("console.sections.needGrade"), "error");
+    return;
+  }
+  openModal({
+    title: section
+      ? t("console.sections.editTitle")
+      : t("console.sections.addTitle"),
+    fields: [
+      {
+        name: "grade_level_id",
+        label: t("console.sections.grade"),
+        type: "select",
+        value: section?.grade_level_id,
+        required: true,
+        options: optionsFrom(
+          state.gradeLevels,
+          (g) => `${g.name} (${g.numeric_level})`,
+        ),
+      },
+      {
+        name: "section",
+        label: t("console.sections.section"),
+        value: section?.section,
+        required: true,
+        placeholder: "A",
+      },
+      {
+        name: "homeroom_teacher_id",
+        label: t("console.sections.homeroom"),
+        type: "select",
+        value: section?.homeroom_teacher_id,
+        options: optionsFrom(
+          state.teachers,
+          (tch) => `${tch.first_name} ${tch.last_name}`,
+        ),
+      },
+      {
+        name: "room_id",
+        label: t("console.sections.room"),
+        type: "select",
+        value: section?.room_id,
+        options: optionsFrom(state.rooms, (r) => r.name),
+      },
+      {
+        name: "max_capacity",
+        label: t("console.sections.capacity"),
+        type: "number",
+        value: section?.max_capacity ?? 30,
+        min: 1,
+      },
+    ],
+    onSubmit: async (v) => {
+      const gl = state.gradeLevels.find(
+        (g) => String(g.id) === String(v.grade_level_id),
+      );
+      const sectionCode = v.section.trim();
+      const payload = {
+        grade_level_id: num(v.grade_level_id),
+        section: sectionCode,
+        display_name: gl ? `${gl.numeric_level}${sectionCode}` : sectionCode,
+        homeroom_teacher_id: num(v.homeroom_teacher_id),
+        room_id: num(v.room_id),
+        max_capacity: num(v.max_capacity),
+      };
+      if (section) await data.updateSection(section.id, payload);
+      else
+        await data.createSection({
+          ...payload,
+          school_year_id: state.activeYear.id,
+        });
+      showToast(t("common.saved"));
+      loadSections();
+    },
+  });
+}
 
-  let grades = [];
+document
+  .getElementById("btn-add-grade")
+  .addEventListener("click", () => openGradeForm());
+document
+  .getElementById("btn-add-room")
+  .addEventListener("click", () => openRoomForm());
+document
+  .getElementById("btn-add-section")
+  .addEventListener("click", () => openSectionForm());
+
+// ───────────────────────────────────────────────────────────────
+//  5d. SUBJECTS (+ grade-level mapping)
+// ───────────────────────────────────────────────────────────────
+async function loadSubjects() {
+  renderMessageRow("subjects-body", 5, t("common.loading"));
   try {
-    grades = await db.fetchStudentAllSubjectGrades(student.id);
-  } catch {
-    /* degrade — report prints without the grade table */
+    const [subjects, gls, mapping] = await Promise.all([
+      data.listSubjects(),
+      state.gradeLevels.length
+        ? Promise.resolve(state.gradeLevels)
+        : data.listGradeLevels(),
+      data.listGradeLevelSubjects(),
+    ]);
+    state.subjects = subjects;
+    state.gradeLevels = gls;
+    renderSubjects(subjects, mapping);
+  } catch (err) {
+    console.error("loadSubjects:", err);
+    renderErrorRow("subjects-body", 5);
   }
-  const attendance = _drawerData.attendance ?? [];
-  const discipline = _drawerData.discipline ?? [];
-
-  const win = window.open("", "_blank");
-  if (!win) {
-    showToast(t("admin.toast.popupBlocked"), "error");
-    return;
-  }
-  win.document.write(buildReportHtml(student, grades, attendance, discipline));
-  win.document.close();
-  win.focus();
-  win.print();
 }
 
-function buildReportHtml(student, grades, attendance, discipline) {
-  const esc = escapeHtml;
-  const periods = PERIODS.slice().sort(
-    (a, b) => a.period_order - b.period_order,
+function renderSubjects(subjects, mapping) {
+  const tbody = document.getElementById("subjects-body");
+  tbody.innerHTML = "";
+  if (!subjects.length) {
+    renderEmptyRow("subjects-body", 5, t("console.subjects.empty"));
+    return;
+  }
+  const bySubject = new Map();
+  mapping.forEach((m) => {
+    if (!bySubject.has(m.subject_id)) bySubject.set(m.subject_id, []);
+    bySubject.get(m.subject_id).push(m);
+  });
+
+  subjects.forEach((s) => {
+    const mapped = bySubject.get(s.id) ?? [];
+    const gradeNames =
+      mapped
+        .map((m) => gradeName(m.grade_level_id))
+        .filter((n) => n !== "—")
+        .join(", ") || "—";
+    const swatch = s.color
+      ? `<span class="color-swatch" style="background:${escapeHtml(s.color)}"></span>${escapeHtml(s.color)}`
+      : "—";
+    tbody.appendChild(
+      tableRow(
+        [
+          `<code>${escapeHtml(s.code ?? "—")}</code>`,
+          escapeHtml(s.name),
+          swatch,
+          escapeHtml(gradeNames),
+        ],
+        [
+          iconBtn("edit", t("common.edit"), () => openSubjectForm(s, mapped)),
+          iconBtn(
+            "delete",
+            t("common.delete"),
+            () =>
+              openConfirm(
+                t("console.subjects.confirmDelete", { name: s.name }),
+                async () => {
+                  await data.deleteSubject(s.id);
+                  showToast(t("common.deleted"));
+                  loadSubjects();
+                },
+              ),
+            true,
+          ),
+        ],
+      ),
+    );
+  });
+}
+
+function openSubjectForm(subject = null, mapped = []) {
+  const mappedGradeIds = mapped.map((m) => m.grade_level_id);
+  openModal({
+    title: subject
+      ? t("console.subjects.editTitle")
+      : t("console.subjects.addTitle"),
+    fields: [
+      {
+        name: "name",
+        label: t("console.subjects.name"),
+        value: subject?.name,
+        required: true,
+      },
+      {
+        name: "code",
+        label: t("console.subjects.code"),
+        value: subject?.code,
+        placeholder: "MATH7",
+      },
+      {
+        name: "color",
+        label: t("console.subjects.color"),
+        type: "color",
+        value: subject?.color ?? "#7380ec",
+      },
+      {
+        name: "description",
+        label: t("console.subjects.description"),
+        type: "textarea",
+        value: subject?.description,
+      },
+      {
+        name: "grades",
+        label: t("console.subjects.gradeLevels"),
+        type: "checkboxes",
+        value: mappedGradeIds,
+        options: optionsFrom(state.gradeLevels, (g) => g.name),
+      },
+    ],
+    onSubmit: async (v) => {
+      const payload = {
+        name: v.name.trim(),
+        code: nullable(v.code),
+        color: nullable(v.color),
+        description: nullable(v.description),
+      };
+      let subjectId = subject?.id;
+      if (subject) await data.updateSubject(subject.id, payload);
+      else {
+        const created = await data.createSubject(payload);
+        subjectId = created.id;
+      }
+      // Reconcile grade-level mapping (add checked, remove unchecked).
+      const desired = new Set(v.grades.map(Number));
+      const current = new Map(mapped.map((m) => [m.grade_level_id, m.id]));
+      for (const gid of desired) {
+        if (!current.has(gid))
+          await data.createGradeLevelSubject({
+            subject_id: subjectId,
+            grade_level_id: gid,
+            weekly_hours: 4,
+          });
+      }
+      for (const [gid, mapId] of current) {
+        if (!desired.has(gid)) await data.deleteGradeLevelSubject(mapId);
+      }
+      showToast(t("common.saved"));
+      loadSubjects();
+    },
+  });
+}
+
+document
+  .getElementById("btn-add-subject")
+  .addEventListener("click", () => openSubjectForm());
+
+// ───────────────────────────────────────────────────────────────
+//  5e. TEACHERS (+ assignments)
+// ───────────────────────────────────────────────────────────────
+async function loadTeachers() {
+  renderMessageRow("teachers-body", 6, t("common.loading"));
+  try {
+    state.teachers = await data.listTeachers();
+    renderTeachers(state.teachers);
+  } catch (err) {
+    console.error("loadTeachers:", err);
+    renderErrorRow("teachers-body", 6);
+  }
+  await loadAssignments();
+}
+
+const TEACHER_STATUSES = ["active", "inactive", "on_leave"];
+
+function renderTeachers(list) {
+  const tbody = document.getElementById("teachers-body");
+  tbody.innerHTML = "";
+  if (!list.length) {
+    renderEmptyRow("teachers-body", 6, t("console.teachers.empty"));
+    return;
+  }
+  list.forEach((tch) => {
+    const statusBadge = `<span class="badge ${tch.status === "active" ? "badge-success" : "badge-neutral"}">${escapeHtml(t(`console.teachers.statuses.${tch.status ?? "active"}`))}</span>`;
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(`${tch.first_name} ${tch.last_name}`),
+          escapeHtml(tch.national_id ?? "—"),
+          escapeHtml(tch.email ?? "—"),
+          escapeHtml(tch.specialization ?? "—"),
+          statusBadge,
+        ],
+        [
+          iconBtn("edit", t("common.edit"), () => openTeacherForm(tch)),
+          iconBtn(
+            "delete",
+            t("common.delete"),
+            () =>
+              openConfirm(
+                t("console.teachers.confirmDelete", {
+                  name: `${tch.first_name} ${tch.last_name}`,
+                }),
+                async () => {
+                  await data.deleteTeacher(tch.id);
+                  showToast(t("common.deleted"));
+                  loadTeachers();
+                },
+              ),
+            true,
+          ),
+        ],
+      ),
+    );
+  });
+}
+
+function openTeacherForm(teacher = null) {
+  openModal({
+    title: teacher
+      ? t("console.teachers.editTitle")
+      : t("console.teachers.addTitle"),
+    fields: [
+      {
+        name: "first_name",
+        label: t("console.teachers.firstName"),
+        value: teacher?.first_name,
+        required: true,
+      },
+      {
+        name: "last_name",
+        label: t("console.teachers.lastName"),
+        value: teacher?.last_name,
+        required: true,
+      },
+      {
+        name: "national_id",
+        label: t("console.teachers.nationalId"),
+        value: teacher?.national_id,
+      },
+      {
+        name: "email",
+        label: t("console.teachers.email"),
+        type: "email",
+        value: teacher?.email,
+      },
+      {
+        name: "phone",
+        label: t("console.teachers.phone"),
+        value: teacher?.phone,
+      },
+      {
+        name: "specialization",
+        label: t("console.teachers.specialization"),
+        value: teacher?.specialization,
+      },
+      {
+        name: "status",
+        label: t("console.teachers.status"),
+        type: "select",
+        value: teacher?.status ?? "active",
+        required: true,
+        options: TEACHER_STATUSES.map((v) => ({
+          value: v,
+          label: t(`console.teachers.statuses.${v}`),
+        })),
+      },
+    ],
+    onSubmit: async (v) => {
+      const payload = {
+        first_name: v.first_name.trim(),
+        last_name: v.last_name.trim(),
+        national_id: nullable(v.national_id),
+        email: nullable(v.email),
+        phone: nullable(v.phone),
+        specialization: nullable(v.specialization),
+        status: v.status,
+      };
+      if (teacher) await data.updateTeacher(teacher.id, payload);
+      else await data.createTeacher(payload);
+      showToast(t("common.saved"));
+      loadTeachers();
+    },
+  });
+}
+
+async function loadAssignments() {
+  const label = document.getElementById("assignments-year-label");
+  const addBtn = document.getElementById("btn-add-assignment");
+  if (!state.activeYear) {
+    const years = await data.listSchoolYears();
+    state.activeYear = years.find((y) => y.is_active) ?? null;
+  }
+  if (!state.activeYear) {
+    label.textContent = t("console.assignments.noYear");
+    addBtn.disabled = true;
+    renderEmptyRow("assignments-body", 4, t("console.assignments.noYear"));
+    return;
+  }
+  addBtn.disabled = false;
+  label.textContent = state.activeYear.name;
+  renderMessageRow("assignments-body", 4, t("common.loading"));
+  try {
+    const [assignments, sectionsList, subjects] = await Promise.all([
+      data.listAssignments(state.activeYear.id),
+      data.listSections(state.activeYear.id),
+      state.subjects.length
+        ? Promise.resolve(state.subjects)
+        : data.listSubjects(),
+    ]);
+    state.sections = sectionsList;
+    state.subjects = subjects;
+    if (!state.gradeLevels.length)
+      state.gradeLevels = await data.listGradeLevels();
+    renderAssignments(assignments);
+  } catch (err) {
+    console.error("loadAssignments:", err);
+    renderErrorRow("assignments-body", 4);
+  }
+}
+
+function subjectName(id) {
+  const s = state.subjects.find((x) => x.id === id);
+  return s ? s.name : "—";
+}
+
+function renderAssignments(list) {
+  const tbody = document.getElementById("assignments-body");
+  tbody.innerHTML = "";
+  if (!list.length) {
+    renderEmptyRow("assignments-body", 4, t("console.assignments.empty"));
+    return;
+  }
+  list.forEach((a) => {
+    const sec = state.sections.find((s) => s.id === a.class_id);
+    tbody.appendChild(
+      tableRow(
+        [
+          escapeHtml(sec ? sectionName(sec) : "—"),
+          escapeHtml(subjectName(a.subject_id)),
+          escapeHtml(teacherName(a.teacher_id)),
+        ],
+        [
+          iconBtn(
+            "delete",
+            t("common.delete"),
+            () =>
+              openConfirm(t("console.assignments.confirmDelete"), async () => {
+                await data.deleteAssignment(a.id);
+                showToast(t("common.deleted"));
+                loadAssignments();
+              }),
+            true,
+          ),
+        ],
+      ),
+    );
+  });
+}
+
+function openAssignmentForm() {
+  if (
+    !state.sections.length ||
+    !state.subjects.length ||
+    !state.teachers.length
+  ) {
+    showToast(t("console.assignments.needData"), "error");
+    return;
+  }
+  openModal({
+    title: t("console.assignments.addTitle"),
+    fields: [
+      {
+        name: "class_id",
+        label: t("console.assignments.section"),
+        type: "select",
+        required: true,
+        options: optionsFrom(state.sections, (s) => sectionName(s)),
+      },
+      {
+        name: "subject_id",
+        label: t("console.assignments.subject"),
+        type: "select",
+        required: true,
+        options: optionsFrom(state.subjects, (s) => s.name),
+      },
+      {
+        name: "teacher_id",
+        label: t("console.assignments.teacher"),
+        type: "select",
+        required: true,
+        options: optionsFrom(
+          state.teachers,
+          (tch) => `${tch.first_name} ${tch.last_name}`,
+        ),
+      },
+    ],
+    onSubmit: async (v) => {
+      await data.createAssignment({
+        class_id: num(v.class_id),
+        subject_id: num(v.subject_id),
+        teacher_id: num(v.teacher_id),
+        school_year_id: state.activeYear.id,
+      });
+      showToast(t("common.saved"));
+      loadAssignments();
+    },
+  });
+}
+
+document
+  .getElementById("btn-add-teacher")
+  .addEventListener("click", () => openTeacherForm());
+document
+  .getElementById("btn-add-assignment")
+  .addEventListener("click", () => openAssignmentForm());
+
+// ───────────────────────────────────────────────────────────────
+//  5f. SCHEDULES (per section)
+// ───────────────────────────────────────────────────────────────
+const scheduleOverlay = document.getElementById("schedule-overlay");
+const scheduleBody = document.getElementById("sch-body");
+let scheduleSection = null;
+
+const DAYS = [
+  { value: 1, key: "monday" },
+  { value: 2, key: "tuesday" },
+  { value: 3, key: "wednesday" },
+  { value: 4, key: "thursday" },
+  { value: 5, key: "friday" },
+];
+const dayLabel = (dow) => {
+  const d = DAYS.find((x) => x.value === Number(dow));
+  return d ? t(`common.days.${d.key}`) : "—";
+};
+
+async function openScheduleModal(section) {
+  scheduleSection = section;
+  document.getElementById("sch-title").textContent = t(
+    "console.schedule.titleFor",
+    { name: sectionName(section) },
   );
+  scheduleOverlay.classList.add("active");
+  await renderScheduleModal();
+}
 
-  // Pivot posted grades into subject × period.
-  const bySubject = {};
-  grades.forEach((g) => {
-    const subj = g.class_subject_teachers?.subjects?.name ?? "—";
-    (bySubject[subj] ??= {})[g.grading_period_id] = g.score;
+function closeScheduleModal() {
+  scheduleOverlay.classList.remove("active");
+  scheduleSection = null;
+  scheduleBody.innerHTML = "";
+}
+
+async function renderScheduleModal() {
+  scheduleBody.innerHTML = `<p class="loading-cell">${t("common.loading")}</p>`;
+  try {
+    // Reference lists for the add form + labels.
+    if (!state.subjects.length) state.subjects = await data.listSubjects();
+    if (!state.teachers.length) state.teachers = await data.listTeachers();
+    if (!state.rooms.length) state.rooms = await data.listRooms();
+    const entries = await data.listSchedules(scheduleSection.id);
+    entries.sort(
+      (a, b) =>
+        a.day_of_week - b.day_of_week ||
+        String(a.start_time).localeCompare(String(b.start_time)),
+    );
+
+    scheduleBody.innerHTML = "";
+    const table = document.createElement("table");
+    table.className = "data-table";
+    table.innerHTML = `<thead><tr>
+        <th>${t("console.schedule.day")}</th>
+        <th>${t("console.schedule.time")}</th>
+        <th>${t("console.schedule.subject")}</th>
+        <th>${t("console.schedule.teacher")}</th>
+        <th>${t("console.schedule.room")}</th>
+        <th class="actions-col"></th>
+      </tr></thead>`;
+    const tbody = document.createElement("tbody");
+    if (!entries.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">${t("console.schedule.empty")}</td></tr>`;
+    } else {
+      entries.forEach((e) => {
+        tbody.appendChild(
+          tableRow(
+            [
+              escapeHtml(dayLabel(e.day_of_week)),
+              `${escapeHtml(String(e.start_time).slice(0, 5))}–${escapeHtml(String(e.end_time).slice(0, 5))}`,
+              escapeHtml(subjectName(e.subject_id)),
+              escapeHtml(teacherName(e.teacher_id)),
+              escapeHtml(e.room_id ? roomName(e.room_id) : "—"),
+            ],
+            [
+              iconBtn(
+                "delete",
+                t("common.delete"),
+                async () => {
+                  await data.deleteSchedule(e.id);
+                  showToast(t("common.deleted"));
+                  renderScheduleModal();
+                },
+                true,
+              ),
+            ],
+          ),
+        );
+      });
+    }
+    table.appendChild(tbody);
+
+    const wrap = document.createElement("div");
+    wrap.className = "table-scroll";
+    wrap.appendChild(table);
+    scheduleBody.appendChild(wrap);
+    scheduleBody.appendChild(buildScheduleAddForm(entries));
+  } catch (err) {
+    console.error("renderScheduleModal:", err);
+    scheduleBody.innerHTML = `<p class="loading-cell">${t("common.loadFailed")}</p>`;
+  }
+}
+
+function buildScheduleAddForm(existing) {
+  const form = document.createElement("form");
+  form.className = "schedule-add-form";
+  form.innerHTML = `
+    <h3>${t("console.schedule.addEntry")}</h3>
+    <div class="schedule-add-grid">
+      <select name="day" required>
+        <option value="">${t("console.schedule.day")}</option>
+        ${DAYS.map((d) => `<option value="${d.value}">${escapeHtml(t(`common.days.${d.key}`))}</option>`).join("")}
+      </select>
+      <input type="time" name="start" required aria-label="${t("console.schedule.start")}" />
+      <input type="time" name="end" required aria-label="${t("console.schedule.end")}" />
+      <select name="subject" required>
+        <option value="">${t("console.schedule.subject")}</option>
+        ${state.subjects.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("")}
+      </select>
+      <select name="teacher" required>
+        <option value="">${t("console.schedule.teacher")}</option>
+        ${state.teachers.map((tch) => `<option value="${tch.id}">${escapeHtml(`${tch.first_name} ${tch.last_name}`)}</option>`).join("")}
+      </select>
+      <select name="room">
+        <option value="">${t("common.none")}</option>
+        ${state.rooms.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("")}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span>
+        <span>${t("console.schedule.add")}</span>
+      </button>
+    </div>`;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const day = Number(f.get("day"));
+    const start = String(f.get("start"));
+    const end = String(f.get("end"));
+    if (end <= start) {
+      showToast(t("console.schedule.timeOrder"), "error");
+      return;
+    }
+    // Basic clash guard: no overlap with an existing entry on the same day.
+    const clash = existing.some(
+      (x) =>
+        x.day_of_week === day &&
+        start < String(x.end_time).slice(0, 5) &&
+        end > String(x.start_time).slice(0, 5),
+    );
+    if (clash) {
+      showToast(t("console.schedule.clash"), "error");
+      return;
+    }
+    try {
+      await data.createSchedule({
+        class_id: scheduleSection.id,
+        day_of_week: day,
+        start_time: start,
+        end_time: end,
+        subject_id: Number(f.get("subject")),
+        teacher_id: Number(f.get("teacher")),
+        room_id: num(f.get("room")),
+      });
+      showToast(t("common.saved"));
+      renderScheduleModal();
+    } catch (err) {
+      showToast(err.message ?? String(err), "error");
+    }
   });
-  const periodHeads = periods.map((p) => `<th>${esc(p.name)}</th>`).join("");
-  const gradeRows =
-    Object.keys(bySubject).sort().length === 0
-      ? `<tr><td colspan="${periods.length + 1}">${t("admin.report.noGrades")}</td></tr>`
-      : Object.keys(bySubject)
-          .sort()
-          .map((subj) => {
-            const cells = periods
-              .map((p) => {
-                const s = bySubject[subj][p.id];
-                return `<td>${s == null ? "—" : Number(s).toFixed(1)}</td>`;
-              })
-              .join("");
-            return `<tr><td class="subj">${esc(subj)}</td>${cells}</tr>`;
-          })
-          .join("");
+  return form;
+}
 
-  // Attendance summary.
-  const ac = { present: 0, absent: 0, late: 0, excused: 0 };
-  attendance.forEach((r) => {
-    if (ac[r.status] != null) ac[r.status] += 1;
+document
+  .getElementById("sch-close")
+  .addEventListener("click", closeScheduleModal);
+document
+  .getElementById("sch-done")
+  .addEventListener("click", closeScheduleModal);
+scheduleOverlay.addEventListener("click", (e) => {
+  if (e.target === scheduleOverlay) closeScheduleModal();
+});
+
+// ───────────────────────────────────────────────────────────────
+//  5g. SETTINGS (read-only)
+// ───────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const root = document.getElementById("settings-root");
+  if (!root) return;
+  let profile = PROFILE;
+  if (!profile) {
+    try {
+      profile = await fetchProfile();
+      PROFILE = profile;
+    } catch (err) {
+      console.error("loadSettings:", err);
+      loaded.settings = false;
+      root.innerHTML = `<div class="loading-cell">${t("common.couldNotLoadProfile")}</div>`;
+      return;
+    }
+  }
+  const email = session.user.email ?? "";
+  renderSettings(root, {
+    context: "admin",
+    identity: {
+      displayName: profile.name || t("console.profile.admin"),
+      subtitle: t("settings.roleAdmin"),
+      avatarIcon: "admin_panel_settings",
+      roleBadge: { text: t("settings.roleAdmin"), className: "badge-primary" },
+    },
+    personal: [
+      { label: t("settings.fields.name"), value: profile.name, icon: "badge" },
+      { label: t("settings.fields.email"), value: email, icon: "mail" },
+    ],
+    username: email,
+    email,
   });
-  const totalDays = attendance.length;
-  const rate = totalDays
-    ? Math.round(((ac.present + ac.late) / totalDays) * 100)
-    : null;
-
-  const discRows = discipline.length
-    ? discipline
-        .map(
-          (d) =>
-            `<tr><td>${esc(formatDate(d.date))}</td><td>${esc(d.type ?? "")}</td><td>${esc(
-              d.severity ? t(`enums.disciplineSeverity.${d.severity}`) : "",
-            )}</td><td>${d.resolved ? t("enums.disciplineState.resolved") : t("enums.disciplineState.open")}</td><td>${esc(
-              d.description ?? "",
-            )}</td></tr>`,
-        )
-        .join("")
-    : `<tr><td colspan="5">${t("admin.report.noDiscipline")}</td></tr>`;
-
-  const teacherName =
-    document.getElementById("teacher-name")?.textContent ?? "";
-  const printed = i18nFormatDate(new Date(), {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const fullName = `${student.first_name} ${student.last_name}`;
-  return `<!doctype html>
-<html lang="${document.documentElement.lang || "en"}"><head><meta charset="utf-8" />
-<title>${esc(t("admin.report.title", { name: fullName }))}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a; margin: 2.2rem; }
-  h1 { font-size: 1.4rem; margin: 0; }
-  h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: .04em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: .3rem; margin: 1.6rem 0 .7rem; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: .8rem; }
-  .muted { color: #666; font-size: .85rem; }
-  .ident { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .8rem; font-size: .9rem; margin-top: .4rem; }
-  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  th, td { border: 1px solid #ddd; padding: .45rem .6rem; text-align: center; }
-  th { background: #f4f4f4; }
-  td.subj, th:first-child { text-align: left; }
-  .att span { display: inline-block; margin-right: 1rem; font-size: .9rem; }
-  footer { margin-top: 2rem; font-size: .8rem; color: #888; display: flex; justify-content: space-between; }
-  @media print { body { margin: 1rem; } }
-</style></head>
-<body>
-  <div class="head">
-    <div>
-      <h1>${esc(fullName)}</h1>
-      <div class="muted">${esc(
-        ACTIVE_YEAR?.name
-          ? t("admin.report.headerWithYear", { year: ACTIVE_YEAR.name })
-          : t("admin.report.header"),
-      )}</div>
-    </div>
-    <div class="muted">${esc(t("admin.report.printed", { date: printed }))}</div>
-  </div>
-
-  <div class="ident">
-    <div><b>${t("admin.report.enrollment")}</b> ${esc(student.enrollment_number ?? "—")}</div>
-    <div><b>${t("admin.report.nationalId")}</b> ${esc(student.national_id ?? "—")}</div>
-    <div><b>${t("admin.report.dob")}</b> ${esc(formatDate(student.date_of_birth))}</div>
-    <div><b>${t("admin.report.gender")}</b> ${esc(genderLabel(student.gender))}</div>
-    <div><b>${t("admin.report.status")}</b> ${esc(student.status ? t(`enums.studentStatus.${student.status}`) : "—")}</div>
-    <div><b>${t("admin.report.email")}</b> ${esc(student.email ?? "—")}</div>
-  </div>
-
-  <h2>${t("admin.report.gradesBySubject")}</h2>
-  <table><thead><tr><th>${t("admin.report.subject")}</th>${periodHeads}</tr></thead><tbody>${gradeRows}</tbody></table>
-
-  <h2>${t("admin.report.attendance")}</h2>
-  <div class="att">
-    <span><b>${ac.present}</b> ${t("enums.attendanceWord.present")}</span>
-    <span><b>${ac.absent}</b> ${t("enums.attendanceWord.absent")}</span>
-    <span><b>${ac.late}</b> ${t("enums.attendanceWord.late")}</span>
-    <span><b>${ac.excused}</b> ${t("enums.attendanceWord.excused")}</span>
-    ${rate != null ? `<span><b>${rate}%</b> ${tn("admin.report.attendanceRate", totalDays, { count: totalDays })}</span>` : ""}
-  </div>
-
-  <h2>${t("admin.report.discipline")}</h2>
-  <table><thead><tr><th>${t("admin.report.date")}</th><th>${t("admin.report.type")}</th><th>${t("admin.report.severity")}</th><th>${t("admin.report.statusCol")}</th><th>${t("admin.report.description")}</th></tr></thead><tbody>${discRows}</tbody></table>
-
-  <footer>
-    <span>${t("admin.report.teacher")} ${esc(teacherName)}</span>
-    <span>${t("admin.report.signature")}</span>
-  </footer>
-</body></html>`;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -3617,20 +1681,5 @@ if (DEMO_MODE) {
   }
 }
 
-try {
-  TEACHER_ID = await db.getTeacherId();
-  const [year, teacher] = await Promise.all([
-    db.fetchActiveYear(),
-    db.fetchTeacher(TEACHER_ID),
-  ]);
-  ACTIVE_YEAR = year;
-  PERIODS = await db.fetchGradingPeriods(year?.id);
-
-  document.getElementById("teacher-name").textContent =
-    `${teacher.first_name} ${teacher.last_name}`;
-} catch (err) {
-  console.error("Failed to resolve teacher context:", err);
-  showToast(t("admin.toast.contextFailed"), "error");
-}
-
-showSection("today");
+loadOverview();
+showSection("overview");

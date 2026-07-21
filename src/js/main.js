@@ -1,6 +1,7 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
 import { getSession, signOut } from "./auth.js";
+import { fetchRole, portalPath } from "./role.js";
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
@@ -47,6 +48,14 @@ let STUDENT_ID;
 if (studentRow?.id) {
   STUDENT_ID = studentRow.id;
 } else {
+  // Not a student — an admin or teacher landing here belongs in their own
+  // portal, not signed out (role routing). Only a role-less account with no
+  // student row is a data error and falls through to sign-out.
+  const role = await fetchRole();
+  if (role === "admin" || role === "teacher") {
+    window.location.replace(portalPath(role));
+    throw new Error("Redirecting to role portal.");
+  }
   if (import.meta.env.DEV) {
     console.warn(
       "[SMP] No student found for auth user id",
@@ -185,18 +194,18 @@ if (logoutBtn) {
   });
 }
 
-// Cross-link to the admin dashboard. Route through the same session check the
-// admin guard begins with; admin.js's on-load guard then enforces the admin role.
-const adminPortalLink = document.getElementById("admin-portal-link");
-if (adminPortalLink) {
-  adminPortalLink.addEventListener("click", async (e) => {
+// Cross-link to the teacher console. Route through the same session check its
+// guard begins with; teacher.js's on-load guard then enforces the role.
+const teacherPortalLink = document.getElementById("teacher-portal-link");
+if (teacherPortalLink) {
+  teacherPortalLink.addEventListener("click", async (e) => {
     e.preventDefault();
     const session = await getSession();
     if (!session) {
       window.location.replace("/login.html");
       return;
     }
-    window.location.href = "/admin";
+    window.location.href = "/teacher";
   });
 }
 
