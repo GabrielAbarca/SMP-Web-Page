@@ -93,4 +93,309 @@
     color: var(--color-dark-variant);
     max-width: 32rem;
   }
+
+  /* ─── Section panels (stacked cards holding a table) ───────────── */
+  .console-panel {
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    padding: var(--card-padding);
+    box-shadow: var(--box-shadow);
+    margin-bottom: var(--space-4);
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .panel-head h2 {
+    font-size: 1.05rem;
+  }
+
+  .panel-sub {
+    font-size: 0.8rem;
+    color: var(--color-dark-variant);
+    margin-top: 0.15rem;
+  }
+
+  .btn-sm {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* Horizontal scroll container so wide tables never break the layout. */
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  /* ─── Data tables ──────────────────────────────────────────────── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 0.8rem 0.9rem;
+    font-size: 0.78rem;
+    color: var(--color-dark-variant);
+    border-bottom: 1px solid var(--color-light);
+    white-space: nowrap;
+  }
+
+  .data-table td {
+    padding: 0.9rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--color-light);
+    vertical-align: middle;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--color-background);
+  }
+
+  .data-table code {
+    font-size: 0.8rem;
+    color: var(--color-dark-variant);
+  }
+
+  .actions-col {
+    text-align: right;
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .data-table td.actions-col .btn-icon + .btn-icon {
+    margin-left: 0.25rem;
+  }
+
+  .loading-cell {
+    text-align: center;
+    color: var(--color-dark-variant);
+    padding: 1.4rem 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .color-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .badge-neutral {
+    background: var(--color-background);
+    color: var(--color-dark-variant);
+  }
+
+  /* ─── Modals ───────────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    width: min(560px, 96vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-sm {
+    width: min(400px, 96vw);
+  }
+  .modal-lg {
+    width: min(760px, 96vw);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.3rem 1.5rem;
+    border-bottom: 1px solid var(--color-light);
+  }
+
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-dark-variant);
+    display: inline-flex;
+  }
+
+  .modal-body {
+    padding: 1.4rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .field-group label,
+  .field-legend {
+    font-size: 0.82rem;
+    color: var(--color-dark-variant);
+  }
+
+  .modal-body input,
+  .modal-body select,
+  .modal-body textarea {
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-size: var(--text-sm);
+    outline: none;
+    width: 100%;
+  }
+
+  .modal-body input[type="color"] {
+    padding: 0.2rem;
+    height: 2.6rem;
+    cursor: pointer;
+  }
+
+  .modal-body input:focus,
+  .modal-body select:focus,
+  .modal-body textarea:focus {
+    border-color: var(--color-primary);
+  }
+
+  .field-help {
+    font-size: 0.75rem;
+    color: var(--color-info-dark);
+  }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+  }
+
+  .checkbox-item input {
+    width: auto;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    padding: 1.2rem 1.5rem;
+    border-top: 1px solid var(--color-light);
+  }
+
+  /* ─── Schedule add form (inside the schedule modal) ────────────── */
+  .schedule-add-form {
+    margin-top: 1.4rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--color-light);
+  }
+
+  .schedule-add-form h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .schedule-add-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .schedule-add-grid select,
+  .schedule-add-grid input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-size: 0.82rem;
+    flex: 1 1 120px;
+  }
+
+  /* ─── Toasts ───────────────────────────────────────────────────── */
+  .toast-container {
+    position: fixed;
+    bottom: 1.6rem;
+    right: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    z-index: 1100;
+  }
+
+  .toast {
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    padding: 0.9rem 1.4rem;
+    box-shadow: var(--shadow-md);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 240px;
+    animation: toast-in 0.25s ease-out;
+  }
+
+  .toast .material-symbols-outlined {
+    display: inline-flex;
+  }
+
+  .toast.toast-success {
+    border-left: 4px solid var(--color-success);
+  }
+
+  .toast.toast-error {
+    border-left: 4px solid var(--color-danger);
+  }
+
+  @keyframes toast-in {
+    from {
+      transform: translateX(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
 }

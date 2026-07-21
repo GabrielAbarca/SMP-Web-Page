@@ -109,7 +109,7 @@ test.describe("teacher console", () => {
 });
 
 test.describe("admin console", () => {
-  test("loads the shell for an admin profile with zero writes", async ({
+  test("loads the shell, does academic-structure CRUD, and never writes", async ({
     page,
     context,
   }) => {
@@ -131,14 +131,24 @@ test.describe("admin console", () => {
     );
     await expect(page.locator(".demo-badge").first()).toBeVisible();
 
-    // Placeholder sections render behind the sidebar navigation.
+    // Year & Periods: the seeded year renders; adding one shows optimistically.
     await page.click('.sidebar a[data-page="yearperiods"]');
-    await expect(page.locator("#view-yearperiods")).toHaveClass(/active/);
+    await expect(page.locator("#years-body")).toContainText("2025-2026");
+    await page.click("#btn-add-year");
+    await page.fill("#modal-field-name", "2026-2027");
+    await page.fill("#modal-field-start_date", "2026-09-01");
+    await page.fill("#modal-field-end_date", "2027-06-30");
+    await page.click("#modal-submit");
+    await expect(page.locator("#years-body")).toContainText("2026-2027");
+
+    // Students & Enrollment stays a Phase 3 placeholder.
+    await page.click('.sidebar a[data-page="students"]');
     await expect(
-      page.locator("#view-yearperiods .console-placeholder"),
+      page.locator("#view-students .console-placeholder"),
     ).toBeVisible();
 
     expect(errors).toEqual([]);
+    // Demo mode: the write landed in the in-browser overlay, not Supabase.
     expect(writes).toEqual([]);
   });
 

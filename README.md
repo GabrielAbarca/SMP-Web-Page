@@ -165,6 +165,9 @@ The end-to-end suite is fully self-contained: it boots the app with placeholder 
 ## 🗺️ Roadmap
 
 - [x] Role-based login (admin · teacher · student views)
+- [x] Admin console — academic structure CRUD (years, periods, grade levels,
+      sections, subjects, teacher assignments, schedules)
+- [ ] Admin console — accounts, enrollment & CSV roster import
 - [ ] PDF report export
 - [ ] Mobile-responsive layout
 - [ ] Notification system for events and grade updates

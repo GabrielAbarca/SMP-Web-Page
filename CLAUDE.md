@@ -44,8 +44,11 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
 - **View controllers** — `admin.js`, `teacher.js`, `main.js`, `login.js`. DOM glue. These are **excluded from `typecheck`** (see `tsconfig.json`) and typed incrementally; keep them thin and push logic down into the layer below.
 - **Logic layer** (type-checked, prefer JSDoc on new code):
   - `supabaseClient.js` — the Supabase client. **Throws if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing.**
-  - `supabaseQueries.js` — all data fetching.
-  - `demoMode.js` / `demoDb.js` — demo sandbox (see below).
+  - `supabaseQueries.js` — student/teacher data fetching.
+  - `adminData.js` — admin console data layer: a generic table `Gateway`
+    (Supabase-backed) + `createAdminData(gateway)` declarative CRUD methods.
+  - `demoMode.js` / `demoDb.js` — demo sandbox (see below). `adminDemoDb.js`
+    is the admin console's generic per-table demo `Gateway`.
   - `i18n.js` + `i18n/en.js`, `i18n/es.js` — translations.
   - `role.js` — `profiles.role` resolution + role→portal routing.
   - `auth.js`, `theme.js`, `ui.js`, `settings.js`, `errorHandler.js`, `speedInsights.js`.

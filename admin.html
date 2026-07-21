@@ -183,80 +183,250 @@
           </div>
         </section>
 
-        <!-- ─── YEAR & PERIODS (placeholder) ─────────────────── -->
+        <!-- ─── YEAR & PERIODS ───────────────────────────────── -->
         <section class="view-section" id="view-yearperiods">
           <h1 data-i18n="console.heading.yearPeriods">
             School Year &amp; Periods
           </h1>
-          <div class="console-placeholder">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true">
-                <use href="#icon-calendar_month"></use></svg
-            ></span>
-            <p data-i18n="console.placeholder.yearPeriods">
-              Create the school year and its grading periods — coming in the
-              next update.
-            </p>
-            <span class="badge badge-primary" data-i18n="common.comingSoon"
-              >Coming soon</span
-            >
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <h2 data-i18n="console.years.title">School years</h2>
+              <button class="btn btn-primary btn-sm" id="btn-add-year">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.years.add">Add year</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.years.name">Name</th>
+                    <th data-i18n="console.years.start">Start</th>
+                    <th data-i18n="console.years.end">End</th>
+                    <th data-i18n="console.years.status">Status</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="years-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <div>
+                <h2 data-i18n="console.periods.title">Grading periods</h2>
+                <p class="panel-sub" id="periods-year-label">—</p>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-add-period">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.periods.add">Add period</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.periods.order">#</th>
+                    <th data-i18n="console.periods.name">Name</th>
+                    <th data-i18n="console.periods.start">Start</th>
+                    <th data-i18n="console.periods.end">End</th>
+                    <th data-i18n="console.periods.weight">Weight</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="periods-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
-        <!-- ─── GRADES & SECTIONS (placeholder) ──────────────── -->
+        <!-- ─── GRADES & SECTIONS ────────────────────────────── -->
         <section class="view-section" id="view-gradessections">
           <h1 data-i18n="console.heading.gradesSections">
             Grade Levels &amp; Sections
           </h1>
-          <div class="console-placeholder">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-school"></use></svg
-            ></span>
-            <p data-i18n="console.placeholder.gradesSections">
-              Define grade levels and their class sections — coming in the next
-              update.
-            </p>
-            <span class="badge badge-primary" data-i18n="common.comingSoon"
-              >Coming soon</span
-            >
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <h2 data-i18n="console.grades.title">Grade levels</h2>
+              <button class="btn btn-primary btn-sm" id="btn-add-grade">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.grades.add">Add grade level</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.grades.level">Level</th>
+                    <th data-i18n="console.grades.name">Name</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="grades-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <h2 data-i18n="console.rooms.title">Rooms</h2>
+              <button class="btn btn-primary btn-sm" id="btn-add-room">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.rooms.add">Add room</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.rooms.name">Name</th>
+                    <th data-i18n="console.rooms.capacity">Capacity</th>
+                    <th data-i18n="console.rooms.type">Type</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="rooms-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <div>
+                <h2 data-i18n="console.sections.title">Sections</h2>
+                <p class="panel-sub" id="sections-year-label">—</p>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-add-section">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.sections.add">Add section</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.sections.grade">Grade</th>
+                    <th data-i18n="console.sections.section">Section</th>
+                    <th data-i18n="console.sections.homeroom">Homeroom</th>
+                    <th data-i18n="console.sections.room">Room</th>
+                    <th data-i18n="console.sections.capacity">Capacity</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="sections-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
-        <!-- ─── SUBJECTS (placeholder) ───────────────────────── -->
+        <!-- ─── SUBJECTS ─────────────────────────────────────── -->
         <section class="view-section" id="view-subjects">
           <h1 data-i18n="console.heading.subjects">Subjects</h1>
-          <div class="console-placeholder">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-menu_book"></use></svg
-            ></span>
-            <p data-i18n="console.placeholder.subjects">
-              Manage the subject catalog and grade-level mapping — coming in
-              the next update.
-            </p>
-            <span class="badge badge-primary" data-i18n="common.comingSoon"
-              >Coming soon</span
-            >
+          <div class="console-panel">
+            <div class="panel-head">
+              <h2 data-i18n="console.subjects.title">Subject catalog</h2>
+              <button class="btn btn-primary btn-sm" id="btn-add-subject">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.subjects.add">Add subject</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.subjects.code">Code</th>
+                    <th data-i18n="console.subjects.name">Name</th>
+                    <th data-i18n="console.subjects.color">Color</th>
+                    <th data-i18n="console.subjects.gradeLevels">
+                      Grade levels
+                    </th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="subjects-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
-        <!-- ─── TEACHERS (placeholder) ───────────────────────── -->
+        <!-- ─── TEACHERS ─────────────────────────────────────── -->
         <section class="view-section" id="view-teachers">
           <h1 data-i18n="console.heading.teachers">Teachers</h1>
-          <div class="console-placeholder">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
-            ></span>
-            <p data-i18n="console.placeholder.teachers">
-              Create teacher accounts and class assignments — coming in the
-              next update.
-            </p>
-            <span class="badge badge-primary" data-i18n="common.comingSoon"
-              >Coming soon</span
-            >
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <h2 data-i18n="console.teachers.title">Teachers</h2>
+              <button class="btn btn-primary btn-sm" id="btn-add-teacher">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.teachers.add">Add teacher</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.teachers.name">Name</th>
+                    <th data-i18n="console.teachers.nationalId">ID</th>
+                    <th data-i18n="console.teachers.email">Email</th>
+                    <th data-i18n="console.teachers.specialization">
+                      Specialization
+                    </th>
+                    <th data-i18n="console.teachers.status">Status</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="teachers-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <div>
+                <h2 data-i18n="console.assignments.title">Class assignments</h2>
+                <p class="panel-sub" id="assignments-year-label">—</p>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-add-assignment">
+                <span class="material-symbols-outlined"
+                  ><svg aria-hidden="true"><use href="#icon-add"></use></svg
+                ></span>
+                <span data-i18n="console.assignments.add">Add assignment</span>
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.assignments.section">Section</th>
+                    <th data-i18n="console.assignments.subject">Subject</th>
+                    <th data-i18n="console.assignments.teacher">Teacher</th>
+                    <th class="actions-col"></th>
+                  </tr>
+                </thead>
+                <tbody id="assignments-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
-        <!-- ─── STUDENTS & ENROLLMENT (placeholder) ──────────── -->
+        <!-- ─── STUDENTS & ENROLLMENT (Phase 3 placeholder) ──── -->
         <section class="view-section" id="view-students">
           <h1 data-i18n="console.heading.students">
             Students &amp; Enrollment
@@ -310,7 +480,9 @@
                 <span data-i18n="console.profile.signedInAs">Signed in as</span>
                 <b id="admin-name">Admin</b>
               </p>
-              <span class="badge badge-primary" data-i18n="console.profile.admin"
+              <span
+                class="badge badge-primary"
+                data-i18n="console.profile.admin"
                 >Administrator</span
               >
             </div>
@@ -321,6 +493,132 @@
               ></span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         GENERIC MODAL — add/edit forms
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <div class="modal-header">
+          <h2 id="modal-title">Title</h2>
+          <button
+            class="modal-close"
+            id="modal-close"
+            aria-label="Close"
+            data-i18n-aria-label="common.close"
+          >
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
+            ></span>
+          </button>
+        </div>
+        <form id="modal-form" class="modal-body">
+          <!-- Fields injected dynamically by admin.js -->
+        </form>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            id="modal-cancel"
+            data-i18n="common.cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="modal-form"
+            class="btn btn-primary"
+            id="modal-submit"
+            data-i18n="common.save"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CONFIRM DELETE MODAL
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="confirm-overlay">
+      <div
+        class="modal modal-sm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
+        <div class="modal-header">
+          <h2 id="confirm-title" data-i18n="console.confirm.title">
+            Delete item?
+          </h2>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-message" data-i18n="console.confirm.message">
+            This action cannot be undone.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            id="confirm-cancel"
+            data-i18n="common.cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            id="confirm-delete"
+            data-i18n="common.delete"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SCHEDULE MODAL — weekly entries for one section
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="schedule-overlay">
+      <div
+        class="modal modal-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sch-title"
+      >
+        <div class="modal-header">
+          <h2 id="sch-title">Schedule</h2>
+          <button
+            class="modal-close"
+            id="sch-close"
+            aria-label="Close"
+            data-i18n-aria-label="common.close"
+          >
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
+            ></span>
+          </button>
+        </div>
+        <div class="modal-body" id="sch-body"></div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            id="sch-done"
+            data-i18n="common.done"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
