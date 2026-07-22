@@ -168,7 +168,8 @@ The end-to-end suite is fully self-contained: it boots the app with placeholder 
 - [x] Admin console — academic structure CRUD (years, periods, grade levels,
       sections, subjects, teacher assignments, schedules)
 - [x] Admin console — student records, section enrollment & CSV roster import
-- [ ] Admin console — user accounts (create/invite/reset) via Edge Function
+- [x] Admin console — user accounts (create/reset/deactivate) via Edge Function
+- [x] Admin console — school-wide overview (enrollment · attendance · at-risk)
 - [ ] PDF report export
 - [ ] Mobile-responsive layout
 - [ ] Notification system for events and grade updates
