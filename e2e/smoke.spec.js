@@ -141,11 +141,10 @@ test.describe("admin console", () => {
     await page.click("#modal-submit");
     await expect(page.locator("#years-body")).toContainText("2026-2027");
 
-    // Students & Enrollment stays a Phase 3 placeholder.
+    // Students & Enrollment renders its roster panel (empty seed → prompt).
     await page.click('.sidebar a[data-page="students"]');
-    await expect(
-      page.locator("#view-students .console-placeholder"),
-    ).toBeVisible();
+    await expect(page.locator("#view-students .console-panel")).toBeVisible();
+    await expect(page.locator("#students-body")).toContainText(/No students/);
 
     expect(errors).toEqual([]);
     // Demo mode: the write landed in the in-browser overlay, not Supabase.
@@ -169,5 +168,64 @@ test.describe("admin console", () => {
         document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
       { timeout: 10_000 },
     );
+  });
+
+  test("enrolls a student and CSV-imports a roster with zero writes", async ({
+    page,
+    context,
+  }) => {
+    const seeded = {
+      ...consoleFix,
+      grade_levels: [{ id: 1, name: "7th Grade", numeric_level: 7 }],
+      classes: [
+        {
+          id: 21,
+          school_year_id: 1,
+          grade_level_id: 1,
+          section: "A",
+          display_name: "7A",
+        },
+      ],
+      students: [],
+    };
+    const writes = await routeSupabase(context, seeded);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(() =>
+      document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+    );
+    await page.click('.sidebar a[data-page="students"]');
+
+    // Add one student enrolled into 7A.
+    await page.click("#btn-add-student");
+    await page.fill("#modal-field-first_name", "Ana");
+    await page.fill("#modal-field-last_name", "García");
+    await page.fill("#modal-field-enrollment_number", "S-101");
+    await page.selectOption("#modal-field-class_id", { label: "7A" });
+    await page.click("#modal-submit");
+    await expect(page.locator("#students-body")).toContainText("Ana García");
+
+    // CSV import: paste 3 rows (one with a blank enrollment → auto-generated).
+    await page.click("#btn-import-csv");
+    await page.fill(
+      "#import-text",
+      "first_name,last_name,enrollment_number,gender\n" +
+        "Luis,Martínez,S-102,M\nMaría,Rojas,S-103,F\nCarlos,Díaz,,M",
+    );
+    await page.selectOption("#import-section", { label: "7A" });
+    await page.click("#import-footer .btn-primary"); // → mapping
+    await expect(page.locator(".map-grid")).toBeVisible();
+    await page.click("#import-footer .btn-primary"); // → preview
+    await expect(page.locator(".import-summary")).toContainText("3");
+    await page.click("#import-footer .btn-primary"); // → import
+    await expect(page.locator("#students-body")).toContainText("Carlos Díaz");
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
   });
 });

@@ -26,6 +26,7 @@ import { supabase } from "./supabaseClient.js";
  * @typedef {Object} Gateway
  * @property {(table: string, opts?: SelectOpts) => Promise<any[]>} select
  * @property {(table: string, row: object) => Promise<any>} insert returns the created row (with id)
+ * @property {(table: string, rows: object[]) => Promise<any[]>} insertMany bulk insert (CSV import)
  * @property {(table: string, id: number, patch: object) => Promise<void>} update
  * @property {(table: string, id: number) => Promise<void>} remove
  */
@@ -56,6 +57,12 @@ export const supabaseGateway = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async insertMany(table, rows) {
+    const { data, error } = await supabase.from(table).insert(rows).select();
+    if (error) throw error;
+    return data ?? [];
   },
 
   async update(table, id, patch) {
@@ -190,5 +197,16 @@ export function createAdminData(gateway) {
       gateway.update("schedules", id, patch),
     deleteSchedule: (/** @type {number} */ id) =>
       gateway.remove("schedules", id),
+
+    // ── Students & enrollment ─────────────────────────────────
+    listStudents: () =>
+      gateway.select("students", { order: { column: "last_name" } }),
+    createStudent: (/** @type {object} */ row) =>
+      gateway.insert("students", row),
+    updateStudent: (/** @type {number} */ id, /** @type {object} */ patch) =>
+      gateway.update("students", id, patch),
+    deleteStudent: (/** @type {number} */ id) => gateway.remove("students", id),
+    /** Bulk-create students (CSV roster import). @param {object[]} rows */
+    bulkCreateStudents: (rows) => gateway.insertMany("students", rows),
   };
 }

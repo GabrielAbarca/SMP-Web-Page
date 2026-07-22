@@ -47,6 +47,8 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
   - `supabaseQueries.js` — student/teacher data fetching.
   - `adminData.js` — admin console data layer: a generic table `Gateway`
     (Supabase-backed) + `createAdminData(gateway)` declarative CRUD methods.
+  - `csv.js` — dependency-free CSV/TSV parsing + header auto-mapping for the
+    admin console's roster import.
   - `demoMode.js` / `demoDb.js` — demo sandbox (see below). `adminDemoDb.js`
     is the admin console's generic per-table demo `Gateway`.
   - `i18n.js` + `i18n/en.js`, `i18n/es.js` — translations.
