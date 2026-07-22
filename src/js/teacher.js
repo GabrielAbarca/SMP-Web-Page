@@ -103,6 +103,19 @@ function bindAdminAction(el, handler) {
 const realDb = {
   // ── Identity / context ──────────────────────────────────────
   async getTeacherId() {
+    // Real mode: resolve the teacher from their linked auth user
+    // (teachers.auth_user_id). Demo mode keeps the fixed-teacher hack
+    // (app_config → demo_teacher_id()), since the shared demo account
+    // isn't tied to a specific teacher.
+    if (!DEMO_MODE) {
+      const { data, error } = await supabase
+        .from("teachers")
+        .select("id")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.id ?? null;
+    }
     const { data, error } = await supabase.rpc("demo_teacher_id");
     if (error) throw error;
     return data;

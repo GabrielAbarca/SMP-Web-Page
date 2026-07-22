@@ -25,6 +25,11 @@ import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
 import { createDemoGateway } from "./adminDemoDb.js";
 import { parseCsv, autoMap } from "./csv.js";
+import {
+  createAccount,
+  resetPassword,
+  generateTempPassword,
+} from "./accounts.js";
 import { initI18n, applyTranslations, t, tn, formatDate } from "./i18n.js";
 
 // ───────────────────────────────────────────────────────────────
@@ -421,10 +426,100 @@ async function loadOverview() {
     yearText.textContent = state.activeYear?.name
       ? `${t("console.overview.activeYear")}: ${state.activeYear.name}`
       : t("console.overview.noActiveYear");
+
+    await loadOverviewStats();
   } catch (err) {
     console.error("loadOverview:", err);
     yearText.textContent = t("common.loadFailed");
   }
+}
+
+// Three cards + an at-risk table. Enrollment = active students; today's
+// attendance rate = present+late over today's records; at-risk = students
+// with 3+ recorded absences (all-time).
+const AT_RISK_THRESHOLD = 3;
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+async function loadOverviewStats() {
+  try {
+    const [students, sectionsList, todayRows, allAttendance] =
+      await Promise.all([
+        data.listStudents(),
+        state.activeYear
+          ? data.listSections(state.activeYear.id)
+          : Promise.resolve([]),
+        data.listAttendanceOn(todayIso()),
+        data.listAllAttendance(),
+      ]);
+    state.students = students;
+    state.sections = sectionsList;
+    if (!state.gradeLevels.length)
+      state.gradeLevels = await data.listGradeLevels();
+
+    // Enrollment (active students).
+    const active = students.filter((s) => s.status === "active");
+    document.getElementById("stat-enrollment").textContent = String(
+      active.length,
+    );
+
+    // Today's attendance rate.
+    const present = todayRows.filter(
+      (r) => r.status === "present" || r.status === "late",
+    ).length;
+    document.getElementById("stat-attendance").textContent = todayRows.length
+      ? `${Math.round((present / todayRows.length) * 100)}%`
+      : t("console.overview.noData");
+
+    // At-risk: absence counts per student.
+    const absencesByStudent = new Map();
+    allAttendance.forEach((r) => {
+      if (r.status === "absent")
+        absencesByStudent.set(
+          r.student_id,
+          (absencesByStudent.get(r.student_id) ?? 0) + 1,
+        );
+    });
+    const atRisk = [...absencesByStudent.entries()]
+      .filter(([, n]) => n >= AT_RISK_THRESHOLD)
+      .map(([studentId, n]) => ({
+        student: students.find((s) => s.id === studentId),
+        absences: n,
+      }))
+      .filter((r) => r.student)
+      .sort((a, b) => b.absences - a.absences);
+
+    document.getElementById("stat-atrisk").textContent = String(atRisk.length);
+    renderAtRisk(atRisk);
+  } catch (err) {
+    console.error("loadOverviewStats:", err);
+    renderErrorRow("atrisk-body", 3);
+  }
+}
+
+function renderAtRisk(rows) {
+  const tbody = document.getElementById("atrisk-body");
+  tbody.innerHTML = "";
+  if (!rows.length) {
+    renderEmptyRow("atrisk-body", 3, t("console.overview.atRiskEmpty"));
+    return;
+  }
+  rows.slice(0, 15).forEach(({ student, absences }) => {
+    const sec = student.class_id
+      ? (state.sections.find((x) => x.id === student.class_id) &&
+          sectionName(state.sections.find((x) => x.id === student.class_id))) ||
+        "—"
+      : "—";
+    tbody.appendChild(
+      tableRow([
+        escapeHtml(`${student.first_name} ${student.last_name}`),
+        escapeHtml(sec),
+        `<span class="badge badge-warning">${escapeHtml(absences)}</span>`,
+      ]),
+    );
+  });
 }
 
 async function fetchProfile() {
@@ -1227,6 +1322,7 @@ function renderTeachers(list) {
           statusBadge,
         ],
         [
+          accountBtn(tch, "teacher", loadTeachers),
           iconBtn("edit", t("common.edit"), () => openTeacherForm(tch)),
           iconBtn(
             "delete",
@@ -1247,6 +1343,78 @@ function renderTeachers(list) {
         ],
       ),
     );
+  });
+}
+
+// ── Login accounts (Edge Function in real mode; simulated in demo) ──
+// A record with a linked auth user shows "reset password"; otherwise
+// "create login". `reload` re-renders the owning section afterward.
+function accountBtn(record, kind, reload) {
+  if (record.auth_user_id) {
+    return iconBtn("lock_reset", t("console.accounts.reset"), () =>
+      openConfirm(
+        t("console.accounts.confirmReset", { email: record.email ?? "" }),
+        async () => {
+          const res = await resetPassword(record.email);
+          showToast(
+            res?.simulated
+              ? t("console.accounts.resetDemo")
+              : t("console.accounts.resetSent"),
+          );
+        },
+      ),
+    );
+  }
+  return iconBtn("person_add", t("console.accounts.create"), () =>
+    openCreateAccount(record, kind, reload),
+  );
+}
+
+function openCreateAccount(record, kind, reload) {
+  const name = `${record.first_name} ${record.last_name}`.trim();
+  openModal({
+    title: t("console.accounts.createTitle", { name }),
+    submitLabel: t("console.accounts.create"),
+    fields: [
+      {
+        name: "email",
+        label: t("console.accounts.email"),
+        type: "email",
+        value: record.email ?? "",
+        required: true,
+      },
+      {
+        name: "password",
+        label: t("console.accounts.tempPassword"),
+        value: generateTempPassword(),
+        required: true,
+        help: t("console.accounts.tempPasswordHelp"),
+      },
+    ],
+    onSubmit: async (v) => {
+      const res = await createAccount({
+        email: v.email.trim(),
+        password: v.password,
+        role: kind,
+        name,
+        linkType: kind,
+        linkId: record.id,
+      });
+      // Demo mode never mints a real user; reflect the link locally so the
+      // row flips to "reset password" (discarded on refresh, like all demo
+      // writes). Real mode already linked server-side; the reload re-fetches.
+      if (res?.simulated) {
+        const patch = { auth_user_id: `demo-${kind}-${record.id}` };
+        if (kind === "teacher") await data.updateTeacher(record.id, patch);
+        else await data.updateStudent(record.id, patch);
+      }
+      showToast(
+        res?.simulated
+          ? t("console.accounts.createdDemo")
+          : t("console.accounts.created"),
+      );
+      reload();
+    },
   });
 }
 
@@ -1755,6 +1923,7 @@ function renderStudents() {
           statusBadge,
         ],
         [
+          accountBtn(s, "student", loadStudents),
           iconBtn("edit", t("common.edit"), () => openStudentForm(s)),
           iconBtn(
             active ? "block" : "check_circle",

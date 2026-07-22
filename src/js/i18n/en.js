@@ -631,6 +631,16 @@ export default {
       activeYear: "Active school year",
       noActiveYear: "No active school year yet",
       loading: "Loading overview…",
+      enrollment: "Total enrollment",
+      attendanceToday: "Attendance today",
+      atRisk: "At-risk students",
+      atRiskTitle: "At-risk absences",
+      atRiskSub: "Students with 3 or more recorded absences.",
+      atRiskEmpty: "No at-risk students.",
+      student: "Student",
+      section: "Section",
+      absences: "Absences",
+      noData: "No data",
     },
     placeholder: {
       yearPeriods:
@@ -853,6 +863,20 @@ export default {
       errDupEnrollment: "Duplicate enrollment number ({value})",
       doImport: "Import {count}",
       done: "Imported {count} students.",
+    },
+    accounts: {
+      create: "Create login",
+      reset: "Reset password",
+      createTitle: "Create login — {name}",
+      email: "Email",
+      tempPassword: "Temporary password",
+      tempPasswordHelp:
+        "Share this with the user; they can change it after signing in.",
+      created: "Login account created.",
+      createdDemo: "Login created (demo — not a real account).",
+      confirmReset: "Send a password reset to {email}?",
+      resetSent: "Password reset sent.",
+      resetDemo: "Password reset (demo — no email sent).",
     },
   },
 

@@ -49,6 +49,8 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
     (Supabase-backed) + `createAdminData(gateway)` declarative CRUD methods.
   - `csv.js` — dependency-free CSV/TSV parsing + header auto-mapping for the
     admin console's roster import.
+  - `accounts.js` — login-account management: calls the `admin-users` Edge
+    Function in real mode; simulates in demo mode (never mints real users).
   - `demoMode.js` / `demoDb.js` — demo sandbox (see below). `adminDemoDb.js`
     is the admin console's generic per-table demo `Gateway`.
   - `i18n.js` + `i18n/en.js`, `i18n/es.js` — translations.
@@ -56,6 +58,11 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
   - `auth.js`, `theme.js`, `ui.js`, `settings.js`, `errorHandler.js`, `speedInsights.js`.
 
 `errorHandler.js` installs a global error banner and **must remain the first import of every page entry point**. Don't reorder it below other imports.
+
+Backend artifacts live under `supabase/`: `migrations/` (SQL applied to the demo
+project and every per-school project) and `functions/admin-users/` (the
+service-role Edge Function for account management, deployed to real school
+projects only — never the demo).
 
 ### Demo mode (important)
 

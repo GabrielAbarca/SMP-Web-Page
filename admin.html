@@ -181,6 +181,74 @@
               >
             </div>
           </div>
+
+          <div class="overview-stats">
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-primary material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-groups"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.enrollment">
+                  Total enrollment
+                </p>
+                <h2 class="stat-value" id="stat-enrollment">—</h2>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-success material-symbols-outlined"
+                ><svg aria-hidden="true">
+                  <use href="#icon-fact_check"></use></svg
+              ></span>
+              <div>
+                <p
+                  class="stat-label"
+                  data-i18n="console.overview.attendanceToday"
+                >
+                  Attendance today
+                </p>
+                <h2 class="stat-value" id="stat-attendance">—</h2>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-warning material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-error"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.atRisk">
+                  At-risk students
+                </p>
+                <h2 class="stat-value" id="stat-atrisk">—</h2>
+              </div>
+            </div>
+          </div>
+
+          <div class="console-panel">
+            <div class="panel-head">
+              <div>
+                <h2 data-i18n="console.overview.atRiskTitle">
+                  At-risk absences
+                </h2>
+                <p
+                  class="panel-sub"
+                  data-i18n="console.overview.atRiskSub"
+                >
+                  Students with 3 or more recorded absences.
+                </p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="console.overview.student">Student</th>
+                    <th data-i18n="console.overview.section">Section</th>
+                    <th data-i18n="console.overview.absences">Absences</th>
+                  </tr>
+                </thead>
+                <tbody id="atrisk-body"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- ─── YEAR & PERIODS ───────────────────────────────── -->

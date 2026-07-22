@@ -624,6 +624,16 @@ export default {
       activeYear: "Año escolar activo",
       noActiveYear: "Aún no hay un año escolar activo",
       loading: "Cargando resumen…",
+      enrollment: "Matrícula total",
+      attendanceToday: "Asistencia de hoy",
+      atRisk: "Estudiantes en riesgo",
+      atRiskTitle: "Ausencias en riesgo",
+      atRiskSub: "Estudiantes con 3 o más ausencias registradas.",
+      atRiskEmpty: "No hay estudiantes en riesgo.",
+      student: "Estudiante",
+      section: "Sección",
+      absences: "Ausencias",
+      noData: "Sin datos",
     },
     placeholder: {
       yearPeriods:
@@ -849,6 +859,20 @@ export default {
       errDupEnrollment: "Número de matrícula duplicado ({value})",
       doImport: "Importar {count}",
       done: "Se importaron {count} estudiantes.",
+    },
+    accounts: {
+      create: "Crear acceso",
+      reset: "Restablecer contraseña",
+      createTitle: "Crear acceso — {name}",
+      email: "Correo",
+      tempPassword: "Contraseña temporal",
+      tempPasswordHelp:
+        "Compártela con la persona; podrá cambiarla al iniciar sesión.",
+      created: "Cuenta de acceso creada.",
+      createdDemo: "Acceso creado (demo — no es una cuenta real).",
+      confirmReset: "¿Enviar un restablecimiento de contraseña a {email}?",
+      resetSent: "Restablecimiento de contraseña enviado.",
+      resetDemo: "Contraseña restablecida (demo — no se envió correo).",
     },
   },
 
