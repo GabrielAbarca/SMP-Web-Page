@@ -59,10 +59,14 @@ CI (`.github/workflows/ci.yml`) mirrors `lint` → `typecheck` → `test` → `b
 
 `errorHandler.js` installs a global error banner and **must remain the first import of every page entry point**. Don't reorder it below other imports.
 
-Backend artifacts live under `supabase/`: `migrations/` (SQL applied to the demo
-project and every per-school project) and `functions/admin-users/` (the
-service-role Edge Function for account management, deployed to real school
-projects only — never the demo).
+Backend artifacts live under `supabase/`: `schema/` (`school_schema.sql`, the
+baseline for a fresh per-school project, plus incremental snippets) and
+`functions/admin-users/` (the service-role Edge Function for account
+management, deployed to real school projects only — never the demo). There is
+deliberately **no** `supabase/migrations/` or `config.toml`: the demo project's
+schema is managed out of band, so a tracked migrations dir would make the
+Supabase↔GitHub integration report a history mismatch. Apply schema artifacts
+by hand (dashboard / CLI) per `docs/ONBOARDING_RUNBOOK.md`.
 
 ### Demo mode (important)
 
