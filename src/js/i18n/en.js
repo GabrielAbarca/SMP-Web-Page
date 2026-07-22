@@ -864,6 +864,20 @@ export default {
       doImport: "Import {count}",
       done: "Imported {count} students.",
     },
+    accounts: {
+      create: "Create login",
+      reset: "Reset password",
+      createTitle: "Create login — {name}",
+      email: "Email",
+      tempPassword: "Temporary password",
+      tempPasswordHelp:
+        "Share this with the user; they can change it after signing in.",
+      created: "Login account created.",
+      createdDemo: "Login created (demo — not a real account).",
+      confirmReset: "Send a password reset to {email}?",
+      resetSent: "Password reset sent.",
+      resetDemo: "Password reset (demo — no email sent).",
+    },
   },
 
   // ── Login view (login.html + login.js) ──────────────────────────

@@ -25,6 +25,11 @@ import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
 import { createDemoGateway } from "./adminDemoDb.js";
 import { parseCsv, autoMap } from "./csv.js";
+import {
+  createAccount,
+  resetPassword,
+  generateTempPassword,
+} from "./accounts.js";
 import { initI18n, applyTranslations, t, tn, formatDate } from "./i18n.js";
 
 // ───────────────────────────────────────────────────────────────
@@ -1317,6 +1322,7 @@ function renderTeachers(list) {
           statusBadge,
         ],
         [
+          accountBtn(tch, "teacher", loadTeachers),
           iconBtn("edit", t("common.edit"), () => openTeacherForm(tch)),
           iconBtn(
             "delete",
@@ -1337,6 +1343,78 @@ function renderTeachers(list) {
         ],
       ),
     );
+  });
+}
+
+// ── Login accounts (Edge Function in real mode; simulated in demo) ──
+// A record with a linked auth user shows "reset password"; otherwise
+// "create login". `reload` re-renders the owning section afterward.
+function accountBtn(record, kind, reload) {
+  if (record.auth_user_id) {
+    return iconBtn("lock_reset", t("console.accounts.reset"), () =>
+      openConfirm(
+        t("console.accounts.confirmReset", { email: record.email ?? "" }),
+        async () => {
+          const res = await resetPassword(record.email);
+          showToast(
+            res?.simulated
+              ? t("console.accounts.resetDemo")
+              : t("console.accounts.resetSent"),
+          );
+        },
+      ),
+    );
+  }
+  return iconBtn("person_add", t("console.accounts.create"), () =>
+    openCreateAccount(record, kind, reload),
+  );
+}
+
+function openCreateAccount(record, kind, reload) {
+  const name = `${record.first_name} ${record.last_name}`.trim();
+  openModal({
+    title: t("console.accounts.createTitle", { name }),
+    submitLabel: t("console.accounts.create"),
+    fields: [
+      {
+        name: "email",
+        label: t("console.accounts.email"),
+        type: "email",
+        value: record.email ?? "",
+        required: true,
+      },
+      {
+        name: "password",
+        label: t("console.accounts.tempPassword"),
+        value: generateTempPassword(),
+        required: true,
+        help: t("console.accounts.tempPasswordHelp"),
+      },
+    ],
+    onSubmit: async (v) => {
+      const res = await createAccount({
+        email: v.email.trim(),
+        password: v.password,
+        role: kind,
+        name,
+        linkType: kind,
+        linkId: record.id,
+      });
+      // Demo mode never mints a real user; reflect the link locally so the
+      // row flips to "reset password" (discarded on refresh, like all demo
+      // writes). Real mode already linked server-side; the reload re-fetches.
+      if (res?.simulated) {
+        const patch = { auth_user_id: `demo-${kind}-${record.id}` };
+        if (kind === "teacher") await data.updateTeacher(record.id, patch);
+        else await data.updateStudent(record.id, patch);
+      }
+      showToast(
+        res?.simulated
+          ? t("console.accounts.createdDemo")
+          : t("console.accounts.created"),
+      );
+      reload();
+    },
   });
 }
 
@@ -1845,6 +1923,7 @@ function renderStudents() {
           statusBadge,
         ],
         [
+          accountBtn(s, "student", loadStudents),
           iconBtn("edit", t("common.edit"), () => openStudentForm(s)),
           iconBtn(
             active ? "block" : "check_circle",

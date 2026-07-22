@@ -860,6 +860,20 @@ export default {
       doImport: "Importar {count}",
       done: "Se importaron {count} estudiantes.",
     },
+    accounts: {
+      create: "Crear acceso",
+      reset: "Restablecer contraseña",
+      createTitle: "Crear acceso — {name}",
+      email: "Correo",
+      tempPassword: "Contraseña temporal",
+      tempPasswordHelp:
+        "Compártela con la persona; podrá cambiarla al iniciar sesión.",
+      created: "Cuenta de acceso creada.",
+      createdDemo: "Acceso creado (demo — no es una cuenta real).",
+      confirmReset: "¿Enviar un restablecimiento de contraseña a {email}?",
+      resetSent: "Restablecimiento de contraseña enviado.",
+      resetDemo: "Contraseña restablecida (demo — no se envió correo).",
+    },
   },
 
   login: {

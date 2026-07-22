@@ -317,4 +317,49 @@ test.describe("admin console", () => {
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
   });
+
+  test("create-login is simulated in demo mode and never calls the backend", async ({
+    page,
+    context,
+  }) => {
+    const seeded = {
+      ...consoleFix,
+      teachers: [
+        {
+          id: 7,
+          first_name: "Sofía",
+          last_name: "Ramírez",
+          email: "sofia@example.com",
+          status: "active",
+          auth_user_id: null,
+        },
+      ],
+    };
+    const writes = await routeSupabase(context, seeded);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(() =>
+      document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+    );
+    await page.click('.sidebar a[data-page="teachers"]');
+    await expect(page.locator("#teachers-body")).toContainText("Sofía");
+
+    await page.click('#teachers-body button[title="Create login"]');
+    await expect(page.locator("#modal-field-email")).toHaveValue(
+      "sofia@example.com",
+    );
+    await page.click("#modal-submit");
+    // Row flips to reset-password (link reflected locally in demo).
+    await expect(
+      page.locator('#teachers-body button[title="Reset password"]'),
+    ).toBeVisible();
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
 });
