@@ -74,6 +74,7 @@ const state = {
   /** @type {any[]} */ subjects: [],
   /** @type {any[]} */ sections: [],
   /** @type {any[]} */ students: [],
+  /** @type {any[]} */ schoolYears: [],
   /** @type {string} */ studentFilter: "all", // "all" | "unassigned" | section id
 };
 
@@ -2084,67 +2085,677 @@ document.getElementById("students-filter").addEventListener("change", (e) => {
   renderStudents();
 });
 
-// ── CSV roster import ──────────────────────────────────────────
+// ── CSV import (generic, descriptor-driven) ────────────────────
+// One import wizard drives every structure table. Each entity is a
+// descriptor: which fields to map (+ header aliases), how to turn a mapped
+// row into a DB payload (resolving foreign keys by name), which fields must
+// be unique, and how to preview + reload. Students keep an optional
+// "enroll into section" target; sections/periods bind to the active year.
 const importOverlay = document.getElementById("import-overlay");
 const importBody = document.getElementById("import-body");
 const importFooter = document.getElementById("import-footer");
 
-// Target fields for the roster + their auto-map aliases. Order matters:
-// "id" resolves to enrollment_number, not national_id.
-const IMPORT_FIELDS = [
-  { key: "first_name", required: true },
-  { key: "last_name", required: true },
-  { key: "enrollment_number", required: false },
-  { key: "national_id", required: false },
-  { key: "gender", required: false },
-  { key: "date_of_birth", required: false },
-  { key: "email", required: false },
-  { key: "phone", required: false },
-];
-const IMPORT_ALIASES = {
-  first_name: ["first name", "firstname", "nombre", "nombres", "given name"],
-  last_name: ["last name", "lastname", "apellido", "apellidos", "surname"],
-  enrollment_number: [
-    "enrollment number",
-    "enrollment",
-    "matricula",
-    "matrícula",
-    "student id",
-    "studentid",
-    "codigo",
-    "código",
-    "carnet",
-    "id",
-  ],
-  national_id: [
-    "national id",
-    "nationalid",
-    "cedula",
-    "cédula",
-    "dni",
-    "identificacion",
-    "identificación",
-  ],
-  gender: ["gender", "sex", "genero", "género", "sexo"],
-  date_of_birth: [
-    "date of birth",
-    "dob",
-    "birthdate",
-    "birth date",
-    "fecha de nacimiento",
-    "nacimiento",
-  ],
-  email: ["email", "correo", "e-mail", "mail"],
-  phone: ["phone", "telefono", "teléfono", "celular", "mobile", "tel"],
+// ── value coercion + name→id resolvers ─────────────────────────
+function coerceInt(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = parseInt(s, 10);
+  return Number.isNaN(n) ? null : n;
+}
+function coerceNum(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isNaN(n) ? null : n;
+}
+function coerceEnum(v, allowed, dflt) {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  return allowed.find((a) => a.toLowerCase() === s) ?? dflt;
+}
+function resolveGradeLevel(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  const n = Number(raw);
+  return (
+    state.gradeLevels.find(
+      (g) =>
+        (!Number.isNaN(n) && s !== "" && g.numeric_level === n) ||
+        g.name.toLowerCase() === s,
+    ) ?? null
+  );
+}
+function resolveTeacherId(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return null;
+  const tch = state.teachers.find(
+    (x) =>
+      (x.email && x.email.toLowerCase() === s) ||
+      `${x.first_name} ${x.last_name}`.toLowerCase() === s,
+  );
+  return tch ? tch.id : null;
+}
+function resolveRoomId(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return null;
+  const r = state.rooms.find((x) => x.name.toLowerCase() === s);
+  return r ? r.id : null;
+}
+
+// ── reference-list loaders used by descriptor prepare() ────────
+async function ensureSchoolYears() {
+  state.schoolYears = await data.listSchoolYears();
+  state.activeYear = state.schoolYears.find((y) => y.is_active) ?? null;
+}
+async function ensureActiveYear() {
+  if (!state.activeYear) await ensureSchoolYears();
+}
+async function ensureGradeLevels() {
+  if (!state.gradeLevels.length)
+    state.gradeLevels = await data.listGradeLevels();
+}
+async function ensureRooms() {
+  if (!state.rooms.length) state.rooms = await data.listRooms();
+}
+async function ensureTeachers() {
+  if (!state.teachers.length) state.teachers = await data.listTeachers();
+}
+
+const REQ = (key) => t("console.import.errRequired", { field: t(key) });
+
+// ── Entity descriptors ─────────────────────────────────────────
+const IMPORT_DESCRIPTORS = {
+  students: {
+    table: "students",
+    titleKey: "console.import.entity.students",
+    reload: () => loadStudents(),
+    targetSection: true,
+    uniqueFields: ["enrollment_number"],
+    autogen: {
+      field: "enrollment_number",
+      make: (i) =>
+        `S-${Date.now().toString(36)}-${i}-${Math.floor(Math.random() * 1e4)}`,
+    },
+    existing: () => state.students,
+    fields: [
+      {
+        key: "first_name",
+        labelKey: "console.students.firstName",
+        required: true,
+        aliases: ["first name", "firstname", "nombre", "nombres", "given name"],
+      },
+      {
+        key: "last_name",
+        labelKey: "console.students.lastName",
+        required: true,
+        aliases: ["last name", "lastname", "apellido", "apellidos", "surname"],
+      },
+      {
+        key: "enrollment_number",
+        labelKey: "console.students.enrollmentNumber",
+        aliases: [
+          "enrollment number",
+          "enrollment",
+          "matricula",
+          "matrícula",
+          "student id",
+          "studentid",
+          "carnet",
+          "id",
+        ],
+      },
+      {
+        key: "national_id",
+        labelKey: "console.students.nationalId",
+        aliases: ["national id", "nationalid", "cedula", "cédula", "dni"],
+      },
+      {
+        key: "gender",
+        labelKey: "console.students.gender",
+        aliases: ["gender", "sex", "genero", "género", "sexo"],
+      },
+      {
+        key: "date_of_birth",
+        labelKey: "console.students.dateOfBirth",
+        aliases: [
+          "date of birth",
+          "dob",
+          "birthdate",
+          "fecha de nacimiento",
+          "nacimiento",
+        ],
+      },
+      {
+        key: "email",
+        labelKey: "console.students.email",
+        aliases: ["email", "correo", "e-mail", "mail"],
+      },
+      {
+        key: "phone",
+        labelKey: "console.students.phone",
+        aliases: ["phone", "telefono", "teléfono", "celular", "mobile", "tel"],
+      },
+    ],
+    async prepare() {
+      if (!state.students.length) state.students = await data.listStudents();
+      await ensureActiveYear();
+      if (state.activeYear)
+        state.sections = await data.listSections(state.activeYear.id);
+      if (!state.gradeLevels.length)
+        state.gradeLevels = await data.listGradeLevels();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get, ctx) {
+      const first = get("first_name");
+      const last = get("last_name");
+      if (!first || !last) return { error: t("console.import.errMissingName") };
+      return {
+        payload: {
+          first_name: first,
+          last_name: last,
+          enrollment_number: get("enrollment_number") || null,
+          national_id: get("national_id") || null,
+          gender: coerceGender(get("gender")),
+          date_of_birth: coerceDate(get("date_of_birth")),
+          email: get("email") || null,
+          phone: get("phone") || null,
+          class_id: ctx.targetSection ?? null,
+          status: "active",
+        },
+      };
+    },
+    previewCols: [
+      {
+        labelKey: "console.students.name",
+        get: (p) => `${p.first_name} ${p.last_name}`,
+      },
+      {
+        labelKey: "console.students.enrollmentNumber",
+        get: (p) => p.enrollment_number,
+      },
+      {
+        labelKey: "console.students.gender",
+        get: (p) => genderLabel(p.gender),
+      },
+    ],
+  },
+
+  teachers: {
+    table: "teachers",
+    titleKey: "console.import.entity.teachers",
+    reload: () => loadTeachers(),
+    uniqueFields: ["national_id", "email"],
+    existing: () => state.teachers,
+    fields: [
+      {
+        key: "first_name",
+        labelKey: "console.teachers.firstName",
+        required: true,
+        aliases: ["first name", "firstname", "nombre", "nombres"],
+      },
+      {
+        key: "last_name",
+        labelKey: "console.teachers.lastName",
+        required: true,
+        aliases: ["last name", "lastname", "apellido", "apellidos"],
+      },
+      {
+        key: "national_id",
+        labelKey: "console.teachers.nationalId",
+        aliases: ["national id", "cedula", "cédula", "dni", "id"],
+      },
+      {
+        key: "email",
+        labelKey: "console.teachers.email",
+        aliases: ["email", "correo", "e-mail", "mail"],
+      },
+      {
+        key: "phone",
+        labelKey: "console.teachers.phone",
+        aliases: ["phone", "telefono", "teléfono", "celular"],
+      },
+      {
+        key: "specialization",
+        labelKey: "console.teachers.specialization",
+        aliases: [
+          "specialization",
+          "especializacion",
+          "especialización",
+          "subject",
+          "area",
+        ],
+      },
+      {
+        key: "status",
+        labelKey: "console.teachers.status",
+        aliases: ["status", "estado"],
+      },
+    ],
+    async prepare() {
+      await ensureTeachers();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get) {
+      const first = get("first_name");
+      const last = get("last_name");
+      if (!first || !last) return { error: t("console.import.errMissingName") };
+      return {
+        payload: {
+          first_name: first,
+          last_name: last,
+          national_id: get("national_id") || null,
+          email: get("email") || null,
+          phone: get("phone") || null,
+          specialization: get("specialization") || null,
+          status: coerceEnum(get("status"), TEACHER_STATUSES, "active"),
+        },
+      };
+    },
+    previewCols: [
+      {
+        labelKey: "console.teachers.name",
+        get: (p) => `${p.first_name} ${p.last_name}`,
+      },
+      { labelKey: "console.teachers.email", get: (p) => p.email ?? "—" },
+      {
+        labelKey: "console.teachers.specialization",
+        get: (p) => p.specialization ?? "—",
+      },
+    ],
+  },
+
+  subjects: {
+    table: "subjects",
+    titleKey: "console.import.entity.subjects",
+    reload: () => loadSubjects(),
+    uniqueFields: ["name", "code"],
+    existing: () => state.subjects,
+    fields: [
+      {
+        key: "name",
+        labelKey: "console.subjects.name",
+        required: true,
+        aliases: ["name", "nombre", "subject", "materia"],
+      },
+      {
+        key: "code",
+        labelKey: "console.subjects.code",
+        aliases: ["code", "codigo", "código", "abbr"],
+      },
+      {
+        key: "color",
+        labelKey: "console.subjects.color",
+        aliases: ["color", "colour"],
+      },
+      {
+        key: "description",
+        labelKey: "console.subjects.description",
+        aliases: ["description", "descripcion", "descripción"],
+      },
+    ],
+    async prepare() {
+      if (!state.subjects.length) state.subjects = await data.listSubjects();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get) {
+      const name = get("name");
+      if (!name) return { error: REQ("console.subjects.name") };
+      const color = get("color");
+      return {
+        payload: {
+          name,
+          code: get("code") || null,
+          color: /^#?[0-9a-fA-F]{6}$/.test(color)
+            ? color.startsWith("#")
+              ? color
+              : `#${color}`
+            : null,
+          description: get("description") || null,
+        },
+      };
+    },
+    previewCols: [
+      { labelKey: "console.subjects.name", get: (p) => p.name },
+      { labelKey: "console.subjects.code", get: (p) => p.code ?? "—" },
+    ],
+  },
+
+  gradeLevels: {
+    table: "grade_levels",
+    titleKey: "console.import.entity.gradeLevels",
+    reload: () => loadGradeLevels(),
+    uniqueFields: ["name", "numeric_level"],
+    existing: () => state.gradeLevels,
+    fields: [
+      {
+        key: "numeric_level",
+        labelKey: "console.grades.level",
+        required: true,
+        aliases: ["level", "numeric level", "nivel", "grade", "grado"],
+      },
+      {
+        key: "name",
+        labelKey: "console.grades.name",
+        required: true,
+        aliases: ["name", "nombre", "grade name", "grado"],
+      },
+    ],
+    async prepare() {
+      await ensureGradeLevels();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get) {
+      const name = get("name");
+      const level = coerceInt(get("numeric_level"));
+      if (!name) return { error: REQ("console.grades.name") };
+      if (level == null) return { error: REQ("console.grades.level") };
+      return { payload: { name, numeric_level: level } };
+    },
+    previewCols: [
+      { labelKey: "console.grades.level", get: (p) => p.numeric_level },
+      { labelKey: "console.grades.name", get: (p) => p.name },
+    ],
+  },
+
+  rooms: {
+    table: "rooms",
+    titleKey: "console.import.entity.rooms",
+    reload: () => loadRooms(),
+    uniqueFields: ["name"],
+    existing: () => state.rooms,
+    fields: [
+      {
+        key: "name",
+        labelKey: "console.rooms.name",
+        required: true,
+        aliases: ["name", "nombre", "room", "aula"],
+      },
+      {
+        key: "capacity",
+        labelKey: "console.rooms.capacity",
+        aliases: ["capacity", "capacidad", "seats"],
+      },
+      {
+        key: "type",
+        labelKey: "console.rooms.type",
+        aliases: ["type", "tipo", "kind"],
+      },
+    ],
+    async prepare() {
+      await ensureRooms();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get) {
+      const name = get("name");
+      if (!name) return { error: REQ("console.rooms.name") };
+      return {
+        payload: {
+          name,
+          capacity: coerceInt(get("capacity")),
+          type: coerceEnum(get("type"), ROOM_TYPES, "classroom"),
+        },
+      };
+    },
+    previewCols: [
+      { labelKey: "console.rooms.name", get: (p) => p.name },
+      { labelKey: "console.rooms.capacity", get: (p) => p.capacity ?? "—" },
+      {
+        labelKey: "console.rooms.type",
+        get: (p) => t(`console.rooms.types.${p.type}`),
+      },
+    ],
+  },
+
+  schoolYears: {
+    table: "school_years",
+    titleKey: "console.import.entity.schoolYears",
+    reload: () => loadYearPeriods(),
+    uniqueFields: ["name"],
+    existing: () => state.schoolYears,
+    fields: [
+      {
+        key: "name",
+        labelKey: "console.years.name",
+        required: true,
+        aliases: ["name", "nombre", "year", "año", "ciclo"],
+      },
+      {
+        key: "start_date",
+        labelKey: "console.years.start",
+        required: true,
+        aliases: ["start", "start date", "inicio", "fecha inicio"],
+      },
+      {
+        key: "end_date",
+        labelKey: "console.years.end",
+        required: true,
+        aliases: ["end", "end date", "fin", "fecha fin"],
+      },
+    ],
+    async prepare() {
+      await ensureSchoolYears();
+      return { ok: true, ctx: {} };
+    },
+    resolve(get) {
+      const name = get("name");
+      if (!name) return { error: REQ("console.years.name") };
+      const start = coerceDate(get("start_date"));
+      const end = coerceDate(get("end_date"));
+      if (!start || !end) return { error: t("console.import.errDates") };
+      // Never activate on import — the admin sets the active year in the UI.
+      return {
+        payload: { name, start_date: start, end_date: end, is_active: false },
+      };
+    },
+    previewCols: [
+      { labelKey: "console.years.name", get: (p) => p.name },
+      { labelKey: "console.years.start", get: (p) => fmtDate(p.start_date) },
+      { labelKey: "console.years.end", get: (p) => fmtDate(p.end_date) },
+    ],
+  },
+
+  gradingPeriods: {
+    table: "grading_periods",
+    titleKey: "console.import.entity.gradingPeriods",
+    reload: () => loadYearPeriods(),
+    uniqueFields: ["period_order"],
+    existing: () => state._importPeriods ?? [],
+    fields: [
+      {
+        key: "period_order",
+        labelKey: "console.periods.order",
+        required: true,
+        aliases: ["order", "period", "número", "numero", "orden", "#"],
+      },
+      {
+        key: "name",
+        labelKey: "console.periods.name",
+        required: true,
+        aliases: ["name", "nombre", "period name"],
+      },
+      {
+        key: "start_date",
+        labelKey: "console.periods.start",
+        required: true,
+        aliases: ["start", "start date", "inicio"],
+      },
+      {
+        key: "end_date",
+        labelKey: "console.periods.end",
+        required: true,
+        aliases: ["end", "end date", "fin"],
+      },
+      {
+        key: "weight",
+        labelKey: "console.periods.weight",
+        aliases: ["weight", "peso", "percent", "porcentaje"],
+      },
+    ],
+    async prepare() {
+      await ensureActiveYear();
+      if (!state.activeYear)
+        return { ok: false, error: t("console.periods.noYear") };
+      state._importPeriods = await data.listPeriods(state.activeYear.id);
+      return { ok: true, ctx: { activeYear: state.activeYear } };
+    },
+    resolve(get, ctx) {
+      const name = get("name");
+      const order = coerceInt(get("period_order"));
+      if (order == null) return { error: REQ("console.periods.order") };
+      if (!name) return { error: REQ("console.periods.name") };
+      const start = coerceDate(get("start_date"));
+      const end = coerceDate(get("end_date"));
+      if (!start || !end) return { error: t("console.import.errDates") };
+      return {
+        payload: {
+          name,
+          period_order: order,
+          start_date: start,
+          end_date: end,
+          weight: coerceNum(get("weight")) ?? 33.33,
+          school_year_id: ctx.activeYear.id,
+        },
+      };
+    },
+    previewCols: [
+      { labelKey: "console.periods.order", get: (p) => p.period_order },
+      { labelKey: "console.periods.name", get: (p) => p.name },
+    ],
+  },
+
+  sections: {
+    table: "classes",
+    titleKey: "console.import.entity.sections",
+    reload: () => loadSections(),
+    // Composite unique (grade + section within the active year).
+    dedupKey: (p) => `${p.grade_level_id}|${p.section.toLowerCase()}`,
+    existingKeys: () =>
+      new Set(
+        state.sections.map(
+          (s) => `${s.grade_level_id}|${String(s.section).toLowerCase()}`,
+        ),
+      ),
+    dupErrorKey: "console.import.errDupSection",
+    fields: [
+      {
+        key: "grade",
+        labelKey: "console.sections.grade",
+        required: true,
+        aliases: ["grade", "grade level", "grado", "nivel", "level"],
+      },
+      {
+        key: "section",
+        labelKey: "console.sections.section",
+        required: true,
+        aliases: ["section", "seccion", "sección", "group", "grupo"],
+      },
+      {
+        key: "homeroom",
+        labelKey: "console.sections.homeroom",
+        aliases: [
+          "homeroom",
+          "homeroom teacher",
+          "guia",
+          "guía",
+          "teacher",
+          "docente",
+        ],
+      },
+      {
+        key: "room",
+        labelKey: "console.sections.room",
+        aliases: ["room", "aula", "classroom"],
+      },
+      {
+        key: "max_capacity",
+        labelKey: "console.sections.capacity",
+        aliases: ["capacity", "max capacity", "capacidad", "cupo"],
+      },
+    ],
+    async prepare() {
+      await ensureActiveYear();
+      if (!state.activeYear)
+        return { ok: false, error: t("console.sections.noYear") };
+      await ensureGradeLevels();
+      if (!state.gradeLevels.length)
+        return { ok: false, error: t("console.sections.needGrade") };
+      await ensureTeachers();
+      await ensureRooms();
+      state.sections = await data.listSections(state.activeYear.id);
+      return { ok: true, ctx: { activeYear: state.activeYear } };
+    },
+    resolve(get, ctx) {
+      const sectionCode = get("section");
+      const gradeRaw = get("grade");
+      if (!sectionCode) return { error: REQ("console.sections.section") };
+      if (!gradeRaw) return { error: REQ("console.sections.grade") };
+      const gl = resolveGradeLevel(gradeRaw);
+      if (!gl)
+        return {
+          error: t("console.import.errUnknownGrade", { value: gradeRaw }),
+        };
+      return {
+        payload: {
+          grade_level_id: gl.id,
+          section: sectionCode,
+          display_name: `${gl.numeric_level}${sectionCode}`,
+          homeroom_teacher_id: resolveTeacherId(get("homeroom")),
+          room_id: resolveRoomId(get("room")),
+          max_capacity: coerceInt(get("max_capacity")) ?? 30,
+          school_year_id: ctx.activeYear.id,
+        },
+      };
+    },
+    previewCols: [
+      {
+        labelKey: "console.sections.grade",
+        get: (p) => gradeName(p.grade_level_id),
+      },
+      { labelKey: "console.sections.section", get: (p) => p.section },
+      {
+        labelKey: "console.sections.homeroom",
+        get: (p) =>
+          p.homeroom_teacher_id ? teacherName(p.homeroom_teacher_id) : "—",
+      },
+    ],
+  },
 };
 
 let importCtx = null;
 
-function openImportModal() {
-  importCtx = { text: "", targetSection: "", parsed: null, mapping: null };
+async function openImportModal(key) {
+  const descriptor = IMPORT_DESCRIPTORS[key];
+  if (!descriptor) return;
+  let prep;
+  try {
+    prep = await descriptor.prepare();
+  } catch (err) {
+    showToast(err.message ?? String(err), "error");
+    return;
+  }
+  if (!prep.ok) {
+    showToast(prep.error, "error");
+    return;
+  }
+  importCtx = {
+    descriptor,
+    ctx: prep.ctx ?? {},
+    text: "",
+    targetSection: "",
+    parsed: null,
+    mapping: null,
+  };
+  document.getElementById("import-title").textContent = t(descriptor.titleKey);
   importOverlay.classList.add("active");
   renderImportSource();
 }
+
 function closeImportModal() {
   importOverlay.classList.remove("active");
   importBody.innerHTML = "";
@@ -2165,8 +2776,20 @@ function importFooterButtons(buttons) {
   });
 }
 
-// Step 1 — paste or upload + choose an optional target section.
+// Step 1 — paste or upload; students also pick an optional target section.
 function renderImportSource() {
+  const d = importCtx.descriptor;
+  const placeholder = d.fields.map((f) => f.key).join(",");
+  const sectionBlock = d.targetSection
+    ? `<div class="field-group">
+         <label for="import-section">${escapeHtml(t("console.import.targetSection"))}</label>
+         <select id="import-section">
+           <option value="">${escapeHtml(t("console.import.noSection"))}</option>
+           ${state.sections.map((s) => `<option value="${s.id}"${String(s.id) === String(importCtx.targetSection) ? " selected" : ""}>${escapeHtml(sectionName(s))}</option>`).join("")}
+         </select>
+       </div>`
+    : "";
+
   importBody.innerHTML = `
     <p class="import-help">${escapeHtml(t("console.import.sourceHelp"))}</p>
     <div class="field-group">
@@ -2175,15 +2798,9 @@ function renderImportSource() {
     </div>
     <div class="field-group">
       <label for="import-text">${escapeHtml(t("console.import.orPaste"))}</label>
-      <textarea id="import-text" rows="6" placeholder="first_name,last_name,enrollment_number&#10;Ana,García,S-101">${escapeHtml(importCtx.text)}</textarea>
+      <textarea id="import-text" rows="6" placeholder="${escapeHtml(placeholder)}">${escapeHtml(importCtx.text)}</textarea>
     </div>
-    <div class="field-group">
-      <label for="import-section">${escapeHtml(t("console.import.targetSection"))}</label>
-      <select id="import-section">
-        <option value="">${escapeHtml(t("console.import.noSection"))}</option>
-        ${state.sections.map((s) => `<option value="${s.id}"${String(s.id) === String(importCtx.targetSection) ? " selected" : ""}>${escapeHtml(sectionName(s))}</option>`).join("")}
-      </select>
-    </div>`;
+    ${sectionBlock}`;
 
   const fileInput = /** @type {HTMLInputElement} */ (
     document.getElementById("import-file")
@@ -2206,16 +2823,21 @@ function renderImportSource() {
         importCtx.text = /** @type {HTMLTextAreaElement} */ (
           document.getElementById("import-text")
         ).value;
-        importCtx.targetSection = /** @type {HTMLSelectElement} */ (
-          document.getElementById("import-section")
-        ).value;
+        if (d.targetSection) {
+          importCtx.targetSection = /** @type {HTMLSelectElement} */ (
+            document.getElementById("import-section")
+          ).value;
+        }
         const parsed = parseCsv(importCtx.text);
         if (!parsed.headers.length || !parsed.rows.length) {
           showToast(t("console.import.noData"), "error");
           return;
         }
         importCtx.parsed = parsed;
-        importCtx.mapping = autoMap(parsed.headers, IMPORT_ALIASES);
+        const aliasMap = Object.fromEntries(
+          d.fields.map((f) => [f.key, f.aliases ?? [f.key]]),
+        );
+        importCtx.mapping = autoMap(parsed.headers, aliasMap);
         renderImportMapping();
       },
     },
@@ -2224,20 +2846,23 @@ function renderImportSource() {
 
 // Step 2 — map each target field to a source column.
 function renderImportMapping() {
+  const d = importCtx.descriptor;
   const { headers, rows } = importCtx.parsed;
-  const rowsHtml = IMPORT_FIELDS.map((f) => {
-    const opts = [
-      `<option value="">${escapeHtml(t("common.none"))}</option>`,
-      ...headers.map(
-        (h) =>
-          `<option value="${escapeHtml(h)}"${importCtx.mapping[f.key] === h ? " selected" : ""}>${escapeHtml(h)}</option>`,
-      ),
-    ].join("");
-    return `<div class="map-row">
-        <span class="map-label">${escapeHtml(t(`console.import.fields.${f.key}`))}${f.required ? ' <b class="req">*</b>' : ""}</span>
+  const rowsHtml = d.fields
+    .map((f) => {
+      const opts = [
+        `<option value="">${escapeHtml(t("common.none"))}</option>`,
+        ...headers.map(
+          (h) =>
+            `<option value="${escapeHtml(h)}"${importCtx.mapping[f.key] === h ? " selected" : ""}>${escapeHtml(h)}</option>`,
+        ),
+      ].join("");
+      return `<div class="map-row">
+        <span class="map-label">${escapeHtml(t(f.labelKey))}${f.required ? ' <b class="req">*</b>' : ""}</span>
         <select data-field="${f.key}">${opts}</select>
       </div>`;
-  }).join("");
+    })
+    .join("");
 
   importBody.innerHTML = `
     <p class="import-help">${escapeHtml(t("console.import.mapHelp", { count: rows.length }))}</p>
@@ -2266,66 +2891,106 @@ function renderImportMapping() {
 
 // Build normalized payloads + validation report from the current mapping.
 function buildImportRows() {
+  const d = importCtx.descriptor;
   const { rows } = importCtx.parsed;
   const map = importCtx.mapping;
-  const get = (row, key) => (map[key] ? (row[map[key]] ?? "").trim() : "");
-  const classId = importCtx.targetSection
-    ? Number(importCtx.targetSection)
-    : null;
+  const rowGet = (row) => (key) =>
+    map[key] ? (row[map[key]] ?? "").trim() : "";
+  const ctx = { ...importCtx.ctx };
+  if (d.targetSection)
+    ctx.targetSection = importCtx.targetSection
+      ? Number(importCtx.targetSection)
+      : null;
 
-  const existing = new Set(
-    state.students.map((s) => s.enrollment_number).filter(Boolean),
-  );
-  const seen = new Set();
+  const uniqueFields = d.uniqueFields ?? [];
+  const existingSets = {};
+  const seen = {};
+  uniqueFields.forEach((uf) => {
+    existingSets[uf] = new Set(
+      (d.existing?.() ?? [])
+        .map((r) => r[uf])
+        .filter((v) => v != null && v !== "")
+        .map(String),
+    );
+    seen[uf] = new Set();
+  });
+  const existingKeys = d.existingKeys ? d.existingKeys() : null;
+  const seenKeys = new Set();
+
   const valid = [];
   const errors = [];
 
   rows.forEach((row, i) => {
-    const first = get(row, "first_name");
-    const last = get(row, "last_name");
-    if (!first || !last) {
-      errors.push({ line: i + 2, reason: t("console.import.errMissingName") });
+    const line = i + 2; // 1-based + header row
+    const res = d.resolve(rowGet(row), ctx);
+    if (res.error) {
+      errors.push({ line, reason: res.error });
       return;
     }
-    let enrollment = get(row, "enrollment_number");
-    if (enrollment) {
-      if (existing.has(enrollment) || seen.has(enrollment)) {
+    const p = res.payload;
+
+    // Auto-generate a value where the source left a unique field blank.
+    if (d.autogen) {
+      const f = d.autogen.field;
+      if (p[f] == null || p[f] === "") {
+        let v;
+        do {
+          v = d.autogen.make(valid.length);
+        } while (existingSets[f]?.has(String(v)) || seen[f]?.has(String(v)));
+        p[f] = v;
+      }
+    }
+
+    // Per-field uniqueness.
+    let dup = false;
+    for (const uf of uniqueFields) {
+      const v = p[uf];
+      if (v == null || v === "") continue;
+      if (existingSets[uf].has(String(v)) || seen[uf].has(String(v))) {
+        const label = d.fields.find((f) => f.key === uf)?.labelKey;
         errors.push({
-          line: i + 2,
-          reason: t("console.import.errDupEnrollment", { value: enrollment }),
+          line,
+          reason: t("console.import.errDuplicate", {
+            field: label ? t(label) : uf,
+            value: v,
+          }),
         });
+        dup = true;
+        break;
+      }
+    }
+    if (dup) return;
+
+    // Composite uniqueness (e.g., grade+section).
+    if (existingKeys) {
+      const k = d.dedupKey(p);
+      if (existingKeys.has(k) || seenKeys.has(k)) {
+        errors.push({ line, reason: t(d.dupErrorKey) });
         return;
       }
-    } else {
-      do {
-        enrollment = `S-${Date.now().toString(36)}-${valid.length}-${Math.floor(Math.random() * 1e4)}`;
-      } while (existing.has(enrollment) || seen.has(enrollment));
+      seenKeys.add(k);
     }
-    seen.add(enrollment);
-    valid.push({
-      first_name: first,
-      last_name: last,
-      enrollment_number: enrollment,
-      national_id: get(row, "national_id") || null,
-      gender: coerceGender(get(row, "gender")),
-      date_of_birth: coerceDate(get(row, "date_of_birth")),
-      email: get(row, "email") || null,
-      phone: get(row, "phone") || null,
-      class_id: classId,
-      status: "active",
+
+    uniqueFields.forEach((uf) => {
+      if (p[uf] != null && p[uf] !== "") seen[uf].add(String(p[uf]));
     });
+    valid.push(p);
   });
   return { valid, errors };
 }
 
 // Step 3 — preview valid rows + validation summary, then import.
 function renderImportPreview() {
+  const d = importCtx.descriptor;
   const { valid, errors } = buildImportRows();
   const preview = valid.slice(0, 8);
+  const headHtml = d.previewCols
+    .map((c) => `<th>${escapeHtml(t(c.labelKey))}</th>`)
+    .join("");
   const previewRows = preview
     .map(
-      (r) =>
-        `<tr><td>${escapeHtml(`${r.first_name} ${r.last_name}`)}</td><td>${escapeHtml(r.enrollment_number)}</td><td>${escapeHtml(r.national_id ?? "—")}</td><td>${escapeHtml(genderLabel(r.gender))}</td></tr>`,
+      (p) =>
+        `<tr>${d.previewCols.map((c) => `<td>${escapeHtml(c.get(p) ?? "—")}</td>`).join("")}</tr>`,
     )
     .join("");
   const errorList = errors
@@ -2344,12 +3009,7 @@ function renderImportPreview() {
     ${
       valid.length
         ? `<div class="table-scroll"><table class="data-table">
-            <thead><tr>
-              <th>${escapeHtml(t("console.students.name"))}</th>
-              <th>${escapeHtml(t("console.students.enrollmentNumber"))}</th>
-              <th>${escapeHtml(t("console.students.nationalId"))}</th>
-              <th>${escapeHtml(t("console.students.gender"))}</th>
-            </tr></thead><tbody>${previewRows}</tbody></table></div>
+            <thead><tr>${headHtml}</tr></thead><tbody>${previewRows}</tbody></table></div>
            ${valid.length > preview.length ? `<p class="import-help">${escapeHtml(t("console.import.andMore", { count: valid.length - preview.length }))}</p>` : ""}`
         : `<p class="import-help">${escapeHtml(t("console.import.nothingValid"))}</p>`
     }
@@ -2367,10 +3027,10 @@ function renderImportPreview() {
       disabled: valid.length === 0,
       onClick: async () => {
         try {
-          await data.bulkCreateStudents(valid);
+          await data.bulkInsert(d.table, valid);
           showToast(t("console.import.done", { count: valid.length }));
           closeImportModal();
-          loadStudents();
+          d.reload();
         } catch (err) {
           showToast(err.message ?? String(err), "error");
         }
@@ -2379,9 +3039,22 @@ function renderImportPreview() {
   ]);
 }
 
-document
-  .getElementById("btn-import-csv")
-  .addEventListener("click", openImportModal);
+// Wire every section's "Import CSV" button to its descriptor.
+const IMPORT_BUTTONS = {
+  "btn-import-csv": "students",
+  "btn-import-teachers": "teachers",
+  "btn-import-subjects": "subjects",
+  "btn-import-grades": "gradeLevels",
+  "btn-import-rooms": "rooms",
+  "btn-import-sections": "sections",
+  "btn-import-years": "schoolYears",
+  "btn-import-periods": "gradingPeriods",
+};
+Object.entries(IMPORT_BUTTONS).forEach(([id, key]) => {
+  document
+    .getElementById(id)
+    ?.addEventListener("click", () => openImportModal(key));
+});
 document
   .getElementById("import-close")
   .addEventListener("click", closeImportModal);
