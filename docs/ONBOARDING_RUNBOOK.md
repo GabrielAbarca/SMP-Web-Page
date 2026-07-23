@@ -26,9 +26,11 @@ student/teacher read policies, without the demo read-only lock**, so admins can
 write. Id columns use identity (equivalent to the demo's sequences).
 
 > Existing projects that already have the schema only need the incremental
-> migration [`supabase/migrations/20260722000000_add_teacher_auth_user_id.sql`](../supabase/migrations/20260722000000_add_teacher_auth_user_id.sql)
+> snippet [`supabase/schema/incremental_teacher_auth_user_id.sql`](../supabase/schema/incremental_teacher_auth_user_id.sql)
 > (the `teachers.auth_user_id` column). It is already included in
 > `school_schema.sql`, so a fresh project does **not** need it separately.
+> (It lives under `supabase/schema/`, not `supabase/migrations/`, so the
+> Supabase↔GitHub integration doesn't try to sync it to the demo project.)
 
 ## 3. Deploy the account Edge Function
 
