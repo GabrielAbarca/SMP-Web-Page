@@ -362,4 +362,70 @@ test.describe("admin console", () => {
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
   });
+
+  test("generic CSV import handles teachers, grade levels and sections", async ({
+    page,
+    context,
+  }) => {
+    const seeded = {
+      ...consoleFix,
+      grade_levels: [{ id: 1, name: "7th Grade", numeric_level: 7 }],
+      rooms: [{ id: 41, name: "Room 101", capacity: 30, type: "classroom" }],
+      teachers: [
+        {
+          id: 7,
+          first_name: "Sofía",
+          last_name: "Ramírez",
+          email: "sofia@x.com",
+          status: "active",
+        },
+      ],
+      classes: [],
+    };
+    const writes = await routeSupabase(context, seeded);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    const runImport = async (btn, csv) => {
+      await page.click(btn);
+      await expect(page.locator("#import-overlay")).toHaveClass(/active/);
+      await page.fill("#import-text", csv);
+      await page.click("#import-footer .btn-primary"); // → mapping
+      await expect(page.locator(".map-grid")).toBeVisible();
+      await page.click("#import-footer .btn-primary"); // → preview
+      await expect(page.locator(".import-summary")).toBeVisible();
+      await page.click("#import-footer .btn-primary"); // → import
+    };
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(() =>
+      document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+    );
+
+    // Teachers.
+    await page.click('.sidebar a[data-page="teachers"]');
+    await runImport(
+      "#btn-import-teachers",
+      "first_name,last_name,email\nMarco,López,marco@x.com",
+    );
+    await expect(page.locator("#teachers-body")).toContainText("Marco López");
+
+    // Grade levels, then sections (grade by number, homeroom + room by name).
+    await page.click('.sidebar a[data-page="gradessections"]');
+    await runImport("#btn-import-grades", "numeric_level,name\n8,8th Grade");
+    await expect(page.locator("#grades-body")).toContainText("8th Grade");
+
+    await runImport(
+      "#btn-import-sections",
+      "grade,section,homeroom,room\n7,A,Sofía Ramírez,Room 101",
+    );
+    await expect(page.locator("#sections-body")).toContainText("7th Grade");
+    await expect(page.locator("#sections-body")).toContainText("Sofía Ramírez");
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
 });

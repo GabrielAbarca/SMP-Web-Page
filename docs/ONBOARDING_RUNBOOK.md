@@ -86,6 +86,12 @@ Sign in as the admin → you land on `/admin`. Then, without touching SQL:
 6. **Overview** — confirm total enrollment, today's attendance rate, and the
    at-risk list populate.
 
+Every structure section has an **Import CSV** button too, so you can bulk-load
+school years, grading periods, grade levels, rooms, sections, subjects and
+teachers from a spreadsheet — not just students. The importer auto-maps
+columns, resolves references by name (e.g. a section's grade/homeroom/room),
+validates each row, and previews before writing.
+
 **Done when:** the full school exists and it took under an hour, with no direct
 Supabase access. Teachers/students created here can sign in and land in their
 own portals.

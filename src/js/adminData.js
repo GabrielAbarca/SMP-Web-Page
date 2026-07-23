@@ -209,6 +209,13 @@ export function createAdminData(gateway) {
     /** Bulk-create students (CSV roster import). @param {object[]} rows */
     bulkCreateStudents: (rows) => gateway.insertMany("students", rows),
 
+    /**
+     * Bulk-create rows into any structure table (generic CSV import).
+     * @param {string} table
+     * @param {object[]} rows
+     */
+    bulkInsert: (table, rows) => gateway.insertMany(table, rows),
+
     // ── Overview (school-wide reads) ──────────────────────────
     /** Attendance rows for a single date (today's attendance rate). */
     listAttendanceOn: (/** @type {string} */ date) =>
