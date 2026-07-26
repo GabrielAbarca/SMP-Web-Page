@@ -45,8 +45,22 @@ export default {
   // ── Inline form validation (rendered under the field, never as a native
   //    browser popup). Shared across views like `common`.
   validation: {
+    required: "This field is required.",
+    email: "Enter a valid email address.",
+    phone: "Only digits, spaces, + and - are allowed.",
+    integer: "Enter a whole number.",
+    number: "Enter a valid number.",
+    min: "Must be at least {min}.",
+    max: "Must be at most {max}.",
+    percent: "Enter a percentage between 0 and 100.",
     dateWithin: "Must be within {start} – {end}.",
     endAfterStart: "End date must be after the start date.",
+    futureDate: "The date can't be in the future.",
+    unique: '"{value}" is already in use.',
+    enrollmentTaken: "Enrollment number {value} is already in use.",
+    capacityRoom:
+      "Section capacity ({capacity}) exceeds the room's capacity ({roomCapacity}).",
+    password: "Password must be at least 6 characters.",
   },
 
   enums: {
@@ -664,6 +678,18 @@ export default {
     profile: {
       signedInAs: "Signed in as",
       admin: "Administrator",
+    },
+    school: {
+      title: "School profile",
+      subtitle: "Identity and terminology used across the console.",
+      name: "School name",
+      namePlaceholder: "Colegio San José",
+      idLabel: "ID field label",
+      idLabelHelp:
+        'What the ID field is called at this school (e.g. "Cédula", "DUI", "School ID"). Leave blank for the default.',
+      saved: "School profile saved.",
+      unavailable:
+        "School profile storage isn't set up on this project yet — default labels are in use.",
     },
     confirm: {
       title: "Delete item?",

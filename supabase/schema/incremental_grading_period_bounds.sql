@@ -3,8 +3,8 @@
 --
 --  Keeps every grading period inside its parent school year, and its
 --  start on or before its end. The admin console validates the same two
---  rules inline before it writes (src/js/gradingPeriods.js →
---  checkPeriodRange); this trigger is the backstop for anything that
+--  rules inline before it writes (src/js/validate.js → dateWithin and
+--  endAfterStart); this trigger is the backstop for anything that
 --  bypasses that form — CSV import, the SQL editor, a future API client.
 --
 --  A CHECK constraint cannot express this: the bounds live in another

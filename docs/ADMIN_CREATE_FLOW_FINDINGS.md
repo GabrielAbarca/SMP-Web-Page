@@ -6,9 +6,8 @@ The admin console's Create/Add flows have a set of blockers (routing, modal data
 loss, broken checkboxes, unvalidated grading weights/dates), a missing shared
 validation layer, and UX/information-design gaps. This report confirms each item
 against the code, states root causes, proposes fixes with exact bilingual
-strings, and answers Q1–Q4. **No fix code has been written.** Implementation
-(Phase 2) starts only after approval, in P0 → P1 → P2 order with a pause after
-each tier, on branch `claude/smp-admin-create-flow-4gtmrh`.
+strings, and answers Q1–Q4. Implementation runs in P0 → P1 → P2 order, one
+feature branch per tier.
 
 Everything below stays vanilla JS, no new dependencies, and reuses the existing
 patterns: the `openModal` field-spec builder (`src/js/admin.js:127`), the
@@ -32,8 +31,8 @@ const target = DEMO_MODE ? "/" : portalPath(await fetchRole());
 
 `DEMO_MODE` defaults **ON** (`src/js/demoMode.js:4`), so every demo deployment
 sends everyone — including admins — to the student dashboard. The comment says
-this was deliberate pre-admin-console behavior: *"the finished admin console
-flips this landing later."* The student portal only bounces role-holders who
+this was deliberate pre-admin-console behavior: _"the finished admin console
+flips this landing later."_ The student portal only bounces role-holders who
 have **no** linked student row (`src/js/main.js:40-58`); the shared demo account
 has one, so an admin stays stuck on `/` and must hand-type `/admin`.
 
@@ -63,6 +62,7 @@ overlay (1801-1803, **out of scope** — schedule editing), and the CSV import
 overlay (3061-3063 — see re-scoping note at the end).
 
 **Fix (generic add/edit modal).**
+
 - Remove the overlay-click close entirely — the modal closes only via X or Cancel.
 - Track dirtiness with one delegated `input` listener on `modalForm` (set on
   `openModal`, reset on `closeModal`).
@@ -73,12 +73,12 @@ overlay (3061-3063 — see re-scoping note at the end).
 
 **Strings** (new, under `console.confirm`):
 
-| Key | EN | ES |
-|---|---|---|
-| `discardTitle` | `Discard changes?` | `¿Descartar cambios?` |
+| Key              | EN                                                       | ES                                                  |
+| ---------------- | -------------------------------------------------------- | --------------------------------------------------- |
+| `discardTitle`   | `Discard changes?`                                       | `¿Descartar cambios?`                               |
 | `discardMessage` | `You have unsaved changes. Do you want to discard them?` | `Tienes cambios sin guardar. ¿Deseas descartarlos?` |
-| `discard` | `Discard` | `Descartar` |
-| `keepEditing` | `Keep editing` | `Seguir editando` |
+| `discard`        | `Discard`                                                | `Descartar`                                         |
+| `keepEditing`    | `Keep editing`                                           | `Seguir editando`                                   |
 
 ### 3. Subject → grade-level checkboxes visually broken — CONFIRMED (CSS reset)
 
@@ -115,6 +115,7 @@ year without looking at its periods. DB has no constraint
 (`supabase/schema/school_schema.sql:168-177`).
 
 **Fix.**
+
 - **Running total:** after the periods table renders, show a total line/badge in
   the periods panel (`admin.html:295-332`), warning-styled when ≠ 100.
 - **On save:** compute the prospective total (existing periods, minus the row
@@ -128,18 +129,18 @@ year without looking at its periods. DB has no constraint
 
 **Strings** (new, under `console.periods`):
 
-| Key | EN | ES |
-|---|---|---|
-| `totalWeight` | `Total weight: {total}%` | `Peso total: {total}%` |
+| Key             | EN                                                        | ES                                                                |
+| --------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| `totalWeight`   | `Total weight: {total}%`                                  | `Peso total: {total}%`                                            |
 | `weightWarning` | `Period weights total {total}% — they should total 100%.` | `Los pesos de los períodos suman {total}% — deberían sumar 100%.` |
-| `weightOver` | `Period weights would exceed 100% (total {total}%).` | `Los pesos de los períodos superarían el 100% (total {total}%).` |
+| `weightOver`    | `Period weights would exceed 100% (total {total}%).`      | `Los pesos de los períodos superarían el 100% (total {total}%).`  |
 
 And under `console.years`:
 
-| Key | EN | ES |
-|---|---|---|
+| Key                  | EN                                                                         | ES                                                                                           |
+| -------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `activateWeightWarn` | `This year's period weights total {total}%, not 100%. Activate it anyway?` | `Los pesos de los períodos de este año suman {total}%, no 100%. ¿Activarlo de todas formas?` |
-| `activateAnyway` | `Activate anyway` | `Activar de todas formas` |
+| `activateAnyway`     | `Activate anyway`                                                          | `Activar de todas formas`                                                                    |
 
 ### 5. Period dates not constrained to the parent school year — CONFIRMED
 
@@ -151,6 +152,7 @@ check in `onSubmit`, and nothing prevents `end < start` (same gap in the school
 reference the parent `school_years` row — a trigger is required.
 
 **Fix.**
+
 - **Client:** set `min`/`max` on both date inputs from
   `state.activeYear.start_date/end_date`, and validate via the shared module
   (item 6): start ≥ year start, end ≤ year end, end > start. Year form gets
@@ -159,10 +161,9 @@ reference the parent `school_years` row — a trigger is required.
   — a trigger function on `grading_periods` insert/update that raises when the
   dates fall outside the parent year or `start_date > end_date`.
 
-> ⚠ **DB approval gate (CLAUDE.md hard rule 5).** I will write the SQL file
-> into the repo but **not** apply it to any Supabase project. It gets applied by
-> hand per `docs/ONBOARDING_RUNBOOK.md` (the demo project's schema is managed
-> out of band). Explicit go-ahead requested at Phase 2.
+> ⚠ **Database change.** The SQL lives in the repo and is applied by hand per
+> `docs/ONBOARDING_RUNBOOK.md` — the demo project's schema is managed out of
+> band, so nothing here is auto-applied.
 
 **Strings:** covered by the shared validation strings in item 6
 (`validation.dateWithin`, `validation.endAfterStart`).
@@ -215,23 +216,23 @@ in `test/validate.test.js`), plus `openModal` integration:
 **Strings** (new top-level `validation` group in both dictionaries — shared by
 design, like `common`):
 
-| Key | EN | ES |
-|---|---|---|
-| `required` | `This field is required.` | `Este campo es obligatorio.` |
-| `email` | `Enter a valid email address.` | `Ingresa un correo electrónico válido.` |
-| `phone` | `Only digits, spaces, + and - are allowed.` | `Solo se permiten dígitos, espacios, + y -.` |
-| `integer` | `Enter a whole number.` | `Ingresa un número entero.` |
-| `number` | `Enter a valid number.` | `Ingresa un número válido.` |
-| `min` | `Must be at least {min}.` | `Debe ser al menos {min}.` |
-| `max` | `Must be at most {max}.` | `Debe ser como máximo {max}.` |
-| `percent` | `Enter a percentage between 0 and 100.` | `Ingresa un porcentaje entre 0 y 100.` |
-| `dateWithin` | `Must be within {start} – {end}.` | `Debe estar entre {start} y {end}.` |
-| `endAfterStart` | `End date must be after the start date.` | `La fecha de fin debe ser posterior a la fecha de inicio.` |
-| `unique` | `"{value}" is already in use.` | `"{value}" ya está en uso.` |
-| `enrollmentTaken` | `Enrollment number {value} is already in use.` | `El número de matrícula {value} ya está en uso.` |
-| `capacityRoom` | `Section capacity ({capacity}) exceeds the room's capacity ({roomCapacity}).` | `El cupo de la sección ({capacity}) supera la capacidad del aula ({roomCapacity}).` |
-| `futureDate` | `The date can't be in the future.` | `La fecha no puede estar en el futuro.` |
-| `password` | `Password must be at least 6 characters.` | `La contraseña debe tener al menos 6 caracteres.` |
+| Key               | EN                                                                            | ES                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `required`        | `This field is required.`                                                     | `Este campo es obligatorio.`                                                        |
+| `email`           | `Enter a valid email address.`                                                | `Ingresa un correo electrónico válido.`                                             |
+| `phone`           | `Only digits, spaces, + and - are allowed.`                                   | `Solo se permiten dígitos, espacios, + y -.`                                        |
+| `integer`         | `Enter a whole number.`                                                       | `Ingresa un número entero.`                                                         |
+| `number`          | `Enter a valid number.`                                                       | `Ingresa un número válido.`                                                         |
+| `min`             | `Must be at least {min}.`                                                     | `Debe ser al menos {min}.`                                                          |
+| `max`             | `Must be at most {max}.`                                                      | `Debe ser como máximo {max}.`                                                       |
+| `percent`         | `Enter a percentage between 0 and 100.`                                       | `Ingresa un porcentaje entre 0 y 100.`                                              |
+| `dateWithin`      | `Must be within {start} – {end}.`                                             | `Debe estar entre {start} y {end}.`                                                 |
+| `endAfterStart`   | `End date must be after the start date.`                                      | `La fecha de fin debe ser posterior a la fecha de inicio.`                          |
+| `unique`          | `"{value}" is already in use.`                                                | `"{value}" ya está en uso.`                                                         |
+| `enrollmentTaken` | `Enrollment number {value} is already in use.`                                | `El número de matrícula {value} ya está en uso.`                                    |
+| `capacityRoom`    | `Section capacity ({capacity}) exceeds the room's capacity ({roomCapacity}).` | `El cupo de la sección ({capacity}) supera la capacidad del aula ({roomCapacity}).` |
+| `futureDate`      | `The date can't be in the future.`                                            | `La fecha no puede estar en el futuro.`                                             |
+| `password`        | `Password must be at least 6 characters.`                                     | `La contraseña debe tener al menos 6 caracteres.`                                   |
 
 ### 7. National ID optional + per-school label — HALF-CONFIRMED
 
@@ -244,6 +245,7 @@ half has nothing to build on: the label is the fixed i18n pair
 (`admin.html:517,600`). No school settings entity exists (see Q3).
 
 **Fix (pending Q3 approval).**
+
 - Load `school_settings` once at admin boot (tolerating a missing table →
   fall back to i18n defaults, since the demo project's schema is managed out of
   band).
@@ -257,13 +259,13 @@ half has nothing to build on: the label is the fixed i18n pair
 
 **Strings** (new, under `console.school`):
 
-| Key | EN | ES |
-|---|---|---|
-| `title` | `School profile` | `Perfil de la escuela` |
-| `name` | `School name` | `Nombre de la escuela` |
-| `idLabel` | `ID field label` | `Etiqueta del campo de identificación` |
+| Key           | EN                                                                                                             | ES                                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`       | `School profile`                                                                                               | `Perfil de la escuela`                                                                                                                      |
+| `name`        | `School name`                                                                                                  | `Nombre de la escuela`                                                                                                                      |
+| `idLabel`     | `ID field label`                                                                                               | `Etiqueta del campo de identificación`                                                                                                      |
 | `idLabelHelp` | `What the ID field is called at this school (e.g. "Cédula", "DUI", "School ID"). Leave blank for the default.` | `Cómo se llama el campo de identificación en esta escuela (p. ej. "Cédula", "DUI", "Carné"). Déjalo en blanco para usar el predeterminado.` |
-| `saved` | `School profile saved.` | `Perfil de la escuela guardado.` |
+| `saved`       | `School profile saved.`                                                                                        | `Perfil de la escuela guardado.`                                                                                                            |
 
 ---
 
@@ -288,9 +290,9 @@ homeroom select draws from teachers.
 
 **Strings** (new):
 
-| Key | EN | ES |
-|---|---|---|
-| `console.nav.assignments` | `Assignments` | `Asignaciones` |
+| Key                           | EN                  | ES                     |
+| ----------------------------- | ------------------- | ---------------------- |
+| `console.nav.assignments`     | `Assignments`       | `Asignaciones`         |
 | `console.heading.assignments` | `Class Assignments` | `Asignación de clases` |
 
 ### 9. Homeroom optional + explanatory tooltip — HALF-CONFIRMED
@@ -307,8 +309,8 @@ touch).
 
 **Strings** (new, under `console.sections`):
 
-| Key | EN | ES |
-|---|---|---|
+| Key            | EN                                                                                                                           | ES                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `homeroomHelp` | `The homeroom teacher is the section's lead teacher and main contact for its students. Optional — you can assign one later.` | `El docente guía es el docente responsable de la sección y el contacto principal de sus estudiantes. Opcional — puedes asignarlo después.` |
 
 ### 10. Students filter labels — CONFIRMED
@@ -325,12 +327,12 @@ two status options are visually separate from sections; update the aria-label.
 **Strings** (under `console.students` — `allSections` replaced, `unassigned`
 reworded, two added):
 
-| Key | EN | ES |
-|---|---|---|
-| `allStudents` (replaces `allSections`) | `All students` | `Todos los estudiantes` |
-| `unassigned` (reworded) | `No section assigned` | `Sin sección asignada` |
-| `sectionsGroup` | `Sections` | `Secciones` |
-| `filterStudents` (replaces `filterBySection`) | `Filter students` | `Filtrar estudiantes` |
+| Key                                           | EN                    | ES                      |
+| --------------------------------------------- | --------------------- | ----------------------- |
+| `allStudents` (replaces `allSections`)        | `All students`        | `Todos los estudiantes` |
+| `unassigned` (reworded)                       | `No section assigned` | `Sin sección asignada`  |
+| `sectionsGroup`                               | `Sections`            | `Secciones`             |
+| `filterStudents` (replaces `filterBySection`) | `Filter students`     | `Filtrar estudiantes`   |
 
 ### 11. Section selector shows raw codes — CONFIRMED
 
@@ -364,6 +366,7 @@ three stat cards (enrollment / attendance today / at-risk count,
 counts; no room utilization.
 
 **Fix.**
+
 - **School-name header** (depends on Q3): when `school_settings.name` is set,
   render it as the Overview heading (fallback: current
   `console.heading.overview`).
@@ -379,12 +382,12 @@ counts; no room utilization.
 
 **Strings** (new, under `console.overview`):
 
-| Key | EN | ES |
-|---|---|---|
-| `teachers` | `Teachers` | `Docentes` |
-| `subjects` | `Subjects` | `Materias` |
-| `sections` | `Sections` | `Secciones` |
-| `roomUse` | `Rooms in use` | `Aulas en uso` |
+| Key        | EN             | ES             |
+| ---------- | -------------- | -------------- |
+| `teachers` | `Teachers`     | `Docentes`     |
+| `subjects` | `Subjects`     | `Materias`     |
+| `sections` | `Sections`     | `Secciones`    |
+| `roomUse`  | `Rooms in use` | `Aulas en uso` |
 
 ---
 
@@ -469,9 +472,10 @@ rejected. Manual dev-server pass in both languages (ES via the language
 setting) for the new strings.
 
 **Re-scoping recommendations.**
+
 - **Import modal overlay-close:** same data-loss bug as item 2 (a pasted roster
   dies on a stray click, `admin.js:3061-3063`). CSV import behavior is formally
-  out of scope — I recommend including *only* the overlay-close removal (no
+  out of scope — I recommend including _only_ the overlay-close removal (no
   import-logic changes). Will skip unless approved.
 - **Schedule modal overlay-close:** left untouched (schedule editing is out of
   scope).
@@ -482,7 +486,5 @@ setting) for the new strings.
 - **Both DB artifacts** (item 5 trigger, Q3 table) are repo files + manual
   application per `docs/ONBOARDING_RUNBOOK.md` — never auto-applied.
 
-**Git/process:** work lands on `claude/smp-admin-create-flow-4gtmrh` (created off
-`main`), professional imperative commit messages, no AI attribution in commits
-or PR bodies (CLAUDE.md hard rules 1–3; note rule 3 deliberately overrides the
-harness co-author default).
+**Git/process:** one feature branch per tier, created off `main` and merged back
+via PR, with imperative commit messages.

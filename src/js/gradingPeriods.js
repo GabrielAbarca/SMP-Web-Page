@@ -63,23 +63,5 @@ export function weightStatus(total, count = 1) {
   return rounded > TARGET_WEIGHT ? "over" : "under";
 }
 
-/**
- * Is a period's range inside its school year, and ordered start → end?
- * Dates are ISO `yyyy-mm-dd` strings, which compare correctly as strings.
- * @param {{ start: string, end: string }} period
- * @param {{ start_date?: string, end_date?: string } | null} year
- * @returns {{ field: "start_date" | "end_date", reason: "outside" | "order" } | null}
- *   the first problem found, or null when the range is valid
- */
-export function checkPeriodRange(period, year) {
-  const { start, end } = period;
-  if (!start || !end) return null; // emptiness is the required-field rule's job
-  if (end <= start) return { field: "end_date", reason: "order" };
-  if (year?.start_date && start < year.start_date) {
-    return { field: "start_date", reason: "outside" };
-  }
-  if (year?.end_date && end > year.end_date) {
-    return { field: "end_date", reason: "outside" };
-  }
-  return null;
-}
+// Date bounds for a period live in validate.js (dateWithin + endAfterStart),
+// which every admin form shares — this module owns only the weight arithmetic.

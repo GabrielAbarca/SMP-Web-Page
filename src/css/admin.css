@@ -426,6 +426,12 @@
     border-top: 1px solid var(--color-light);
   }
 
+  /* ─── School profile (Settings tab — the one writable card there) ── */
+  /* Reuses .modal-body/.field-group so its inputs match every other form. */
+  .school-profile-form {
+    max-width: 30rem;
+  }
+
   /* ─── Schedule add form (inside the schedule modal) ────────────── */
   .schedule-add-form {
     margin-top: 1.4rem;

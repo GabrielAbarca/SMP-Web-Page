@@ -25,12 +25,8 @@ import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
 import { createDemoGateway } from "./adminDemoDb.js";
 import { parseCsv, autoMap } from "./csv.js";
-import {
-  TARGET_WEIGHT,
-  totalWeight,
-  weightStatus,
-  checkPeriodRange,
-} from "./gradingPeriods.js";
+import { TARGET_WEIGHT, totalWeight, weightStatus } from "./gradingPeriods.js";
+import * as v from "./validate.js";
 import {
   createAccount,
   resetPassword,
@@ -82,6 +78,7 @@ const state = {
   /** @type {any[]} */ students: [],
   /** @type {any[]} */ schoolYears: [],
   /** @type {any[]} */ periods: [], // active year's grading periods (weight total)
+  /** @type {any} */ school: null, // school_settings row: name + ID-field label
   /** @type {string} */ studentFilter: "all", // "all" | "unassigned" | section id
 };
 
@@ -150,11 +147,59 @@ function clearFieldErrors() {
     .forEach((el) => el.classList.remove("input-error"));
 }
 
+/** Drop one field's error as soon as the user starts correcting it. */
+function clearFieldError(name) {
+  modalForm
+    .querySelectorAll(`[data-field-error="${name}"]`)
+    .forEach((el) => el.remove());
+  modalForm
+    .querySelector(`[name="${name}"]`)
+    ?.closest(".field-group")
+    ?.classList.remove("input-error");
+}
+
+/**
+ * Field specs → the { field: Rule[] } map validate.js runs. A spec marked
+ * `required` gets required() first, so turning off native validation doesn't
+ * quietly lose the check every form already relied on.
+ * @param {any[]} fields
+ */
+function collectRules(fields) {
+  /** @type {Record<string, import("./validate.js").Rule[]>} */
+  const map = {};
+  fields.forEach((field) => {
+    if (field.type === "checkboxes") return;
+    const rules = [...(field.rules ?? [])];
+    if (field.required) rules.unshift(v.required());
+    if (rules.length) map[field.name] = rules;
+  });
+  return map;
+}
+
+/**
+ * Turn validate.js message descriptors into display strings. Keeping the keys
+ * un-translated until here is what lets the rules stay pure and testable.
+ * @param {Record<string, import("./validate.js").Message>} messages
+ */
+function translateMessages(messages) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const [field, message] of Object.entries(messages)) {
+    out[field] = t(message.key, message.vars);
+  }
+  return out;
+}
+
 /**
  * Open the shared modal with a field spec. `onSubmit` receives an object of
  * name → value (checkbox groups yield arrays); returning resolves & closes.
- * `validate` runs first and, by returning a { fieldName: message } map, blocks
- * the write and renders those messages inline instead of as browser popups.
+ *
+ * Validation runs before the write and never uses native browser popups:
+ *  • each field spec may carry `rules: Rule[]` from validate.js — a field
+ *    marked `required` gets required() prepended automatically;
+ *  • `validate(values)` stays available for whole-form rules that don't
+ *    belong to one field (a year's grading weights summing past 100%).
+ * Both produce a { fieldName: message } map rendered inline under the field.
  */
 function openModal({
   title,
@@ -167,6 +212,8 @@ function openModal({
   document.getElementById("modal-submit").textContent = submitLabel;
   modalForm.innerHTML = "";
   modalDirty = false;
+  // We own validation now: suppress the browser's own popups entirely.
+  modalForm.noValidate = true;
 
   fields.forEach((field) => {
     const group = document.createElement("div");
@@ -269,8 +316,14 @@ function openModal({
     });
 
     // Inline validation gate: render every message under its field and stop.
+    // Field rules take precedence over whole-form ones — a malformed value is
+    // more actionable than the aggregate complaint it causes (a weight of 150
+    // should read "enter 0–100", not "the year now totals 200%").
     clearFieldErrors();
-    const errors = validate ? (validate(values) ?? {}) : {};
+    const errors = {
+      ...(validate ? (validate(values) ?? {}) : {}),
+      ...translateMessages(v.runRules(collectRules(fields), values)),
+    };
     const invalid = Object.keys(errors);
     if (invalid.length) {
       invalid.forEach((name) => setFieldError(name, errors[name]));
@@ -322,10 +375,13 @@ function requestCloseModal() {
 }
 
 // Any edit to any control marks the form dirty (delegated: the form's contents
-// are rebuilt on every open, but the <form> element itself persists).
+// are rebuilt on every open, but the <form> element itself persists), and
+// retires that field's error so a correction clears the message immediately.
 ["input", "change"].forEach((evt) =>
-  modalForm.addEventListener(evt, () => {
+  modalForm.addEventListener(evt, (e) => {
     modalDirty = true;
+    const name = /** @type {any} */ (e.target)?.name;
+    if (name) clearFieldError(name);
   }),
 );
 
@@ -430,7 +486,56 @@ function optionsFrom(list, labelFn, valueKey = "id") {
   return list.map((item) => ({ value: item[valueKey], label: labelFn(item) }));
 }
 
-const fmtDate = (v) => (v ? formatDate(v) : "—");
+const fmtDate = (value) => (value ? formatDate(value) : "—");
+
+// ── School profile (name + per-school ID label) ────────────────
+// The national-ID field is called something different in every country
+// ("Cédula", "DUI", "Carné"), so its label comes from school_settings with
+// the translated default as the fallback. Deliberately NOT a general
+// custom-fields system — one configurable label, nothing more.
+
+/** True once the settings row has been read (or found unavailable). */
+let schoolLoaded = false;
+
+/**
+ * Read the single school_settings row. A project that predates the table
+ * (its schema is applied by hand) must keep working, so a failed read is
+ * downgraded to "no settings" and the defaults apply.
+ */
+async function loadSchoolSettings() {
+  if (schoolLoaded) return state.school;
+  schoolLoaded = true;
+  try {
+    state.school = await data.getSchoolSettings();
+  } catch (err) {
+    console.warn("loadSchoolSettings: school_settings unavailable:", err);
+    state.school = null;
+  }
+  return state.school;
+}
+
+/**
+ * Label for the national-ID field: the school's own wording when set,
+ * otherwise the translated default.
+ * @param {"teachers" | "students"} scope which form/table is asking
+ */
+function idLabel(scope) {
+  const configured = String(state.school?.id_label ?? "").trim();
+  return configured || t(`console.${scope}.nationalId`);
+}
+
+/** Point the two ID column headers at the configured label. */
+function applyIdLabels() {
+  const heads = {
+    "th-teachers-national-id": "teachers",
+    "th-students-national-id": "students",
+  };
+  Object.entries(heads).forEach(([id, scope]) => {
+    const el = document.getElementById(id);
+    if (el)
+      el.textContent = idLabel(/** @type {"teachers"|"students"} */ (scope));
+  });
+}
 
 // ───────────────────────────────────────────────────────────────
 //  4. NAVIGATION
@@ -628,6 +733,7 @@ async function loadYearPeriods() {
   renderMessageRow("years-body", 5, t("common.loading"));
   try {
     const years = await data.listSchoolYears();
+    state.schoolYears = years; // the year form's name-uniqueness check
     state.activeYear = years.find((y) => y.is_active) ?? null;
     renderYears(years);
     await loadPeriods();
@@ -740,6 +846,12 @@ function openYearForm(year = null) {
         value: year?.name,
         required: true,
         placeholder: "2025-2026",
+        rules: [
+          v.unique(
+            state.schoolYears.map((y) => y.name),
+            { current: year?.name },
+          ),
+        ],
       },
       {
         name: "start_date",
@@ -754,12 +866,9 @@ function openYearForm(year = null) {
         type: "date",
         value: year?.end_date,
         required: true,
+        rules: [v.endAfterStart("start_date")],
       },
     ],
-    validate: (v) =>
-      v.start_date && v.end_date && v.end_date <= v.start_date
-        ? { end_date: t("validation.endAfterStart") }
-        : {},
     onSubmit: async (v) => {
       const payload = {
         name: v.name.trim(),
@@ -866,16 +975,24 @@ function openPeriodForm(period = null) {
   // year's range — both as input constraints and as a validation rule (the
   // matching DB trigger is the backstop for anything bypassing this form).
   const year = state.activeYear;
+  const bounded = year?.start_date && year?.end_date;
+  const withinYear = bounded
+    ? [
+        v.dateWithin(year.start_date, year.end_date, {
+          start: fmtDate(year.start_date),
+          end: fmtDate(year.end_date),
+        }),
+      ]
+    : [];
   const dateRange = {
     min: year?.start_date,
     max: year?.end_date,
-    help:
-      year?.start_date && year?.end_date
-        ? t("validation.dateWithin", {
-            start: fmtDate(year.start_date),
-            end: fmtDate(year.end_date),
-          })
-        : undefined,
+    help: bounded
+      ? t("validation.dateWithin", {
+          start: fmtDate(year.start_date),
+          end: fmtDate(year.end_date),
+        })
+      : undefined,
   };
 
   openModal({
@@ -898,6 +1015,14 @@ function openPeriodForm(period = null) {
         required: true,
         min: 1,
         step: "1",
+        rules: [
+          v.integer(),
+          v.min(1),
+          v.unique(
+            state.periods.map((p) => p.period_order),
+            { current: period?.period_order },
+          ),
+        ],
       },
       {
         name: "start_date",
@@ -906,6 +1031,7 @@ function openPeriodForm(period = null) {
         value: period?.start_date,
         required: true,
         ...dateRange,
+        rules: withinYear,
       },
       {
         name: "end_date",
@@ -914,6 +1040,7 @@ function openPeriodForm(period = null) {
         value: period?.end_date,
         required: true,
         ...dateRange,
+        rules: [...withinYear, v.endAfterStart("start_date")],
       },
       {
         name: "weight",
@@ -923,36 +1050,20 @@ function openPeriodForm(period = null) {
         min: 0,
         max: 100,
         step: "0.01",
+        rules: [v.percent()],
       },
     ],
-    validate: (v) => {
-      const errors = {};
-
-      // Dates: ordered, and inside the parent year.
-      const range = checkPeriodRange(
-        { start: v.start_date, end: v.end_date },
-        year,
-      );
-      if (range) {
-        errors[range.field] =
-          range.reason === "order"
-            ? t("validation.endAfterStart")
-            : t("validation.dateWithin", {
-                start: fmtDate(year?.start_date),
-                end: fmtDate(year?.end_date),
-              });
-      }
-
-      // Weights may never exceed 100% across the year. Falling short is
-      // allowed while the year is still being built, but warns on save.
+    // Whole-form rule: the year's weights may never exceed 100% in total.
+    // Falling short is allowed while the year is still being built (it warns
+    // on save instead). Per-field rules above cover everything else.
+    validate: (values) => {
       const prospective = totalWeight(state.periods, {
         excludeId: period?.id ?? null,
-        extraWeight: num(v.weight),
+        extraWeight: num(values.weight),
       });
-      if (prospective > TARGET_WEIGHT) {
-        errors.weight = t("console.periods.weightOver", { total: prospective });
-      }
-      return errors;
+      return prospective > TARGET_WEIGHT
+        ? { weight: t("console.periods.weightOver", { total: prospective }) }
+        : {};
     },
     onSubmit: async (v) => {
       const payload = {
@@ -1047,6 +1158,14 @@ function openGradeForm(grade = null) {
         value: grade?.numeric_level,
         required: true,
         min: 1,
+        rules: [
+          v.integer(),
+          v.min(1),
+          v.unique(
+            state.gradeLevels.map((g) => g.numeric_level),
+            { current: grade?.numeric_level },
+          ),
+        ],
       },
       {
         name: "name",
@@ -1054,6 +1173,12 @@ function openGradeForm(grade = null) {
         value: grade?.name,
         required: true,
         placeholder: t("console.grades.namePlaceholder"),
+        rules: [
+          v.unique(
+            state.gradeLevels.map((g) => g.name),
+            { current: grade?.name },
+          ),
+        ],
       },
     ],
     onSubmit: async (v) => {
@@ -1131,13 +1256,20 @@ function openRoomForm(room = null) {
         label: t("console.rooms.name"),
         value: room?.name,
         required: true,
+        rules: [
+          v.unique(
+            state.rooms.map((r) => r.name),
+            { current: room?.name },
+          ),
+        ],
       },
       {
         name: "capacity",
         label: t("console.rooms.capacity"),
         type: "number",
         value: room?.capacity,
-        min: 0,
+        min: 1,
+        rules: [v.integer(), v.min(1)],
       },
       {
         name: "type",
@@ -1308,6 +1440,19 @@ function openSectionForm(section = null) {
         type: "number",
         value: section?.max_capacity ?? 30,
         min: 1,
+        rules: [
+          v.integer(),
+          v.min(1),
+          // A section can't seat more students than its room holds. Nothing
+          // enforced this before, in the client or the database.
+          v.atMost(
+            (values) =>
+              state.rooms.find((r) => String(r.id) === String(values.room_id))
+                ?.capacity,
+            "validation.capacityRoom",
+            (capacity, roomCapacity) => ({ capacity, roomCapacity }),
+          ),
+        ],
       },
     ],
     onSubmit: async (v) => {
@@ -1432,12 +1577,24 @@ function openSubjectForm(subject = null, mapped = []) {
         label: t("console.subjects.name"),
         value: subject?.name,
         required: true,
+        rules: [
+          v.unique(
+            state.subjects.map((s) => s.name),
+            { current: subject?.name },
+          ),
+        ],
       },
       {
         name: "code",
         label: t("console.subjects.code"),
         value: subject?.code,
         placeholder: "MATH7",
+        rules: [
+          v.unique(
+            state.subjects.map((s) => s.code),
+            { current: subject?.code },
+          ),
+        ],
       },
       {
         name: "color",
@@ -1592,6 +1749,7 @@ function openCreateAccount(record, kind, reload) {
         type: "email",
         value: record.email ?? "",
         required: true,
+        rules: [v.email()],
       },
       {
         name: "password",
@@ -1599,6 +1757,7 @@ function openCreateAccount(record, kind, reload) {
         value: generateTempPassword(),
         required: true,
         help: t("console.accounts.tempPasswordHelp"),
+        rules: [v.password()],
       },
     ],
     onSubmit: async (v) => {
@@ -1647,20 +1806,36 @@ function openTeacherForm(teacher = null) {
         required: true,
       },
       {
+        // Optional by design: not every school records a national ID, and the
+        // field is called something different in each country (see idLabel).
         name: "national_id",
-        label: t("console.teachers.nationalId"),
+        label: idLabel("teachers"),
         value: teacher?.national_id,
+        rules: [
+          v.unique(
+            state.teachers.map((x) => x.national_id),
+            { current: teacher?.national_id },
+          ),
+        ],
       },
       {
         name: "email",
         label: t("console.teachers.email"),
         type: "email",
         value: teacher?.email,
+        rules: [
+          v.email(),
+          v.unique(
+            state.teachers.map((x) => x.email),
+            { current: teacher?.email },
+          ),
+        ],
       },
       {
         name: "phone",
         label: t("console.teachers.phone"),
         value: teacher?.phone,
+        rules: [v.phone()],
       },
       {
         name: "specialization",
@@ -2197,17 +2372,35 @@ function openStudentForm(student = null) {
         label: t("console.students.enrollmentNumber"),
         value: student?.enrollment_number,
         help: t("console.students.enrollmentHelp"),
+        rules: [
+          v.unique(
+            state.students.map((s) => s.enrollment_number),
+            {
+              current: student?.enrollment_number,
+              messageKey: "validation.enrollmentTaken",
+            },
+          ),
+        ],
       },
       {
+        // Optional, with a per-school label — same treatment as teachers.
         name: "national_id",
-        label: t("console.students.nationalId"),
+        label: idLabel("students"),
         value: student?.national_id,
+        rules: [
+          v.unique(
+            state.students.map((s) => s.national_id),
+            { current: student?.national_id },
+          ),
+        ],
       },
       {
         name: "date_of_birth",
         label: t("console.students.dateOfBirth"),
         type: "date",
         value: student?.date_of_birth,
+        max: todayIso(),
+        rules: [v.notFuture()],
       },
       {
         name: "gender",
@@ -2224,11 +2417,13 @@ function openStudentForm(student = null) {
         label: t("console.students.email"),
         type: "email",
         value: student?.email,
+        rules: [v.email()],
       },
       {
         name: "phone",
         label: t("console.students.phone"),
         value: student?.phone,
+        rules: [v.phone()],
       },
       {
         name: "class_id",
@@ -3274,7 +3469,82 @@ importOverlay.addEventListener("click", (e) => {
 // ───────────────────────────────────────────────────────────────
 //  5h. SETTINGS (read-only)
 // ───────────────────────────────────────────────────────────────
+/**
+ * School profile card: the school's name and what it calls the national-ID
+ * field. Rendered here rather than in settings.js because that renderer is
+ * shared with the student/teacher portals and is documented as read-only.
+ */
+async function renderSchoolProfile() {
+  const root = document.getElementById("school-profile-root");
+  if (!root) return;
+  await loadSchoolSettings();
+
+  const unavailable = state.school === null;
+  root.innerHTML = `
+    <div class="console-panel">
+      <div class="panel-head">
+        <div>
+          <h2>${escapeHtml(t("console.school.title"))}</h2>
+          <p class="panel-sub">${escapeHtml(t("console.school.subtitle"))}</p>
+        </div>
+      </div>
+      <div class="modal-body school-profile-form">
+        <div class="field-group">
+          <label for="school-name">${escapeHtml(t("console.school.name"))}</label>
+          <input id="school-name" type="text"
+            value="${escapeHtml(state.school?.name ?? "")}"
+            placeholder="${escapeHtml(t("console.school.namePlaceholder"))}" />
+        </div>
+        <div class="field-group">
+          <label for="school-id-label">${escapeHtml(t("console.school.idLabel"))}</label>
+          <input id="school-id-label" type="text"
+            value="${escapeHtml(state.school?.id_label ?? "")}"
+            placeholder="${escapeHtml(t("console.teachers.nationalId"))}" />
+          <small class="field-help">${escapeHtml(t("console.school.idLabelHelp"))}</small>
+        </div>
+        ${unavailable ? `<p class="field-help">${escapeHtml(t("console.school.unavailable"))}</p>` : ""}
+        <div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-save-school"
+            ${unavailable ? "disabled" : ""}>
+            ${escapeHtml(t("common.save"))}
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document
+    .getElementById("btn-save-school")
+    ?.addEventListener("click", async () => {
+      const patch = {
+        name: nullable(
+          /** @type {HTMLInputElement} */ (
+            document.getElementById("school-name")
+          ).value,
+        ),
+        id_label: nullable(
+          /** @type {HTMLInputElement} */ (
+            document.getElementById("school-id-label")
+          ).value,
+        ),
+      };
+      try {
+        if (state.school?.id != null) {
+          await data.updateSchoolSettings(state.school.id, patch);
+          state.school = { ...state.school, ...patch };
+        } else {
+          state.school = await data.createSchoolSettings({ id: 1, ...patch });
+        }
+        showToast(t("console.school.saved"));
+        // The ID label feeds table headers and both create forms.
+        applyIdLabels();
+      } catch (err) {
+        showToast(err.message ?? String(err), "error");
+      }
+    });
+}
+
 async function loadSettings() {
+  await renderSchoolProfile();
   const root = document.getElementById("settings-root");
   if (!root) return;
   let profile = PROFILE;
@@ -3322,6 +3592,10 @@ if (DEMO_MODE) {
     logo.appendChild(badge);
   }
 }
+
+// Read the school profile up front: the ID-field label it carries is needed by
+// the teachers/students tables and their create forms, whichever loads first.
+loadSchoolSettings().then(applyIdLabels);
 
 loadOverview();
 showSection("overview");
