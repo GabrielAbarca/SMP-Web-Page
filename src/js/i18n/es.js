@@ -39,6 +39,13 @@ export default {
     },
   },
 
+  // ── Validación de formularios en línea (se muestra bajo el campo, nunca
+  //    como una ventana emergente del navegador). Compartida como `common`.
+  validation: {
+    dateWithin: "Debe estar entre {start} y {end}.",
+    endAfterStart: "La fecha de fin debe ser posterior a la fecha de inicio.",
+  },
+
   enums: {
     attendance: {
       present: "Presente",
@@ -654,6 +661,10 @@ export default {
     confirm: {
       title: "¿Eliminar elemento?",
       message: "Esta acción no se puede deshacer.",
+      discardTitle: "¿Descartar cambios?",
+      discardMessage: "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+      discard: "Descartar",
+      keepEditing: "Seguir editando",
     },
     years: {
       title: "Años escolares",
@@ -668,6 +679,9 @@ export default {
       inactive: "Inactivo",
       setActive: "Activar",
       activated: "Año escolar activo actualizado.",
+      activateWeightWarn:
+        "Los pesos de los períodos de este año suman {total}%, no 100%. ¿Activarlo de todas formas?",
+      activateAnyway: "Activar de todas formas",
       deleted: "Año escolar eliminado.",
       empty: "Aún no hay años escolares. Agrega uno para comenzar.",
       confirmDelete:
@@ -684,6 +698,11 @@ export default {
       start: "Inicio",
       end: "Fin",
       weight: "Peso",
+      totalWeight: "Peso total: {total}%",
+      weightWarning:
+        "Los pesos de los períodos suman {total}% — deberían sumar 100%.",
+      weightOver:
+        "Los pesos de los períodos superarían el 100% (total {total}%).",
       deleted: "Período de evaluación eliminado.",
       empty: "Aún no hay períodos para este año.",
       noYear: "Activa un año escolar para gestionar sus períodos.",

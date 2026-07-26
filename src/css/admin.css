@@ -349,6 +349,22 @@
     color: var(--color-info-dark);
   }
 
+  /* Inline field validation — mirrors the login form's treatment so the two
+     surfaces read the same. Native browser popups are never used for these. */
+  .field-error {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--color-danger);
+    font-weight: 500;
+  }
+
+  .field-group.input-error input,
+  .field-group.input-error select,
+  .field-group.input-error textarea {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px var(--color-danger-light);
+  }
+
   .checkbox-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -361,10 +377,45 @@
     gap: 0.45rem;
     font-size: 0.85rem;
     color: var(--color-dark);
+    cursor: pointer;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    transition: border-color var(--transition-speed) ease;
   }
 
-  .checkbox-item input {
-    width: auto;
+  /* style.css's global reset sets `appearance: none` on every element, which
+     strips a checkbox down to a blank box — and the generic .modal-body input
+     rules above then dress it like a text field, so the only visible feedback
+     was the focus ring. Restore native rendering and size it explicitly. */
+  .checkbox-item input[type="checkbox"] {
+    appearance: auto;
+    -webkit-appearance: checkbox;
+    accent-color: var(--color-primary);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+  }
+
+  .checkbox-item:hover {
+    border-color: var(--color-primary);
+  }
+
+  /* Checked rows read as selected at a glance (multi-select is the point). */
+  .checkbox-item:has(input[type="checkbox"]:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+  }
+
+  .checkbox-item:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
   }
 
   .modal-footer {

@@ -26,6 +26,12 @@ import { supabaseGateway, createAdminData } from "./adminData.js";
 import { createDemoGateway } from "./adminDemoDb.js";
 import { parseCsv, autoMap } from "./csv.js";
 import {
+  TARGET_WEIGHT,
+  totalWeight,
+  weightStatus,
+  checkPeriodRange,
+} from "./gradingPeriods.js";
+import {
   createAccount,
   resetPassword,
   generateTempPassword,
@@ -75,6 +81,7 @@ const state = {
   /** @type {any[]} */ sections: [],
   /** @type {any[]} */ students: [],
   /** @type {any[]} */ schoolYears: [],
+  /** @type {any[]} */ periods: [], // active year's grading periods (weight total)
   /** @type {string} */ studentFilter: "all", // "all" | "unassigned" | section id
 };
 
@@ -119,20 +126,47 @@ const modalOverlay = document.getElementById("modal-overlay");
 const modalTitle = document.getElementById("modal-title");
 const modalForm = document.getElementById("modal-form");
 let currentSubmitHandler = null;
+// Has the open form been touched? Drives the discard confirmation, so a stray
+// click or a mistaken Cancel can never silently throw away typed work.
+let modalDirty = false;
+
+/** Render an inline error under one field and mark the field-group invalid. */
+function setFieldError(name, message) {
+  const input = modalForm.querySelector(`[name="${name}"]`);
+  const group = input?.closest(".field-group");
+  if (!group) return;
+  group.classList.add("input-error");
+  const msg = document.createElement("small");
+  msg.className = "field-error";
+  msg.dataset.fieldError = name;
+  msg.textContent = message;
+  group.appendChild(msg);
+}
+
+function clearFieldErrors() {
+  modalForm.querySelectorAll("[data-field-error]").forEach((el) => el.remove());
+  modalForm
+    .querySelectorAll(".field-group.input-error")
+    .forEach((el) => el.classList.remove("input-error"));
+}
 
 /**
  * Open the shared modal with a field spec. `onSubmit` receives an object of
  * name → value (checkbox groups yield arrays); returning resolves & closes.
+ * `validate` runs first and, by returning a { fieldName: message } map, blocks
+ * the write and renders those messages inline instead of as browser popups.
  */
 function openModal({
   title,
   fields,
   onSubmit,
+  validate,
   submitLabel = t("common.save"),
 }) {
   modalTitle.textContent = title;
   document.getElementById("modal-submit").textContent = submitLabel;
   modalForm.innerHTML = "";
+  modalDirty = false;
 
   fields.forEach((field) => {
     const group = document.createElement("div");
@@ -233,6 +267,18 @@ function openModal({
         values[field.name] = el ? el.value : "";
       }
     });
+
+    // Inline validation gate: render every message under its field and stop.
+    clearFieldErrors();
+    const errors = validate ? (validate(values) ?? {}) : {};
+    const invalid = Object.keys(errors);
+    if (invalid.length) {
+      invalid.forEach((name) => setFieldError(name, errors[name]));
+      const first = modalForm.querySelector(`[name="${invalid[0]}"]`);
+      if (first instanceof HTMLElement) first.focus();
+      return;
+    }
+
     const submitBtn = document.getElementById("modal-submit");
     submitBtn.disabled = true;
     try {
@@ -251,26 +297,70 @@ function openModal({
 function closeModal() {
   modalOverlay.classList.remove("active");
   modalForm.innerHTML = "";
+  modalDirty = false;
   if (currentSubmitHandler) {
     modalForm.removeEventListener("submit", currentSubmitHandler);
     currentSubmitHandler = null;
   }
 }
 
-document.getElementById("modal-close").addEventListener("click", closeModal);
-document.getElementById("modal-cancel").addEventListener("click", closeModal);
-modalOverlay.addEventListener("click", (e) => {
-  if (e.target === modalOverlay) closeModal();
-});
+/**
+ * Close on explicit intent only (X / Cancel), confirming first when the form
+ * carries unsaved edits. Clicking the backdrop deliberately does nothing —
+ * it used to discard a half-filled form without warning.
+ */
+function requestCloseModal() {
+  if (!modalDirty) {
+    closeModal();
+    return;
+  }
+  openConfirm(t("console.confirm.discardMessage"), () => closeModal(), {
+    title: t("console.confirm.discardTitle"),
+    confirmLabel: t("console.confirm.discard"),
+    cancelLabel: t("console.confirm.keepEditing"),
+  });
+}
+
+// Any edit to any control marks the form dirty (delegated: the form's contents
+// are rebuilt on every open, but the <form> element itself persists).
+["input", "change"].forEach((evt) =>
+  modalForm.addEventListener(evt, () => {
+    modalDirty = true;
+  }),
+);
+
+document
+  .getElementById("modal-close")
+  .addEventListener("click", requestCloseModal);
+document
+  .getElementById("modal-cancel")
+  .addEventListener("click", requestCloseModal);
 
 // ── Confirm modal ──────────────────────────────────────────────
 const confirmOverlay = document.getElementById("confirm-overlay");
+const confirmTitle = document.getElementById("confirm-title");
 const confirmMessage = document.getElementById("confirm-message");
 const confirmDeleteBtn = document.getElementById("confirm-delete");
+const confirmCancelBtn = document.getElementById("confirm-cancel");
 let confirmHandler = null;
 
-function openConfirm(message, onConfirm) {
+/**
+ * Ask before an irreversible action. Defaults to the delete wording; `opts`
+ * retitles it and relabels the buttons so non-delete decisions (discarding a
+ * dirty form, activating an under-weighted year) can reuse the same dialog.
+ * @param {string} message
+ * @param {() => any} onConfirm
+ * @param {{ title?: string, confirmLabel?: string, cancelLabel?: string,
+ *   danger?: boolean }} [opts]
+ */
+function openConfirm(message, onConfirm, opts = {}) {
+  const danger = opts.danger !== false;
+  confirmTitle.textContent = opts.title ?? t("console.confirm.title");
   confirmMessage.textContent = message;
+  confirmDeleteBtn.textContent = opts.confirmLabel ?? t("common.delete");
+  confirmDeleteBtn.classList.toggle("btn-danger", danger);
+  confirmDeleteBtn.classList.toggle("btn-primary", !danger);
+  confirmCancelBtn.textContent = opts.cancelLabel ?? t("common.cancel");
   confirmHandler = onConfirm;
   confirmOverlay.classList.add("active");
 }
@@ -290,9 +380,7 @@ confirmDeleteBtn.addEventListener("click", async () => {
     confirmDeleteBtn.disabled = false;
   }
 });
-document
-  .getElementById("confirm-cancel")
-  .addEventListener("click", closeConfirm);
+confirmCancelBtn.addEventListener("click", closeConfirm);
 confirmOverlay.addEventListener("click", (e) => {
   if (e.target === confirmOverlay) closeConfirm();
 });
@@ -564,15 +652,9 @@ function renderYears(years) {
     const actions = [];
     if (!y.is_active) {
       actions.push(
-        iconBtn("check_circle", t("console.years.setActive"), async () => {
-          try {
-            await data.setActiveYear(y.id, activeIds);
-            showToast(t("console.years.activated"));
-            loadYearPeriods();
-          } catch (err) {
-            showToast(err.message ?? String(err), "error");
-          }
-        }),
+        iconBtn("check_circle", t("console.years.setActive"), () =>
+          activateYear(y, activeIds),
+        ),
       );
     }
     actions.push(iconBtn("edit", t("common.edit"), () => openYearForm(y)));
@@ -606,6 +688,48 @@ function renderYears(years) {
   });
 }
 
+/**
+ * Make one year the active one. A year whose grading periods don't add up to
+ * 100% is the state that silently breaks reporting downstream, so activating
+ * one asks for confirmation first (and names the actual total) instead of
+ * going through quietly.
+ * @param {any} year
+ * @param {number[]} previouslyActive
+ */
+async function activateYear(year, previouslyActive) {
+  const commit = async () => {
+    try {
+      await data.setActiveYear(year.id, previouslyActive);
+      showToast(t("console.years.activated"));
+      loadYearPeriods();
+    } catch (err) {
+      showToast(err.message ?? String(err), "error");
+    }
+  };
+
+  /** @type {any[]} */
+  let periods;
+  try {
+    periods = await data.listPeriods(year.id);
+  } catch (err) {
+    // Can't verify the weights — don't block the activation on a read failure.
+    console.error("activateYear: could not read periods:", err);
+    await commit();
+    return;
+  }
+
+  const total = totalWeight(periods);
+  if (weightStatus(total, periods.length) === "ok") {
+    await commit();
+    return;
+  }
+  openConfirm(t("console.years.activateWeightWarn", { total }), commit, {
+    title: t("console.years.setActive"),
+    confirmLabel: t("console.years.activateAnyway"),
+    danger: false,
+  });
+}
+
 function openYearForm(year = null) {
   openModal({
     title: year ? t("console.years.editTitle") : t("console.years.addTitle"),
@@ -632,6 +756,10 @@ function openYearForm(year = null) {
         required: true,
       },
     ],
+    validate: (v) =>
+      v.start_date && v.end_date && v.end_date <= v.start_date
+        ? { end_date: t("validation.endAfterStart") }
+        : {},
     onSubmit: async (v) => {
       const payload = {
         name: v.name.trim(),
@@ -652,6 +780,7 @@ async function loadPeriods() {
   if (!state.activeYear) {
     label.textContent = t("console.periods.noYear");
     addBtn.disabled = true;
+    renderWeightTotal([]);
     renderEmptyRow("periods-body", 6, t("console.periods.noYear"));
     return;
   }
@@ -660,11 +789,36 @@ async function loadPeriods() {
   renderMessageRow("periods-body", 6, t("common.loading"));
   try {
     const periods = await data.listPeriods(state.activeYear.id);
+    state.periods = periods;
     renderPeriods(periods);
+    renderWeightTotal(periods);
   } catch (err) {
     console.error("loadPeriods:", err);
     renderErrorRow("periods-body", 6);
   }
+}
+
+/**
+ * Running weight total for the year on screen. A year is only correctly
+ * weighted at exactly 100%, so anything else is badged as a warning — the
+ * director can see the shortfall while building the periods up one at a time.
+ */
+function renderWeightTotal(periods) {
+  const el = document.getElementById("periods-weight-total");
+  if (!el) return;
+  if (!periods.length) {
+    el.hidden = true;
+    return;
+  }
+  const total = totalWeight(periods);
+  const status = weightStatus(total, periods.length);
+  el.hidden = false;
+  el.textContent = t("console.periods.totalWeight", { total });
+  el.classList.remove("badge-neutral"); // the markup's placeholder styling
+  el.classList.toggle("badge-success", status === "ok");
+  el.classList.toggle("badge-warning", status !== "ok");
+  el.title =
+    status === "ok" ? "" : t("console.periods.weightWarning", { total });
 }
 
 function renderPeriods(periods) {
@@ -708,6 +862,22 @@ function renderPeriods(periods) {
 }
 
 function openPeriodForm(period = null) {
+  // A period belongs to the active year, so its dates are bounded by that
+  // year's range — both as input constraints and as a validation rule (the
+  // matching DB trigger is the backstop for anything bypassing this form).
+  const year = state.activeYear;
+  const dateRange = {
+    min: year?.start_date,
+    max: year?.end_date,
+    help:
+      year?.start_date && year?.end_date
+        ? t("validation.dateWithin", {
+            start: fmtDate(year.start_date),
+            end: fmtDate(year.end_date),
+          })
+        : undefined,
+  };
+
   openModal({
     title: period
       ? t("console.periods.editTitle")
@@ -727,6 +897,7 @@ function openPeriodForm(period = null) {
         value: period?.period_order,
         required: true,
         min: 1,
+        step: "1",
       },
       {
         name: "start_date",
@@ -734,6 +905,7 @@ function openPeriodForm(period = null) {
         type: "date",
         value: period?.start_date,
         required: true,
+        ...dateRange,
       },
       {
         name: "end_date",
@@ -741,6 +913,7 @@ function openPeriodForm(period = null) {
         type: "date",
         value: period?.end_date,
         required: true,
+        ...dateRange,
       },
       {
         name: "weight",
@@ -752,6 +925,35 @@ function openPeriodForm(period = null) {
         step: "0.01",
       },
     ],
+    validate: (v) => {
+      const errors = {};
+
+      // Dates: ordered, and inside the parent year.
+      const range = checkPeriodRange(
+        { start: v.start_date, end: v.end_date },
+        year,
+      );
+      if (range) {
+        errors[range.field] =
+          range.reason === "order"
+            ? t("validation.endAfterStart")
+            : t("validation.dateWithin", {
+                start: fmtDate(year?.start_date),
+                end: fmtDate(year?.end_date),
+              });
+      }
+
+      // Weights may never exceed 100% across the year. Falling short is
+      // allowed while the year is still being built, but warns on save.
+      const prospective = totalWeight(state.periods, {
+        excludeId: period?.id ?? null,
+        extraWeight: num(v.weight),
+      });
+      if (prospective > TARGET_WEIGHT) {
+        errors.weight = t("console.periods.weightOver", { total: prospective });
+      }
+      return errors;
+    },
     onSubmit: async (v) => {
       const payload = {
         name: v.name.trim(),
@@ -767,7 +969,14 @@ function openPeriodForm(period = null) {
           school_year_id: state.activeYear.id,
         });
       showToast(t("common.saved"));
-      loadPeriods();
+
+      // Re-read first, then judge the year off the stored rows rather than the
+      // submitted value, and say so loudly when it still isn't 100%.
+      await loadPeriods();
+      const total = totalWeight(state.periods);
+      if (weightStatus(total, state.periods.length) !== "ok") {
+        showToast(t("console.periods.weightWarning", { total }), "error");
+      }
     },
   });
 }
