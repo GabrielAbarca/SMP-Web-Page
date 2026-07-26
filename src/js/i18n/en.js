@@ -42,6 +42,13 @@ export default {
     },
   },
 
+  // ── Inline form validation (rendered under the field, never as a native
+  //    browser popup). Shared across views like `common`.
+  validation: {
+    dateWithin: "Must be within {start} – {end}.",
+    endAfterStart: "End date must be after the start date.",
+  },
+
   enums: {
     // Per-record / single-value badge labels (singular, capitalized).
     attendance: {
@@ -661,6 +668,10 @@ export default {
     confirm: {
       title: "Delete item?",
       message: "This action cannot be undone.",
+      discardTitle: "Discard changes?",
+      discardMessage: "You have unsaved changes. Do you want to discard them?",
+      discard: "Discard",
+      keepEditing: "Keep editing",
     },
     years: {
       title: "School years",
@@ -675,6 +686,9 @@ export default {
       inactive: "Inactive",
       setActive: "Set active",
       activated: "Active school year updated.",
+      activateWeightWarn:
+        "This year's period weights total {total}%, not 100%. Activate it anyway?",
+      activateAnyway: "Activate anyway",
       deleted: "School year deleted.",
       empty: "No school years yet. Add one to get started.",
       confirmDelete:
@@ -691,6 +705,9 @@ export default {
       start: "Start",
       end: "End",
       weight: "Weight",
+      totalWeight: "Total weight: {total}%",
+      weightWarning: "Period weights total {total}% — they should total 100%.",
+      weightOver: "Period weights would exceed 100% (total {total}%).",
       deleted: "Grading period deleted.",
       empty: "No grading periods for this year yet.",
       noYear: "Activate a school year to manage its grading periods.",

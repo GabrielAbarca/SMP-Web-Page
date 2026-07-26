@@ -26,11 +26,22 @@ student/teacher read policies, without the demo read-only lock**, so admins can
 write. Id columns use identity (equivalent to the demo's sequences).
 
 > Existing projects that already have the schema only need the incremental
-> snippet [`supabase/schema/incremental_teacher_auth_user_id.sql`](../supabase/schema/incremental_teacher_auth_user_id.sql)
-> (the `teachers.auth_user_id` column). It is already included in
-> `school_schema.sql`, so a fresh project does **not** need it separately.
-> (It lives under `supabase/schema/`, not `supabase/migrations/`, so the
-> Supabase↔GitHub integration doesn't try to sync it to the demo project.)
+> snippets:
+>
+> - [`supabase/schema/incremental_teacher_auth_user_id.sql`](../supabase/schema/incremental_teacher_auth_user_id.sql)
+>   — the `teachers.auth_user_id` column.
+> - [`supabase/schema/incremental_grading_period_bounds.sql`](../supabase/schema/incremental_grading_period_bounds.sql)
+>   — the trigger keeping each grading period inside its school year.
+>
+> Both are already included in `school_schema.sql`, so a fresh project does
+> **not** need them separately.
+> (They live under `supabase/schema/`, not `supabase/migrations/`, so the
+> Supabase↔GitHub integration doesn't try to sync them to the demo project.
+> Apply them with the dashboard SQL editor — do **not** register them as
+> migrations, or the integration reports a history mismatch.)
+>
+> Applied to both existing projects (demo `SMP DataBase` and `SMP Pilot
+School`) as of this milestone.
 
 ## 3. Deploy the account Edge Function
 

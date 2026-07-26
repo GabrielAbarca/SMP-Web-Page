@@ -306,6 +306,57 @@ create trigger on_auth_user_created
 revoke execute on function public.handle_new_user() from anon, authenticated, public;
 revoke execute on function public.is_admin() from anon;
 
+-- ── Grading periods stay inside their school year ───────────────
+-- The bounds live in another table, so this can't be a CHECK constraint. The
+-- admin console enforces the same two rules inline (src/js/gradingPeriods.js);
+-- the trigger backstops CSV import, the SQL editor and any future API client.
+-- Mirrored as an apply-by-hand snippet in
+-- supabase/schema/incremental_grading_period_bounds.sql.
+create or replace function public.grading_period_within_year()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  y_start date;
+  y_end   date;
+begin
+  if new.start_date > new.end_date then
+    raise exception
+      'Grading period start date (%) must be on or before its end date (%)',
+      new.start_date, new.end_date
+      using errcode = 'check_violation';
+  end if;
+
+  select start_date, end_date into y_start, y_end
+  from public.school_years
+  where id = new.school_year_id;
+
+  if y_start is null then
+    raise exception 'School year % not found', new.school_year_id
+      using errcode = 'foreign_key_violation';
+  end if;
+
+  if new.start_date < y_start or new.end_date > y_end then
+    raise exception
+      'Grading period % to % falls outside its school year % (% to %)',
+      new.start_date, new.end_date, new.school_year_id, y_start, y_end
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.grading_period_within_year()
+  from anon, authenticated, public;
+
+drop trigger if exists grading_periods_within_year on public.grading_periods;
+create trigger grading_periods_within_year
+  before insert or update on public.grading_periods
+  for each row execute function public.grading_period_within_year();
+
 -- ═══════════════════════════════════════════════════════════════
 --  Row-level security: admin full access + student/teacher reads
 --  (no demo read-only lock — admins can write on a real project)
