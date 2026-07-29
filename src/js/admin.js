@@ -437,9 +437,8 @@ confirmDeleteBtn.addEventListener("click", async () => {
   }
 });
 confirmCancelBtn.addEventListener("click", closeConfirm);
-confirmOverlay.addEventListener("click", (e) => {
-  if (e.target === confirmOverlay) closeConfirm();
-});
+// No backdrop-click close on any dialog: a stray click outside must never
+// stand in for a decision. Cancel and the X are the only ways out.
 
 // ── Table helpers ──────────────────────────────────────────────
 function renderMessageRow(tbodyId, colspan, message) {
@@ -465,9 +464,46 @@ function iconBtn(icon, label, onClick, danger = false) {
   return btn;
 }
 
-/** Build a row with cells (HTML strings) and an actions cell of buttons. */
-function tableRow(cells, actionButtons = []) {
+// ── "Just saved" row feedback ──────────────────────────────────
+// A toast confirms that a write happened, but not *which* record it touched.
+// After a save the owning table re-renders, so the row is a fresh element:
+// remember the id, then outline it green once it comes back on screen. This
+// matters most in demo mode, where writes are session-local and a director
+// reasonably wonders whether anything took.
+
+/** @type {{ tbodyId: string, id: string } | null} */
+let pendingSavedRow = null;
+const SAVED_FLASH_MS = 2500;
+
+/** Remember the record a save just wrote, to outline on the next render. */
+function markSaved(tbodyId, id) {
+  if (id == null) return;
+  pendingSavedRow = { tbodyId, id: String(id) };
+}
+
+/**
+ * Outline the freshly saved row, if this table owns it. Scoped by tbody so a
+ * row that happens to share an id in another table never lights up instead.
+ */
+function applySavedFlash(tbodyId) {
+  if (!pendingSavedRow || pendingSavedRow.tbodyId !== tbodyId) return;
+  const { id } = pendingSavedRow;
+  pendingSavedRow = null;
+  const row = document.querySelector(
+    `#${tbodyId} tr[data-row-id="${CSS.escape(id)}"]`,
+  );
+  if (!row) return;
+  row.classList.add("row-saved");
+  setTimeout(() => row.classList.remove("row-saved"), SAVED_FLASH_MS);
+}
+
+/**
+ * Build a row with cells (HTML strings) and an actions cell of buttons.
+ * `rowId` tags the row so a save can find it again after the re-render.
+ */
+function tableRow(cells, actionButtons = [], rowId = null) {
   const tr = document.createElement("tr");
+  if (rowId != null) tr.dataset.rowId = String(rowId);
   cells.forEach((html) => {
     const td = document.createElement("td");
     td.innerHTML = html;
@@ -551,6 +587,7 @@ const LOADERS = {
   gradessections: loadGradesSections,
   subjects: loadSubjects,
   teachers: loadTeachers,
+  assignments: loadAssignments,
   students: loadStudents,
   settings: loadSettings,
 };
@@ -607,9 +644,11 @@ async function loadOverview() {
     const [profile, years] = await Promise.all([
       PROFILE ? Promise.resolve(PROFILE) : fetchProfile(),
       data.listSchoolYears(),
+      loadSchoolSettings(),
     ]);
     PROFILE = profile;
     state.activeYear = years.find((y) => y.is_active) ?? null;
+    applySchoolHeading();
 
     const name = profile?.name ?? "";
     document.getElementById("admin-name").textContent =
@@ -628,35 +667,81 @@ async function loadOverview() {
   }
 }
 
-// Three cards + an at-risk table. Enrollment = active students; today's
-// attendance rate = present+late over today's records; at-risk = students
-// with 3+ recorded absences (all-time).
+/** Title the overview with the school's own name once one is configured. */
+function applySchoolHeading() {
+  const heading = document.getElementById("overview-heading");
+  const name = String(state.school?.name ?? "").trim();
+  if (heading && name) heading.textContent = name;
+}
+
+// Count cards only. Enrollment = active students; today's attendance rate =
+// present+late over today's records; at-risk = how many students have 3+
+// recorded absences (a figure, not a roster — the per-student breakdown is a
+// report, not something a director needs on a school-wide dashboard).
 const AT_RISK_THRESHOLD = 3;
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Write a count into a stat card, guarding against markup drift. */
+function setStat(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(value);
+}
+
 async function loadOverviewStats() {
   try {
-    const [students, sectionsList, todayRows, allAttendance] =
-      await Promise.all([
-        data.listStudents(),
-        state.activeYear
-          ? data.listSections(state.activeYear.id)
-          : Promise.resolve([]),
-        data.listAttendanceOn(todayIso()),
-        data.listAllAttendance(),
-      ]);
+    const [
+      students,
+      sectionsList,
+      todayRows,
+      allAttendance,
+      teachers,
+      subjects,
+      rooms,
+    ] = await Promise.all([
+      data.listStudents(),
+      state.activeYear
+        ? data.listSections(state.activeYear.id)
+        : Promise.resolve([]),
+      data.listAttendanceOn(todayIso()),
+      data.listAllAttendance(),
+      data.listTeachers(),
+      data.listSubjects(),
+      data.listRooms(),
+    ]);
     state.students = students;
     state.sections = sectionsList;
+    state.teachers = teachers;
+    state.subjects = subjects;
+    state.rooms = rooms;
     if (!state.gradeLevels.length)
       state.gradeLevels = await data.listGradeLevels();
 
     // Enrollment (active students).
     const active = students.filter((s) => s.status === "active");
-    document.getElementById("stat-enrollment").textContent = String(
-      active.length,
+    setStat("stat-enrollment", active.length);
+
+    // Structure counts. Teachers are counted as staff on the books (active
+    // ones); sections belong to the active year.
+    setStat(
+      "stat-teachers",
+      teachers.filter((x) => x.status !== "inactive").length,
+    );
+    setStat("stat-subjects", subjects.length);
+    setStat("stat-sections", sectionsList.length);
+
+    // Room utilization: how many rooms this year's sections actually occupy,
+    // out of all rooms on file — "8/12" answers "do we have room to grow?".
+    const roomsInUse = new Set(
+      sectionsList.map((s) => s.room_id).filter((id) => id != null),
+    );
+    setStat(
+      "stat-rooms",
+      rooms.length
+        ? `${roomsInUse.size}/${rooms.length}`
+        : t("console.overview.noData"),
     );
 
     // Today's attendance rate.
@@ -667,7 +752,8 @@ async function loadOverviewStats() {
       ? `${Math.round((present / todayRows.length) * 100)}%`
       : t("console.overview.noData");
 
-    // At-risk: absence counts per student.
+    // At-risk: how many students have crossed the absence threshold. Only
+    // students still on the roster count.
     const absencesByStudent = new Map();
     allAttendance.forEach((r) => {
       if (r.status === "absent")
@@ -676,44 +762,14 @@ async function loadOverviewStats() {
           (absencesByStudent.get(r.student_id) ?? 0) + 1,
         );
     });
-    const atRisk = [...absencesByStudent.entries()]
-      .filter(([, n]) => n >= AT_RISK_THRESHOLD)
-      .map(([studentId, n]) => ({
-        student: students.find((s) => s.id === studentId),
-        absences: n,
-      }))
-      .filter((r) => r.student)
-      .sort((a, b) => b.absences - a.absences);
-
-    document.getElementById("stat-atrisk").textContent = String(atRisk.length);
-    renderAtRisk(atRisk);
+    const atRiskCount = [...absencesByStudent.entries()].filter(
+      ([studentId, n]) =>
+        n >= AT_RISK_THRESHOLD && students.some((s) => s.id === studentId),
+    ).length;
+    setStat("stat-atrisk", atRiskCount);
   } catch (err) {
     console.error("loadOverviewStats:", err);
-    renderErrorRow("atrisk-body", 3);
   }
-}
-
-function renderAtRisk(rows) {
-  const tbody = document.getElementById("atrisk-body");
-  tbody.innerHTML = "";
-  if (!rows.length) {
-    renderEmptyRow("atrisk-body", 3, t("console.overview.atRiskEmpty"));
-    return;
-  }
-  rows.slice(0, 15).forEach(({ student, absences }) => {
-    const sec = student.class_id
-      ? (state.sections.find((x) => x.id === student.class_id) &&
-          sectionName(state.sections.find((x) => x.id === student.class_id))) ||
-        "—"
-      : "—";
-    tbody.appendChild(
-      tableRow([
-        escapeHtml(`${student.first_name} ${student.last_name}`),
-        escapeHtml(sec),
-        `<span class="badge badge-warning">${escapeHtml(absences)}</span>`,
-      ]),
-    );
-  });
 }
 
 async function fetchProfile() {
@@ -789,9 +845,11 @@ function renderYears(years) {
           status,
         ],
         actions,
+        y.id,
       ),
     );
   });
+  applySavedFlash("years-body");
 }
 
 /**
@@ -875,8 +933,10 @@ function openYearForm(year = null) {
         start_date: v.start_date,
         end_date: v.end_date,
       };
-      if (year) await data.updateSchoolYear(year.id, payload);
-      else await data.createSchoolYear({ ...payload, is_active: false });
+      const saved = year
+        ? await data.updateSchoolYear(year.id, payload).then(() => year)
+        : await data.createSchoolYear({ ...payload, is_active: false });
+      markSaved("years-body", saved?.id ?? year?.id);
       showToast(t("common.saved"));
       loadYearPeriods();
     },
@@ -965,9 +1025,11 @@ function renderPeriods(periods) {
           p.weight != null ? `${escapeHtml(p.weight)}%` : "—",
         ],
         actions,
+        p.id,
       ),
     );
   });
+  applySavedFlash("periods-body");
 }
 
 function openPeriodForm(period = null) {
@@ -1073,12 +1135,13 @@ function openPeriodForm(period = null) {
         end_date: v.end_date,
         weight: num(v.weight),
       };
-      if (period) await data.updatePeriod(period.id, payload);
-      else
-        await data.createPeriod({
-          ...payload,
-          school_year_id: state.activeYear.id,
-        });
+      const saved = period
+        ? await data.updatePeriod(period.id, payload).then(() => period)
+        : await data.createPeriod({
+            ...payload,
+            school_year_id: state.activeYear.id,
+          });
+      markSaved("periods-body", saved?.id ?? period?.id);
       showToast(t("common.saved"));
 
       // Re-read first, then judge the year off the stored rows rather than the
@@ -1138,9 +1201,11 @@ async function loadGradeLevels() {
               true,
             ),
           ],
+          g.id,
         ),
       );
     });
+    applySavedFlash("grades-body");
   } catch (err) {
     console.error("loadGradeLevels:", err);
     renderErrorRow("grades-body", 3);
@@ -1186,8 +1251,10 @@ function openGradeForm(grade = null) {
         numeric_level: num(v.numeric_level),
         name: v.name.trim(),
       };
-      if (grade) await data.updateGradeLevel(grade.id, payload);
-      else await data.createGradeLevel(payload);
+      const saved = grade
+        ? await data.updateGradeLevel(grade.id, payload).then(() => grade)
+        : await data.createGradeLevel(payload);
+      markSaved("grades-body", saved?.id ?? grade?.id);
       showToast(t("common.saved"));
       loadGradeLevels();
     },
@@ -1229,9 +1296,11 @@ async function loadRooms() {
               true,
             ),
           ],
+          r.id,
         ),
       );
     });
+    applySavedFlash("rooms-body");
   } catch (err) {
     console.error("loadRooms:", err);
     renderErrorRow("rooms-body", 4);
@@ -1289,8 +1358,10 @@ function openRoomForm(room = null) {
         capacity: num(v.capacity),
         type: v.type,
       };
-      if (room) await data.updateRoom(room.id, payload);
-      else await data.createRoom(payload);
+      const saved = room
+        ? await data.updateRoom(room.id, payload).then(() => room)
+        : await data.createRoom(payload);
+      markSaved("rooms-body", saved?.id ?? room?.id);
       showToast(t("common.saved"));
       loadRooms();
     },
@@ -1341,8 +1412,16 @@ function teacherName(id) {
   const tch = state.teachers.find((x) => x.id === id);
   return tch ? `${tch.first_name} ${tch.last_name}` : "—";
 }
+/**
+ * Human-readable label for a section — "10th Grade — Section A", the same
+ * phrasing the student portal uses. `display_name` is a storage code
+ * (numeric level + section, e.g. "1010-1") and reads as noise in a picker,
+ * so it is only the fallback for when grade levels aren't loaded yet.
+ */
 function sectionName(sec) {
-  return sec.display_name || `${gradeName(sec.grade_level_id)} ${sec.section}`;
+  const grade = state.gradeLevels.find((g) => g.id === sec.grade_level_id);
+  if (!grade) return sec.display_name || String(sec.section ?? "—");
+  return t("student.classLine", { grade: grade.name, section: sec.section });
 }
 
 function renderSections(list) {
@@ -1384,9 +1463,11 @@ function renderSections(list) {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("sections-body");
 }
 
 function openSectionForm(section = null) {
@@ -1418,10 +1499,14 @@ function openSectionForm(section = null) {
         placeholder: "A",
       },
       {
+        // Optional on purpose: a section can exist before its lead teacher is
+        // decided. The help text explains the role, which "Homeroom" alone
+        // doesn't convey to a director setting up their first year.
         name: "homeroom_teacher_id",
         label: t("console.sections.homeroom"),
         type: "select",
         value: section?.homeroom_teacher_id,
+        help: t("console.sections.homeroomHelp"),
         options: optionsFrom(
           state.teachers,
           (tch) => `${tch.first_name} ${tch.last_name}`,
@@ -1468,12 +1553,13 @@ function openSectionForm(section = null) {
         room_id: num(v.room_id),
         max_capacity: num(v.max_capacity),
       };
-      if (section) await data.updateSection(section.id, payload);
-      else
-        await data.createSection({
-          ...payload,
-          school_year_id: state.activeYear.id,
-        });
+      const saved = section
+        ? await data.updateSection(section.id, payload).then(() => section)
+        : await data.createSection({
+            ...payload,
+            school_year_id: state.activeYear.id,
+          });
+      markSaved("sections-body", saved?.id ?? section?.id);
       showToast(t("common.saved"));
       loadSections();
     },
@@ -1560,9 +1646,11 @@ function renderSubjects(subjects, mapping) {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("subjects-body");
 }
 
 function openSubjectForm(subject = null, mapped = []) {
@@ -1629,6 +1717,7 @@ function openSubjectForm(subject = null, mapped = []) {
         const created = await data.createSubject(payload);
         subjectId = created.id;
       }
+      markSaved("subjects-body", subjectId);
       // Reconcile grade-level mapping (add checked, remove unchecked).
       const desired = new Set(v.grades.map(Number));
       const current = new Map(mapped.map((m) => [m.grade_level_id, m.id]));
@@ -1665,7 +1754,6 @@ async function loadTeachers() {
     console.error("loadTeachers:", err);
     renderErrorRow("teachers-body", 6);
   }
-  await loadAssignments();
 }
 
 const TEACHER_STATUSES = ["active", "inactive", "on_leave"];
@@ -1708,9 +1796,11 @@ function renderTeachers(list) {
             true,
           ),
         ],
+        tch.id,
       ),
     );
   });
+  applySavedFlash("teachers-body");
 }
 
 // ── Login accounts (Edge Function in real mode; simulated in demo) ──
@@ -1864,8 +1954,10 @@ function openTeacherForm(teacher = null) {
         specialization: nullable(v.specialization),
         status: v.status,
       };
-      if (teacher) await data.updateTeacher(teacher.id, payload);
-      else await data.createTeacher(payload);
+      const saved = teacher
+        ? await data.updateTeacher(teacher.id, payload).then(() => teacher)
+        : await data.createTeacher(payload);
+      markSaved("teachers-body", saved?.id ?? teacher?.id);
       showToast(t("common.saved"));
       loadTeachers();
     },
@@ -1889,6 +1981,10 @@ async function loadAssignments() {
   label.textContent = state.activeYear.name;
   renderMessageRow("assignments-body", 4, t("common.loading"));
   try {
+    // Assignments is its own tab now, so it can be the first thing opened —
+    // it has to fetch the teachers it names rather than inherit them from
+    // whichever section happened to load first.
+    await ensureTeachers();
     const [assignments, sectionsList, subjects] = await Promise.all([
       data.listAssignments(state.activeYear.id),
       data.listSections(state.activeYear.id),
@@ -1941,9 +2037,11 @@ function renderAssignments(list) {
             true,
           ),
         ],
+        a.id,
       ),
     );
   });
+  applySavedFlash("assignments-body");
 }
 
 function openAssignmentForm() {
@@ -1984,12 +2082,13 @@ function openAssignmentForm() {
       },
     ],
     onSubmit: async (v) => {
-      await data.createAssignment({
+      const created = await data.createAssignment({
         class_id: num(v.class_id),
         subject_id: num(v.subject_id),
         teacher_id: num(v.teacher_id),
         school_year_id: state.activeYear.id,
       });
+      markSaved("assignments-body", created?.id);
       showToast(t("common.saved"));
       loadAssignments();
     },
@@ -2182,9 +2281,6 @@ document
 document
   .getElementById("sch-done")
   .addEventListener("click", closeScheduleModal);
-scheduleOverlay.addEventListener("click", (e) => {
-  if (e.target === scheduleOverlay) closeScheduleModal();
-});
 
 // ───────────────────────────────────────────────────────────────
 //  5g. STUDENTS & ENROLLMENT (+ CSV roster import)
@@ -2247,25 +2343,35 @@ async function loadStudents() {
   }
 }
 
+/**
+ * Students filter. "All students" and "No section assigned" are enrollment
+ * states, not places — grouping the real sections under their own heading
+ * stops "unassigned" from reading like a section the school actually has.
+ */
 function renderStudentFilter() {
   const sel = document.getElementById("students-filter");
   const prev = String(state.studentFilter);
   sel.innerHTML = "";
-  const opts = [
-    { value: "all", label: t("console.students.allSections") },
-    { value: "unassigned", label: t("console.students.unassigned") },
-    ...state.sections.map((s) => ({
-      value: String(s.id),
-      label: sectionName(s),
-    })),
-  ];
-  opts.forEach((o) => {
+
+  const addOption = (parent, value, label) => {
     const el = document.createElement("option");
-    el.value = o.value;
-    el.textContent = o.label;
-    if (o.value === prev) el.selected = true;
-    sel.appendChild(el);
-  });
+    el.value = value;
+    el.textContent = label;
+    if (value === prev) el.selected = true;
+    parent.appendChild(el);
+  };
+
+  addOption(sel, "all", t("console.students.allStudents"));
+  addOption(sel, "unassigned", t("console.students.unassigned"));
+
+  if (state.sections.length) {
+    const group = document.createElement("optgroup");
+    group.label = t("console.students.sectionsGroup");
+    state.sections.forEach((s) =>
+      addOption(group, String(s.id), sectionName(s)),
+    );
+    sel.appendChild(group);
+  }
 }
 
 function filteredStudents() {
@@ -2340,9 +2446,11 @@ function renderStudents() {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("students-body");
 }
 
 function sectionOptions() {
@@ -2459,8 +2567,10 @@ function openStudentForm(student = null) {
         class_id: num(v.class_id),
         status: v.status,
       };
-      if (student) await data.updateStudent(student.id, payload);
-      else await data.createStudent(payload);
+      const saved = student
+        ? await data.updateStudent(student.id, payload).then(() => student)
+        : await data.createStudent(payload);
+      markSaved("students-body", saved?.id ?? student?.id);
       showToast(t("common.saved"));
       loadStudents();
     },
@@ -3459,12 +3569,11 @@ Object.entries(IMPORT_BUTTONS).forEach(([id, key]) => {
     .getElementById(id)
     ?.addEventListener("click", () => openImportModal(key));
 });
+// Backdrop clicks are ignored here too — a pasted roster and its column
+// mapping are exactly the kind of work a stray click used to destroy.
 document
   .getElementById("import-close")
   .addEventListener("click", closeImportModal);
-importOverlay.addEventListener("click", (e) => {
-  if (e.target === importOverlay) closeImportModal();
-});
 
 // ───────────────────────────────────────────────────────────────
 //  5h. SETTINGS (read-only)

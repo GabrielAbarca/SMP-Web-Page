@@ -88,12 +88,21 @@
             ></span>
             <h3 data-i18n="console.nav.overview">Overview</h3>
           </a>
+          <!-- Dependency order: each tab only needs data from the ones above
+               it, so a director setting up a school never hits a feature that
+               depends on a later step. -->
           <a href="/admin" data-page="yearperiods">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true">
                 <use href="#icon-calendar_month"></use></svg
             ></span>
             <h3 data-i18n="console.nav.yearPeriods">Year &amp; Periods</h3>
+          </a>
+          <a href="/admin" data-page="teachers">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+            ></span>
+            <h3 data-i18n="console.nav.teachers">Teachers</h3>
           </a>
           <a href="/admin" data-page="gradessections">
             <span class="material-symbols-outlined"
@@ -109,11 +118,11 @@
             ></span>
             <h3 data-i18n="console.nav.subjects">Subjects</h3>
           </a>
-          <a href="/admin" data-page="teachers">
+          <a href="/admin" data-page="assignments">
             <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+              ><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg
             ></span>
-            <h3 data-i18n="console.nav.teachers">Teachers</h3>
+            <h3 data-i18n="console.nav.assignments">Assignments</h3>
           </a>
           <a href="/admin" data-page="students">
             <span class="material-symbols-outlined"
@@ -153,7 +162,11 @@
       <main>
         <!-- ─── OVERVIEW (landing) ───────────────────────────── -->
         <section class="view-section active" id="view-overview">
-          <h1 data-i18n="console.heading.overview">School Overview</h1>
+          <!-- Replaced with the school's own name once school_settings has
+               one; the generic heading is the fallback. -->
+          <h1 id="overview-heading" data-i18n="console.heading.overview">
+            School Overview
+          </h1>
           <p class="view-subtitle" data-i18n="console.overview.subtitle">
             School-wide setup and administration.
           </p>
@@ -209,6 +222,9 @@
                 <h2 class="stat-value" id="stat-attendance">—</h2>
               </div>
             </div>
+            <!-- At-risk is a single summary figure. The per-student table
+                 that used to sit below belongs in a report, not on a
+                 school-wide dashboard. -->
             <div class="stat-card">
               <span class="stat-icon stat-icon-warning material-symbols-outlined"
                 ><svg aria-hidden="true"><use href="#icon-error"></use></svg
@@ -218,35 +234,54 @@
                   At-risk students
                 </p>
                 <h2 class="stat-value" id="stat-atrisk">—</h2>
-              </div>
-            </div>
-          </div>
-
-          <div class="console-panel">
-            <div class="panel-head">
-              <div>
-                <h2 data-i18n="console.overview.atRiskTitle">
-                  At-risk absences
-                </h2>
-                <p
-                  class="panel-sub"
-                  data-i18n="console.overview.atRiskSub"
-                >
-                  Students with 3 or more recorded absences.
+                <p class="stat-hint" data-i18n="console.overview.atRiskHint">
+                  3 or more recorded absences
                 </p>
               </div>
             </div>
-            <div class="table-scroll">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th data-i18n="console.overview.student">Student</th>
-                    <th data-i18n="console.overview.section">Section</th>
-                    <th data-i18n="console.overview.absences">Absences</th>
-                  </tr>
-                </thead>
-                <tbody id="atrisk-body"></tbody>
-              </table>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-primary material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-co_present"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.teachers">
+                  Teachers
+                </p>
+                <h2 class="stat-value" id="stat-teachers">—</h2>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-primary material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-menu_book"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.subjects">
+                  Subjects
+                </p>
+                <h2 class="stat-value" id="stat-subjects">—</h2>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-success material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-school"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.sections">
+                  Sections
+                </p>
+                <h2 class="stat-value" id="stat-sections">—</h2>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon stat-icon-success material-symbols-outlined"
+                ><svg aria-hidden="true"><use href="#icon-weekend"></use></svg
+              ></span>
+              <div>
+                <p class="stat-label" data-i18n="console.overview.roomUse">
+                  Rooms in use
+                </p>
+                <h2 class="stat-value" id="stat-rooms">—</h2>
+              </div>
             </div>
           </div>
         </section>
@@ -536,6 +571,11 @@
             </div>
           </div>
 
+        </section>
+
+        <!-- ─── ASSIGNMENTS (subject + teacher per section) ───── -->
+        <section class="view-section" id="view-assignments">
+          <h1 data-i18n="console.heading.assignments">Class Assignments</h1>
           <div class="console-panel">
             <div class="panel-head">
               <div>
@@ -579,8 +619,8 @@
               <div class="panel-actions">
                 <select
                   id="students-filter"
-                  aria-label="Filter by section"
-                  data-i18n-aria-label="console.students.filterBySection"
+                  aria-label="Filter students"
+                  data-i18n-aria-label="console.students.filterStudents"
                 ></select>
                 <button class="btn btn-ghost btn-sm" id="btn-import-csv">
                   <span class="material-symbols-outlined"

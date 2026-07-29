@@ -201,12 +201,15 @@ test.describe("admin console", () => {
     );
     await page.click('.sidebar a[data-page="students"]');
 
-    // Add one student enrolled into 7A.
+    // Add one student enrolled into 7th Grade section A. Sections are labelled
+    // for humans now ("7th Grade — Section A"), not by their storage code.
     await page.click("#btn-add-student");
     await page.fill("#modal-field-first_name", "Ana");
     await page.fill("#modal-field-last_name", "García");
     await page.fill("#modal-field-enrollment_number", "S-101");
-    await page.selectOption("#modal-field-class_id", { label: "7A" });
+    await page.selectOption("#modal-field-class_id", {
+      label: "7th Grade — Section A",
+    });
     await page.click("#modal-submit");
     await expect(page.locator("#students-body")).toContainText("Ana García");
 
@@ -217,7 +220,9 @@ test.describe("admin console", () => {
       "first_name,last_name,enrollment_number,gender\n" +
         "Luis,Martínez,S-102,M\nMaría,Rojas,S-103,F\nCarlos,Díaz,,M",
     );
-    await page.selectOption("#import-section", { label: "7A" });
+    await page.selectOption("#import-section", {
+      label: "7th Grade — Section A",
+    });
     await page.click("#import-footer .btn-primary"); // → mapping
     await expect(page.locator(".map-grid")).toBeVisible();
     await page.click("#import-footer .btn-primary"); // → preview
@@ -229,14 +234,27 @@ test.describe("admin console", () => {
     expect(writes).toEqual([]);
   });
 
-  test("overview shows enrollment, attendance rate and at-risk absences", async ({
+  test("overview shows enrollment, attendance rate and structure counts", async ({
     page,
     context,
   }) => {
     const today = new Date().toISOString().slice(0, 10);
     const seeded = {
       ...consoleFix,
+      school_settings: [{ id: 1, name: "Colegio San José", id_label: null }],
       grade_levels: [{ id: 1, name: "7th Grade", numeric_level: 7 }],
+      teachers: [
+        { id: 71, first_name: "Sofía", last_name: "Ramírez", status: "active" },
+        { id: 72, first_name: "Diego", last_name: "Soto", status: "inactive" },
+      ],
+      subjects: [
+        { id: 31, name: "Mathematics", code: "MATH7" },
+        { id: 32, name: "Science", code: "SCI7" },
+      ],
+      rooms: [
+        { id: 5, name: "Aula 1", capacity: 30, type: "classroom" },
+        { id: 6, name: "Aula 2", capacity: 30, type: "classroom" },
+      ],
       classes: [
         {
           id: 21,
@@ -244,6 +262,7 @@ test.describe("admin console", () => {
           grade_level_id: 1,
           section: "A",
           display_name: "7A",
+          room_id: 5,
         },
       ],
       students: [
@@ -311,8 +330,22 @@ test.describe("admin console", () => {
     await page.goto("/admin.html");
     await expect(page.locator("#stat-enrollment")).toHaveText("2");
     await expect(page.locator("#stat-attendance")).toHaveText("50%");
+    // At-risk is a summary figure now — the per-student table it used to sit
+    // above was demoted off the dashboard.
     await expect(page.locator("#stat-atrisk")).toHaveText("1");
-    await expect(page.locator("#atrisk-body")).toContainText("Ana García");
+    await expect(page.locator("#atrisk-body")).toHaveCount(0);
+
+    // Structure counts: active teachers, subjects, this year's sections, and
+    // room utilization (1 of 2 rooms occupied).
+    await expect(page.locator("#stat-teachers")).toHaveText("1");
+    await expect(page.locator("#stat-subjects")).toHaveText("2");
+    await expect(page.locator("#stat-sections")).toHaveText("1");
+    await expect(page.locator("#stat-rooms")).toHaveText("1/2");
+
+    // The heading carries the school's own name.
+    await expect(page.locator("#overview-heading")).toHaveText(
+      "Colegio San José",
+    );
 
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
