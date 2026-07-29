@@ -551,6 +551,7 @@ const LOADERS = {
   gradessections: loadGradesSections,
   subjects: loadSubjects,
   teachers: loadTeachers,
+  assignments: loadAssignments,
   students: loadStudents,
   settings: loadSettings,
 };
@@ -607,9 +608,11 @@ async function loadOverview() {
     const [profile, years] = await Promise.all([
       PROFILE ? Promise.resolve(PROFILE) : fetchProfile(),
       data.listSchoolYears(),
+      loadSchoolSettings(),
     ]);
     PROFILE = profile;
     state.activeYear = years.find((y) => y.is_active) ?? null;
+    applySchoolHeading();
 
     const name = profile?.name ?? "";
     document.getElementById("admin-name").textContent =
@@ -628,35 +631,81 @@ async function loadOverview() {
   }
 }
 
-// Three cards + an at-risk table. Enrollment = active students; today's
-// attendance rate = present+late over today's records; at-risk = students
-// with 3+ recorded absences (all-time).
+/** Title the overview with the school's own name once one is configured. */
+function applySchoolHeading() {
+  const heading = document.getElementById("overview-heading");
+  const name = String(state.school?.name ?? "").trim();
+  if (heading && name) heading.textContent = name;
+}
+
+// Count cards only. Enrollment = active students; today's attendance rate =
+// present+late over today's records; at-risk = how many students have 3+
+// recorded absences (a figure, not a roster — the per-student breakdown is a
+// report, not something a director needs on a school-wide dashboard).
 const AT_RISK_THRESHOLD = 3;
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Write a count into a stat card, guarding against markup drift. */
+function setStat(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(value);
+}
+
 async function loadOverviewStats() {
   try {
-    const [students, sectionsList, todayRows, allAttendance] =
-      await Promise.all([
-        data.listStudents(),
-        state.activeYear
-          ? data.listSections(state.activeYear.id)
-          : Promise.resolve([]),
-        data.listAttendanceOn(todayIso()),
-        data.listAllAttendance(),
-      ]);
+    const [
+      students,
+      sectionsList,
+      todayRows,
+      allAttendance,
+      teachers,
+      subjects,
+      rooms,
+    ] = await Promise.all([
+      data.listStudents(),
+      state.activeYear
+        ? data.listSections(state.activeYear.id)
+        : Promise.resolve([]),
+      data.listAttendanceOn(todayIso()),
+      data.listAllAttendance(),
+      data.listTeachers(),
+      data.listSubjects(),
+      data.listRooms(),
+    ]);
     state.students = students;
     state.sections = sectionsList;
+    state.teachers = teachers;
+    state.subjects = subjects;
+    state.rooms = rooms;
     if (!state.gradeLevels.length)
       state.gradeLevels = await data.listGradeLevels();
 
     // Enrollment (active students).
     const active = students.filter((s) => s.status === "active");
-    document.getElementById("stat-enrollment").textContent = String(
-      active.length,
+    setStat("stat-enrollment", active.length);
+
+    // Structure counts. Teachers are counted as staff on the books (active
+    // ones); sections belong to the active year.
+    setStat(
+      "stat-teachers",
+      teachers.filter((x) => x.status !== "inactive").length,
+    );
+    setStat("stat-subjects", subjects.length);
+    setStat("stat-sections", sectionsList.length);
+
+    // Room utilization: how many rooms this year's sections actually occupy,
+    // out of all rooms on file — "8/12" answers "do we have room to grow?".
+    const roomsInUse = new Set(
+      sectionsList.map((s) => s.room_id).filter((id) => id != null),
+    );
+    setStat(
+      "stat-rooms",
+      rooms.length
+        ? `${roomsInUse.size}/${rooms.length}`
+        : t("console.overview.noData"),
     );
 
     // Today's attendance rate.
@@ -667,7 +716,8 @@ async function loadOverviewStats() {
       ? `${Math.round((present / todayRows.length) * 100)}%`
       : t("console.overview.noData");
 
-    // At-risk: absence counts per student.
+    // At-risk: how many students have crossed the absence threshold. Only
+    // students still on the roster count.
     const absencesByStudent = new Map();
     allAttendance.forEach((r) => {
       if (r.status === "absent")
@@ -676,44 +726,14 @@ async function loadOverviewStats() {
           (absencesByStudent.get(r.student_id) ?? 0) + 1,
         );
     });
-    const atRisk = [...absencesByStudent.entries()]
-      .filter(([, n]) => n >= AT_RISK_THRESHOLD)
-      .map(([studentId, n]) => ({
-        student: students.find((s) => s.id === studentId),
-        absences: n,
-      }))
-      .filter((r) => r.student)
-      .sort((a, b) => b.absences - a.absences);
-
-    document.getElementById("stat-atrisk").textContent = String(atRisk.length);
-    renderAtRisk(atRisk);
+    const atRiskCount = [...absencesByStudent.entries()].filter(
+      ([studentId, n]) =>
+        n >= AT_RISK_THRESHOLD && students.some((s) => s.id === studentId),
+    ).length;
+    setStat("stat-atrisk", atRiskCount);
   } catch (err) {
     console.error("loadOverviewStats:", err);
-    renderErrorRow("atrisk-body", 3);
   }
-}
-
-function renderAtRisk(rows) {
-  const tbody = document.getElementById("atrisk-body");
-  tbody.innerHTML = "";
-  if (!rows.length) {
-    renderEmptyRow("atrisk-body", 3, t("console.overview.atRiskEmpty"));
-    return;
-  }
-  rows.slice(0, 15).forEach(({ student, absences }) => {
-    const sec = student.class_id
-      ? (state.sections.find((x) => x.id === student.class_id) &&
-          sectionName(state.sections.find((x) => x.id === student.class_id))) ||
-        "—"
-      : "—";
-    tbody.appendChild(
-      tableRow([
-        escapeHtml(`${student.first_name} ${student.last_name}`),
-        escapeHtml(sec),
-        `<span class="badge badge-warning">${escapeHtml(absences)}</span>`,
-      ]),
-    );
-  });
 }
 
 async function fetchProfile() {
@@ -1341,8 +1361,16 @@ function teacherName(id) {
   const tch = state.teachers.find((x) => x.id === id);
   return tch ? `${tch.first_name} ${tch.last_name}` : "—";
 }
+/**
+ * Human-readable label for a section — "10th Grade — Section A", the same
+ * phrasing the student portal uses. `display_name` is a storage code
+ * (numeric level + section, e.g. "1010-1") and reads as noise in a picker,
+ * so it is only the fallback for when grade levels aren't loaded yet.
+ */
 function sectionName(sec) {
-  return sec.display_name || `${gradeName(sec.grade_level_id)} ${sec.section}`;
+  const grade = state.gradeLevels.find((g) => g.id === sec.grade_level_id);
+  if (!grade) return sec.display_name || String(sec.section ?? "—");
+  return t("student.classLine", { grade: grade.name, section: sec.section });
 }
 
 function renderSections(list) {
@@ -1418,10 +1446,14 @@ function openSectionForm(section = null) {
         placeholder: "A",
       },
       {
+        // Optional on purpose: a section can exist before its lead teacher is
+        // decided. The help text explains the role, which "Homeroom" alone
+        // doesn't convey to a director setting up their first year.
         name: "homeroom_teacher_id",
         label: t("console.sections.homeroom"),
         type: "select",
         value: section?.homeroom_teacher_id,
+        help: t("console.sections.homeroomHelp"),
         options: optionsFrom(
           state.teachers,
           (tch) => `${tch.first_name} ${tch.last_name}`,
@@ -1665,7 +1697,6 @@ async function loadTeachers() {
     console.error("loadTeachers:", err);
     renderErrorRow("teachers-body", 6);
   }
-  await loadAssignments();
 }
 
 const TEACHER_STATUSES = ["active", "inactive", "on_leave"];
@@ -1889,6 +1920,10 @@ async function loadAssignments() {
   label.textContent = state.activeYear.name;
   renderMessageRow("assignments-body", 4, t("common.loading"));
   try {
+    // Assignments is its own tab now, so it can be the first thing opened —
+    // it has to fetch the teachers it names rather than inherit them from
+    // whichever section happened to load first.
+    await ensureTeachers();
     const [assignments, sectionsList, subjects] = await Promise.all([
       data.listAssignments(state.activeYear.id),
       data.listSections(state.activeYear.id),
@@ -2247,25 +2282,35 @@ async function loadStudents() {
   }
 }
 
+/**
+ * Students filter. "All students" and "No section assigned" are enrollment
+ * states, not places — grouping the real sections under their own heading
+ * stops "unassigned" from reading like a section the school actually has.
+ */
 function renderStudentFilter() {
   const sel = document.getElementById("students-filter");
   const prev = String(state.studentFilter);
   sel.innerHTML = "";
-  const opts = [
-    { value: "all", label: t("console.students.allSections") },
-    { value: "unassigned", label: t("console.students.unassigned") },
-    ...state.sections.map((s) => ({
-      value: String(s.id),
-      label: sectionName(s),
-    })),
-  ];
-  opts.forEach((o) => {
+
+  const addOption = (parent, value, label) => {
     const el = document.createElement("option");
-    el.value = o.value;
-    el.textContent = o.label;
-    if (o.value === prev) el.selected = true;
-    sel.appendChild(el);
-  });
+    el.value = value;
+    el.textContent = label;
+    if (value === prev) el.selected = true;
+    parent.appendChild(el);
+  };
+
+  addOption(sel, "all", t("console.students.allStudents"));
+  addOption(sel, "unassigned", t("console.students.unassigned"));
+
+  if (state.sections.length) {
+    const group = document.createElement("optgroup");
+    group.label = t("console.students.sectionsGroup");
+    state.sections.forEach((s) =>
+      addOption(group, String(s.id), sectionName(s)),
+    );
+    sel.appendChild(group);
+  }
 }
 
 function filteredStudents() {

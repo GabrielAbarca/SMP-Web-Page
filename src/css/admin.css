@@ -118,6 +118,14 @@
     line-height: 1.1;
   }
 
+  /* Qualifies a figure that would otherwise need explaining (what makes a
+     student "at risk"), now that the detail table is gone. */
+  .stat-hint {
+    font-size: 0.72rem;
+    color: var(--color-info-dark);
+    margin-top: 0.2rem;
+  }
+
   /* ─── "Coming soon" placeholder panels ─────────────────────────── */
   .console-placeholder {
     background: var(--color-white);
