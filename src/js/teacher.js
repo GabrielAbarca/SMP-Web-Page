@@ -747,9 +747,6 @@ function closeModal() {
 
 modalClose.addEventListener("click", closeModal);
 modalCancel.addEventListener("click", closeModal);
-modalOverlay.addEventListener("click", (e) => {
-  if (e.target === modalOverlay) closeModal();
-});
 
 // ── Confirm Modal ──────────────────────────────────────────────
 const confirmOverlay = document.getElementById("confirm-overlay");
@@ -783,9 +780,6 @@ confirmDelete.addEventListener("click", async () => {
   }
 });
 confirmCancel.addEventListener("click", closeConfirm);
-confirmOverlay.addEventListener("click", (e) => {
-  if (e.target === confirmOverlay) closeConfirm();
-});
 
 // ── Student drawer ─────────────────────────────────────────────
 const drawerOverlay = document.getElementById("drawer-overlay");
@@ -799,6 +793,10 @@ function closeDrawer() {
   drawerOverlay.classList.remove("active");
 }
 document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+// The only dialog that still closes on a backdrop click: this drawer is a
+// read-only detail view with nothing to lose, and dismissing a drawer that
+// way is what users expect. Every dialog holding input requires an explicit
+// close instead.
 drawerOverlay.addEventListener("click", (e) => {
   if (e.target === drawerOverlay) closeDrawer();
 });
@@ -817,9 +815,6 @@ document
 document
   .getElementById("manage-add")
   .addEventListener("click", () => openAddAssignment());
-assignmentsOverlay.addEventListener("click", (e) => {
-  if (e.target === assignmentsOverlay) closeManageAssignments();
-});
 
 const sgOverlay = document.getElementById("student-grades-overlay");
 const sgTitle = document.getElementById("sg-title");
@@ -833,9 +828,6 @@ document
   .getElementById("sg-cancel")
   .addEventListener("click", closeStudentGradesModal);
 sgSave.addEventListener("click", saveStudentGrades);
-sgOverlay.addEventListener("click", (e) => {
-  if (e.target === sgOverlay) closeStudentGradesModal();
-});
 
 // Per-assignment grade unlock: clicking an Edit button unlocks ONLY that one
 // score input (delegated because sgBody is re-rendered on every open).
@@ -869,9 +861,6 @@ document
 document
   .getElementById("categories-add")
   .addEventListener("click", () => openCategoryForm());
-categoriesOverlay.addEventListener("click", (e) => {
-  if (e.target === categoriesOverlay) closeCategoriesModal();
-});
 
 // ── Post grades modal (item 1) ─────────────────────────────────
 const pgOverlay = document.getElementById("post-grades-overlay");
@@ -882,9 +871,6 @@ const pgSave = document.getElementById("pg-save");
 document.getElementById("pg-close").addEventListener("click", closePostGrades);
 document.getElementById("pg-cancel").addEventListener("click", closePostGrades);
 pgSave.addEventListener("click", savePostGrades);
-pgOverlay.addEventListener("click", (e) => {
-  if (e.target === pgOverlay) closePostGrades();
-});
 
 // ── Column grade entry modal (item 4) ──────────────────────────
 const cgOverlay = document.getElementById("column-grades-overlay");
@@ -899,9 +885,6 @@ document
   .getElementById("cg-cancel")
   .addEventListener("click", closeColumnGrades);
 cgSave.addEventListener("click", saveColumnGrades);
-cgOverlay.addEventListener("click", (e) => {
-  if (e.target === cgOverlay) closeColumnGrades();
-});
 
 // Print progress report from the open student drawer (item 6).
 document

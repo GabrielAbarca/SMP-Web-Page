@@ -380,13 +380,19 @@
   }
 
   /* ─── Toasts ───────────────────────────────────────────────────── */
+  /* Top-center: status messages belong where the eye already is during form
+     work, not tucked in a corner. Above the modal overlay's z-index, so a
+     toast raised while a dialog is open is still seen. */
   .toast-container {
     position: fixed;
-    bottom: 1.6rem;
-    right: 1.6rem;
+    top: 1.6rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 0.6rem;
+    max-width: calc(100vw - 2rem);
     z-index: 1100;
   }
 
@@ -413,11 +419,11 @@
 
   @keyframes toast-in {
     from {
-      transform: translateX(20px);
+      transform: translateY(-12px);
       opacity: 0;
     }
     to {
-      transform: translateX(0);
+      transform: translateY(0);
       opacity: 1;
     }
   }

@@ -215,6 +215,38 @@
     vertical-align: middle;
   }
 
+  /* ── "Just saved" confirmation ───────────────────────────────────
+     Outlines the row a save just wrote, then fades out. .data-table uses
+     border-collapse, where box-shadow on a <tr> does not paint reliably —
+     an outline does, and a faint tint on the cells carries the signal even
+     where row outlines are quirky. */
+  .data-table tbody tr.row-saved {
+    outline: 2px solid var(--color-success);
+    outline-offset: -2px;
+    animation: row-saved-fade 2.5s ease-out forwards;
+  }
+
+  .data-table tbody tr.row-saved td {
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  }
+
+  @keyframes row-saved-fade {
+    0%,
+    60% {
+      outline-color: var(--color-success);
+    }
+    100% {
+      outline-color: transparent;
+    }
+  }
+
+  /* Respect a reduced-motion preference: keep the outline, drop the fade. */
+  @media (prefers-reduced-motion: reduce) {
+    .data-table tbody tr.row-saved {
+      animation: none;
+    }
+  }
+
   .data-table tbody tr:hover {
     background: var(--color-background);
   }
@@ -554,13 +586,19 @@
   }
 
   /* ─── Toasts ───────────────────────────────────────────────────── */
+  /* Top-center: status messages belong where the eye already is during form
+     work, not tucked in a corner. Above the modal overlay's z-index, so a
+     toast raised while a dialog is open is still seen. */
   .toast-container {
     position: fixed;
-    bottom: 1.6rem;
-    right: 1.6rem;
+    top: 1.6rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 0.6rem;
+    max-width: calc(100vw - 2rem);
     z-index: 1100;
   }
 
@@ -591,11 +629,11 @@
 
   @keyframes toast-in {
     from {
-      transform: translateX(20px);
+      transform: translateY(-12px);
       opacity: 0;
     }
     to {
-      transform: translateX(0);
+      transform: translateY(0);
       opacity: 1;
     }
   }

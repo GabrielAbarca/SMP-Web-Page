@@ -437,9 +437,8 @@ confirmDeleteBtn.addEventListener("click", async () => {
   }
 });
 confirmCancelBtn.addEventListener("click", closeConfirm);
-confirmOverlay.addEventListener("click", (e) => {
-  if (e.target === confirmOverlay) closeConfirm();
-});
+// No backdrop-click close on any dialog: a stray click outside must never
+// stand in for a decision. Cancel and the X are the only ways out.
 
 // ── Table helpers ──────────────────────────────────────────────
 function renderMessageRow(tbodyId, colspan, message) {
@@ -465,9 +464,46 @@ function iconBtn(icon, label, onClick, danger = false) {
   return btn;
 }
 
-/** Build a row with cells (HTML strings) and an actions cell of buttons. */
-function tableRow(cells, actionButtons = []) {
+// ── "Just saved" row feedback ──────────────────────────────────
+// A toast confirms that a write happened, but not *which* record it touched.
+// After a save the owning table re-renders, so the row is a fresh element:
+// remember the id, then outline it green once it comes back on screen. This
+// matters most in demo mode, where writes are session-local and a director
+// reasonably wonders whether anything took.
+
+/** @type {{ tbodyId: string, id: string } | null} */
+let pendingSavedRow = null;
+const SAVED_FLASH_MS = 2500;
+
+/** Remember the record a save just wrote, to outline on the next render. */
+function markSaved(tbodyId, id) {
+  if (id == null) return;
+  pendingSavedRow = { tbodyId, id: String(id) };
+}
+
+/**
+ * Outline the freshly saved row, if this table owns it. Scoped by tbody so a
+ * row that happens to share an id in another table never lights up instead.
+ */
+function applySavedFlash(tbodyId) {
+  if (!pendingSavedRow || pendingSavedRow.tbodyId !== tbodyId) return;
+  const { id } = pendingSavedRow;
+  pendingSavedRow = null;
+  const row = document.querySelector(
+    `#${tbodyId} tr[data-row-id="${CSS.escape(id)}"]`,
+  );
+  if (!row) return;
+  row.classList.add("row-saved");
+  setTimeout(() => row.classList.remove("row-saved"), SAVED_FLASH_MS);
+}
+
+/**
+ * Build a row with cells (HTML strings) and an actions cell of buttons.
+ * `rowId` tags the row so a save can find it again after the re-render.
+ */
+function tableRow(cells, actionButtons = [], rowId = null) {
   const tr = document.createElement("tr");
+  if (rowId != null) tr.dataset.rowId = String(rowId);
   cells.forEach((html) => {
     const td = document.createElement("td");
     td.innerHTML = html;
@@ -809,9 +845,11 @@ function renderYears(years) {
           status,
         ],
         actions,
+        y.id,
       ),
     );
   });
+  applySavedFlash("years-body");
 }
 
 /**
@@ -895,8 +933,10 @@ function openYearForm(year = null) {
         start_date: v.start_date,
         end_date: v.end_date,
       };
-      if (year) await data.updateSchoolYear(year.id, payload);
-      else await data.createSchoolYear({ ...payload, is_active: false });
+      const saved = year
+        ? await data.updateSchoolYear(year.id, payload).then(() => year)
+        : await data.createSchoolYear({ ...payload, is_active: false });
+      markSaved("years-body", saved?.id ?? year?.id);
       showToast(t("common.saved"));
       loadYearPeriods();
     },
@@ -985,9 +1025,11 @@ function renderPeriods(periods) {
           p.weight != null ? `${escapeHtml(p.weight)}%` : "—",
         ],
         actions,
+        p.id,
       ),
     );
   });
+  applySavedFlash("periods-body");
 }
 
 function openPeriodForm(period = null) {
@@ -1093,12 +1135,13 @@ function openPeriodForm(period = null) {
         end_date: v.end_date,
         weight: num(v.weight),
       };
-      if (period) await data.updatePeriod(period.id, payload);
-      else
-        await data.createPeriod({
-          ...payload,
-          school_year_id: state.activeYear.id,
-        });
+      const saved = period
+        ? await data.updatePeriod(period.id, payload).then(() => period)
+        : await data.createPeriod({
+            ...payload,
+            school_year_id: state.activeYear.id,
+          });
+      markSaved("periods-body", saved?.id ?? period?.id);
       showToast(t("common.saved"));
 
       // Re-read first, then judge the year off the stored rows rather than the
@@ -1158,9 +1201,11 @@ async function loadGradeLevels() {
               true,
             ),
           ],
+          g.id,
         ),
       );
     });
+    applySavedFlash("grades-body");
   } catch (err) {
     console.error("loadGradeLevels:", err);
     renderErrorRow("grades-body", 3);
@@ -1206,8 +1251,10 @@ function openGradeForm(grade = null) {
         numeric_level: num(v.numeric_level),
         name: v.name.trim(),
       };
-      if (grade) await data.updateGradeLevel(grade.id, payload);
-      else await data.createGradeLevel(payload);
+      const saved = grade
+        ? await data.updateGradeLevel(grade.id, payload).then(() => grade)
+        : await data.createGradeLevel(payload);
+      markSaved("grades-body", saved?.id ?? grade?.id);
       showToast(t("common.saved"));
       loadGradeLevels();
     },
@@ -1249,9 +1296,11 @@ async function loadRooms() {
               true,
             ),
           ],
+          r.id,
         ),
       );
     });
+    applySavedFlash("rooms-body");
   } catch (err) {
     console.error("loadRooms:", err);
     renderErrorRow("rooms-body", 4);
@@ -1309,8 +1358,10 @@ function openRoomForm(room = null) {
         capacity: num(v.capacity),
         type: v.type,
       };
-      if (room) await data.updateRoom(room.id, payload);
-      else await data.createRoom(payload);
+      const saved = room
+        ? await data.updateRoom(room.id, payload).then(() => room)
+        : await data.createRoom(payload);
+      markSaved("rooms-body", saved?.id ?? room?.id);
       showToast(t("common.saved"));
       loadRooms();
     },
@@ -1412,9 +1463,11 @@ function renderSections(list) {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("sections-body");
 }
 
 function openSectionForm(section = null) {
@@ -1500,12 +1553,13 @@ function openSectionForm(section = null) {
         room_id: num(v.room_id),
         max_capacity: num(v.max_capacity),
       };
-      if (section) await data.updateSection(section.id, payload);
-      else
-        await data.createSection({
-          ...payload,
-          school_year_id: state.activeYear.id,
-        });
+      const saved = section
+        ? await data.updateSection(section.id, payload).then(() => section)
+        : await data.createSection({
+            ...payload,
+            school_year_id: state.activeYear.id,
+          });
+      markSaved("sections-body", saved?.id ?? section?.id);
       showToast(t("common.saved"));
       loadSections();
     },
@@ -1592,9 +1646,11 @@ function renderSubjects(subjects, mapping) {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("subjects-body");
 }
 
 function openSubjectForm(subject = null, mapped = []) {
@@ -1661,6 +1717,7 @@ function openSubjectForm(subject = null, mapped = []) {
         const created = await data.createSubject(payload);
         subjectId = created.id;
       }
+      markSaved("subjects-body", subjectId);
       // Reconcile grade-level mapping (add checked, remove unchecked).
       const desired = new Set(v.grades.map(Number));
       const current = new Map(mapped.map((m) => [m.grade_level_id, m.id]));
@@ -1739,9 +1796,11 @@ function renderTeachers(list) {
             true,
           ),
         ],
+        tch.id,
       ),
     );
   });
+  applySavedFlash("teachers-body");
 }
 
 // ── Login accounts (Edge Function in real mode; simulated in demo) ──
@@ -1895,8 +1954,10 @@ function openTeacherForm(teacher = null) {
         specialization: nullable(v.specialization),
         status: v.status,
       };
-      if (teacher) await data.updateTeacher(teacher.id, payload);
-      else await data.createTeacher(payload);
+      const saved = teacher
+        ? await data.updateTeacher(teacher.id, payload).then(() => teacher)
+        : await data.createTeacher(payload);
+      markSaved("teachers-body", saved?.id ?? teacher?.id);
       showToast(t("common.saved"));
       loadTeachers();
     },
@@ -1976,9 +2037,11 @@ function renderAssignments(list) {
             true,
           ),
         ],
+        a.id,
       ),
     );
   });
+  applySavedFlash("assignments-body");
 }
 
 function openAssignmentForm() {
@@ -2019,12 +2082,13 @@ function openAssignmentForm() {
       },
     ],
     onSubmit: async (v) => {
-      await data.createAssignment({
+      const created = await data.createAssignment({
         class_id: num(v.class_id),
         subject_id: num(v.subject_id),
         teacher_id: num(v.teacher_id),
         school_year_id: state.activeYear.id,
       });
+      markSaved("assignments-body", created?.id);
       showToast(t("common.saved"));
       loadAssignments();
     },
@@ -2217,9 +2281,6 @@ document
 document
   .getElementById("sch-done")
   .addEventListener("click", closeScheduleModal);
-scheduleOverlay.addEventListener("click", (e) => {
-  if (e.target === scheduleOverlay) closeScheduleModal();
-});
 
 // ───────────────────────────────────────────────────────────────
 //  5g. STUDENTS & ENROLLMENT (+ CSV roster import)
@@ -2385,9 +2446,11 @@ function renderStudents() {
             true,
           ),
         ],
+        s.id,
       ),
     );
   });
+  applySavedFlash("students-body");
 }
 
 function sectionOptions() {
@@ -2504,8 +2567,10 @@ function openStudentForm(student = null) {
         class_id: num(v.class_id),
         status: v.status,
       };
-      if (student) await data.updateStudent(student.id, payload);
-      else await data.createStudent(payload);
+      const saved = student
+        ? await data.updateStudent(student.id, payload).then(() => student)
+        : await data.createStudent(payload);
+      markSaved("students-body", saved?.id ?? student?.id);
       showToast(t("common.saved"));
       loadStudents();
     },
@@ -3504,12 +3569,11 @@ Object.entries(IMPORT_BUTTONS).forEach(([id, key]) => {
     .getElementById(id)
     ?.addEventListener("click", () => openImportModal(key));
 });
+// Backdrop clicks are ignored here too — a pasted roster and its column
+// mapping are exactly the kind of work a stray click used to destroy.
 document
   .getElementById("import-close")
   .addEventListener("click", closeImportModal);
-importOverlay.addEventListener("click", (e) => {
-  if (e.target === importOverlay) closeImportModal();
-});
 
 // ───────────────────────────────────────────────────────────────
 //  5h. SETTINGS (read-only)
