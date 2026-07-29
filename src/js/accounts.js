@@ -9,6 +9,7 @@
 
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
+import { recoveryRedirectUrl } from "./recovery.js";
 
 /** Pull a human message out of a functions.invoke error or data.error. */
 async function unwrap(error, data) {
@@ -38,11 +39,21 @@ export async function createAccount(params) {
   return data;
 }
 
-/** Send a password-reset (recovery) for an existing login. */
+/**
+ * Send a password-reset (recovery) for an existing login.
+ *
+ * The redirect target travels with the request so the emailed link comes back
+ * to whichever origin the console is being used from — otherwise Supabase
+ * falls back to the project's Site URL, which lands on the student dashboard.
+ */
 export async function resetPassword(email) {
   if (DEMO_MODE) return { simulated: true };
   const { data, error } = await supabase.functions.invoke("admin-users", {
-    body: { action: "reset", email },
+    body: {
+      action: "reset",
+      email,
+      redirectTo: recoveryRedirectUrl(window.location.origin),
+    },
   });
   await unwrap(error, data);
   return data;

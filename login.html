@@ -229,6 +229,16 @@
                 </button>
               </div>
               <span class="field-error" id="error-password"></span>
+              <div class="forgot-row" id="forgot-row">
+                <button
+                  type="button"
+                  class="btn-switch"
+                  id="btn-forgot"
+                  data-i18n="login.forgotPassword"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
 
             <div class="form-group" id="group-confirm" style="display: none">
@@ -258,6 +268,67 @@
               <span
                 class="btn-spinner"
                 id="btn-spinner"
+                style="display: none"
+              ></span>
+            </button>
+          </form>
+
+          <!-- Shown in place of #auth-form when the page is opened from a
+               password-recovery email (see recovery.js). -->
+          <form id="recovery-form" novalidate style="display: none">
+            <div class="form-group">
+              <label for="input-new-password" data-i18n="login.recovery.newPassword"
+                >New Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true"><use href="#icon-lock"></use></svg
+                ></span>
+                <input
+                  type="password"
+                  id="input-new-password"
+                  name="new-password"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  required
+                />
+              </div>
+              <span class="field-error" id="error-new-password"></span>
+            </div>
+
+            <div class="form-group">
+              <label
+                for="input-confirm-new"
+                data-i18n="login.recovery.confirmPassword"
+                >Confirm New Password</label
+              >
+              <div class="input-wrapper">
+                <span class="material-symbols-outlined input-icon"
+                  ><svg aria-hidden="true">
+                    <use href="#icon-lock_reset"></use></svg
+                ></span>
+                <input
+                  type="password"
+                  id="input-confirm-new"
+                  name="confirm-new-password"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  required
+                />
+              </div>
+              <span class="field-error" id="error-confirm-new"></span>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn-recovery-submit">
+              <span
+                class="btn-text"
+                id="btn-recovery-text"
+                data-i18n="login.recovery.submit"
+                >Update password</span
+              >
+              <span
+                class="btn-spinner"
+                id="btn-recovery-spinner"
                 style="display: none"
               ></span>
             </button>

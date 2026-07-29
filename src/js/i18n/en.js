@@ -967,6 +967,18 @@ export default {
     signUp: "Sign Up",
     noAccount: "Don't have an account?",
     haveAccount: "Already have an account?",
+    forgotPassword: "Forgot password?",
+    resetLinkSent:
+      "If an account exists for that email, a reset link is on its way.",
+    recovery: {
+      title: "Set a new password",
+      subtitle: "Choose a new password for your account",
+      newPassword: "New Password",
+      confirmPassword: "Confirm New Password",
+      submit: "Update password",
+      verifying: "Checking your reset link…",
+      success: "Password updated. Sign in with your new password.",
+    },
     validation: {
       email: "Please enter a valid email address.",
       password: "Password must be at least 6 characters.",
@@ -976,6 +988,13 @@ export default {
     error: {
       demoSignupDisabled:
         "Sign-up is disabled in the live demo — use the demo login.",
+      recoveryDemoDisabled: "Password changes are disabled in the live demo.",
+      linkExpired:
+        "This reset link has expired or was already used. Request a new one below.",
+      linkInvalid: "This reset link isn't valid. Request a new one below.",
+      emailForReset:
+        "Enter your email address first, then choose Forgot password?",
+      samePassword: "Your new password must be different from the old one.",
       unexpected: "An unexpected error occurred. Please try again.",
       credentials: "Incorrect email or password. Please try again.",
       notConfirmed: "Your email is not confirmed. Please check your inbox.",

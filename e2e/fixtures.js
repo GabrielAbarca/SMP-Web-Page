@@ -266,7 +266,18 @@ export async function routeSupabase(context, fix) {
         body: JSON.stringify(rows),
       });
     }
-    // A write or auth call must never happen in the demo sandbox.
+    // Reading the signed-in user back. supabase-js does this before it will
+    // hand out a session built from tokens in the URL, which is how the
+    // password-recovery specs arrive. It's a GET, so it was never counted as a
+    // write — the sandbox's no-writes guarantee is untouched.
+    if (url.pathname === "/auth/v1/user" && req.method() === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(authUser),
+      });
+    }
+    // A write or any other auth call must never happen in the demo sandbox.
     return route.fulfill({
       status: 403,
       contentType: "application/json",
@@ -276,24 +287,38 @@ export async function routeSupabase(context, fix) {
   return writes;
 }
 
-export function sessionSeed() {
+const TOKEN_TTL = 3600 * 24 * 365;
+
+/** The Auth user behind the seeded session. */
+const authUser = {
+  id: UID,
+  aud: "authenticated",
+  role: "authenticated",
+  email: "demo@example.com",
+  app_metadata: {},
+  user_metadata: {},
+  created_at: "2026-01-01T00:00:00Z",
+};
+
+/**
+ * A far-future access token. Exposed on its own for the specs that put one in
+ * a URL fragment (the password-recovery landing) rather than in storage.
+ */
+export function accessTokenSeed() {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const exp = Math.floor(Date.now() / 1000) + 3600 * 24 * 365;
-  const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, role: "authenticated", aud: "authenticated", exp })}.sig`;
+  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL;
+  return `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, role: "authenticated", aud: "authenticated", exp })}.sig`;
+}
+
+export function sessionSeed() {
+  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL;
+  const jwt = accessTokenSeed();
   return JSON.stringify({
     access_token: jwt,
     token_type: "bearer",
-    expires_in: 3600 * 24 * 365,
+    expires_in: TOKEN_TTL,
     expires_at: exp,
     refresh_token: "fake-refresh",
-    user: {
-      id: UID,
-      aud: "authenticated",
-      role: "authenticated",
-      email: "demo@example.com",
-      app_metadata: {},
-      user_metadata: {},
-      created_at: "2026-01-01T00:00:00Z",
-    },
+    user: authUser,
   });
 }

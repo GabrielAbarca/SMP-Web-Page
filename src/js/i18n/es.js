@@ -965,6 +965,18 @@ export default {
     signUp: "Registrarse",
     noAccount: "¿No tienes una cuenta?",
     haveAccount: "¿Ya tienes una cuenta?",
+    forgotPassword: "¿Olvidaste tu contraseña?",
+    resetLinkSent:
+      "Si existe una cuenta con ese correo, te enviamos un enlace para restablecerla.",
+    recovery: {
+      title: "Crea una contraseña nueva",
+      subtitle: "Elige una contraseña nueva para tu cuenta",
+      newPassword: "Contraseña nueva",
+      confirmPassword: "Confirmar contraseña nueva",
+      submit: "Actualizar contraseña",
+      verifying: "Verificando tu enlace…",
+      success: "Contraseña actualizada. Inicia sesión con tu contraseña nueva.",
+    },
     validation: {
       email: "Ingresa un correo electrónico válido.",
       password: "La contraseña debe tener al menos 6 caracteres.",
@@ -974,6 +986,15 @@ export default {
     error: {
       demoSignupDisabled:
         "El registro está deshabilitado en la demo en vivo — usa el acceso de demostración.",
+      recoveryDemoDisabled:
+        "Los cambios de contraseña están deshabilitados en la demo en vivo.",
+      linkExpired:
+        "Este enlace de restablecimiento venció o ya fue usado. Solicita uno nuevo abajo.",
+      linkInvalid:
+        "Este enlace de restablecimiento no es válido. Solicita uno nuevo abajo.",
+      emailForReset:
+        "Ingresa tu correo electrónico y luego elige «¿Olvidaste tu contraseña?».",
+      samePassword: "La contraseña nueva debe ser distinta de la anterior.",
       unexpected: "Ocurrió un error inesperado. Inténtalo de nuevo.",
       credentials: "Correo o contraseña incorrectos. Inténtalo de nuevo.",
       notConfirmed:

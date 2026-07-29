@@ -534,6 +534,14 @@
     }
   }
 
+  /* "Forgot password?" sits under the password field, right-aligned, and
+     borrows .btn-switch for the link styling. */
+  .forgot-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.45rem;
+  }
+
   .auth-switch {
     display: flex;
     align-items: center;

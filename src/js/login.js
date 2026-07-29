@@ -1,10 +1,36 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
-import { signIn, signUp, getSession } from "./auth.js";
+import {
+  signIn,
+  signUp,
+  signOut,
+  getSession,
+  sendPasswordReset,
+  verifyRecoveryToken,
+  updatePassword,
+} from "./auth.js";
+import { supabase } from "./supabaseClient.js";
 import { fetchRole, portalPath } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initI18n, applyTranslations, t } from "./i18n.js";
 import { DEMO_MODE, DEMO_CREDENTIALS } from "./demoMode.js";
+import { parseRecoveryUrl, recoveryRedirectUrl } from "./recovery.js";
+import { EMAIL_RE, MIN_PASSWORD_LENGTH } from "./validate.js";
+
+// Read the URL before anything can await: the Supabase client's
+// detectSessionInUrl strips a recovery fragment as part of its async
+// initialization, and once it has, this page can no longer tell a recovery
+// landing from an ordinary signed-in visit — it would just redirect to the
+// portal, leaving no way to set a password.
+const recoveryUrl = parseRecoveryUrl(window.location);
+
+// Belt-and-braces for the same race: if the client won and consumed the
+// fragment first, it still announces the recovery. Registered synchronously,
+// before the first await below.
+let recoveryAnnounced = false;
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") recoveryAnnounced = true;
+});
 
 // Login has no settings panel → detection-only (navigator.language). No stored
 // key; the static markup carries data-i18n and is translated on load below.
@@ -17,11 +43,6 @@ applyTranslations();
 async function redirectToPortal() {
   const target = DEMO_MODE ? "/" : portalPath(await fetchRole());
   window.location.replace(target);
-}
-
-const currentUser = await getSession();
-if (currentUser) {
-  await redirectToPortal();
 }
 
 let isSignUpMode = false;
@@ -50,6 +71,35 @@ const btnText = document.getElementById("btn-text");
 const btnSpinner = document.getElementById("btn-spinner");
 const btnSwitch = document.getElementById("btn-switch");
 const switchText = document.getElementById("switch-text");
+const authSwitch = document.querySelector(".auth-switch");
+const demoNotice = document.getElementById("demo-notice");
+
+const forgotRow = document.getElementById("forgot-row");
+const btnForgot = document.getElementById("btn-forgot");
+
+const recoveryForm = document.getElementById("recovery-form");
+const inputNewPassword = document.getElementById("input-new-password");
+const inputConfirmNew = document.getElementById("input-confirm-new");
+const errorNewPassword = document.getElementById("error-new-password");
+const errorConfirmNew = document.getElementById("error-confirm-new");
+const btnRecoverySubmit = document.getElementById("btn-recovery-submit");
+const btnRecoveryText = document.getElementById("btn-recovery-text");
+const btnRecoverySpinner = document.getElementById("btn-recovery-spinner");
+
+// The two forms share setLoading()/clearErrors(); each needs its own button,
+// label and spinner.
+const signInUi = {
+  form: authForm,
+  button: btnSubmit,
+  text: btnText,
+  spinner: btnSpinner,
+};
+const recoveryUi = {
+  form: recoveryForm,
+  button: btnRecoverySubmit,
+  text: btnRecoveryText,
+  spinner: btnRecoverySpinner,
+};
 
 const togglePassword = document.getElementById("toggle-password");
 const toggleIcon = document.getElementById("toggle-password-icon");
@@ -82,13 +132,103 @@ if (DEMO_MODE) {
   togglePassword.style.display = "none";
 
   // Hide the Sign Up switch (disabled server-side in demo).
-  const authSwitch = document.querySelector(".auth-switch");
   if (authSwitch) authSwitch.style.display = "none";
+
+  // Same reasoning for password recovery: the shared demo password is public
+  // by design and must not be resettable by visitors.
+  forgotRow.style.display = "none";
 
   authSubtitle.textContent = t("login.demoSubtitle");
 
-  const demoNotice = document.getElementById("demo-notice");
   if (demoNotice) demoNotice.style.display = "block";
+}
+
+// ── Password recovery ─────────────────────────────────────────────
+// Runs before the "already signed in → portal" redirect: a recovery link
+// carries a real session, so that redirect would otherwise swallow the flow.
+
+function showRecoveryScreen() {
+  authForm.style.display = "none";
+  recoveryForm.style.display = "block";
+  forgotRow.style.display = "none";
+  if (authSwitch) authSwitch.style.display = "none";
+  if (demoNotice) demoNotice.style.display = "none";
+  authTitle.textContent = t("login.recovery.title");
+  authSubtitle.textContent = t("login.recovery.subtitle");
+  setIcon(authAvatarIcon, "lock_reset");
+}
+
+function showSignInScreen() {
+  recoveryForm.style.display = "none";
+  authForm.style.display = "";
+  authTitle.textContent = t("login.welcomeTitle");
+  authSubtitle.textContent = t("login.welcomeSubtitle");
+  setIcon(authAvatarIcon, "lock");
+  if (!DEMO_MODE) {
+    forgotRow.style.display = "";
+    if (authSwitch) authSwitch.style.display = "";
+  }
+}
+
+// Drop the tokens from the address bar so a refresh can't replay a link that
+// has already been spent, and so they stay out of the browser history.
+function stripRecoveryParams() {
+  history.replaceState(null, "", window.location.pathname);
+}
+
+/**
+ * Open the recovery form once `confirm` has produced a usable session.
+ *
+ * Both link shapes need this: the token-hash form has to be exchanged here,
+ * and the fragment form is exchanged by the client's own asynchronous
+ * initialization. Submitting before either finishes would fail with a bare
+ * "Auth session missing", so the form stays disabled until the session is in
+ * hand and an unusable link is reported as exactly that.
+ *
+ * @param {() => Promise<unknown>} confirm resolves falsy when there's no session
+ */
+async function openRecoveryForm(confirm) {
+  showRecoveryScreen();
+  authSubtitle.textContent = t("login.recovery.verifying");
+  setLoading(true, recoveryUi);
+  try {
+    if (!(await confirm())) throw new Error("no recovery session");
+    authSubtitle.textContent = t("login.recovery.subtitle");
+  } catch {
+    showSignInScreen();
+    showToast(t("login.error.linkExpired"), "error");
+  } finally {
+    setLoading(false, recoveryUi);
+    // Only now: the fragment is what the client reads to build the session,
+    // and it reads it asynchronously. Clearing the URL any earlier destroys
+    // the tokens before they have been exchanged.
+    stripRecoveryParams();
+  }
+}
+
+if (recoveryUrl.kind === "error") {
+  // Nothing to recover with — explain it and leave the request-a-new-link
+  // affordance in reach.
+  stripRecoveryParams();
+  showToast(
+    recoveryUrl.code === "otp_expired"
+      ? t("login.error.linkExpired")
+      : t("login.error.linkInvalid"),
+    "error",
+  );
+} else if (recoveryUrl.kind === "tokenHash") {
+  // A custom email template built on {{ .TokenHash }}: the token is spent
+  // here, not by whatever pre-fetched the link.
+  await openRecoveryForm(() => verifyRecoveryToken(recoveryUrl.tokenHash));
+} else if (recoveryUrl.kind === "tokens" || recoveryAnnounced) {
+  // The client turns the fragment into a session as part of its own startup;
+  // getSession() waits for that to settle.
+  await openRecoveryForm(getSession);
+} else {
+  const currentUser = await getSession();
+  if (currentUser) {
+    await redirectToPortal();
+  }
 }
 
 btnSwitch.addEventListener("click", () => {
@@ -139,12 +279,12 @@ authForm.addEventListener("submit", async (e) => {
 
   let valid = true;
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email || !EMAIL_RE.test(email)) {
     setFieldError(errorEmail, inputEmail, t("login.validation.email"));
     valid = false;
   }
 
-  if (!password || password.length < 6) {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
     setFieldError(errorPassword, inputPassword, t("login.validation.password"));
     valid = false;
   }
@@ -189,12 +329,95 @@ authForm.addEventListener("submit", async (e) => {
   }
 });
 
-function setLoading(loading) {
-  btnSubmit.disabled = loading;
-  btnText.style.display = loading ? "none" : "inline";
-  btnSpinner.style.display = loading ? "inline-block" : "none";
-  authForm.querySelectorAll("input").forEach((el) => (el.disabled = loading));
+// Reuses the email field already on screen rather than adding another card
+// mode — one click from "I forgot" to a link in the inbox.
+btnForgot.addEventListener("click", async () => {
+  clearErrors();
+  clearToast();
+
+  const email = inputEmail.value.trim();
+  if (!email) {
+    setFieldError(errorEmail, inputEmail, t("login.error.emailForReset"));
+    return;
+  }
+  if (!EMAIL_RE.test(email)) {
+    setFieldError(errorEmail, inputEmail, t("login.validation.email"));
+    return;
+  }
+
+  setLoading(true);
+  try {
+    await sendPasswordReset(email, recoveryRedirectUrl(window.location.origin));
+    // Deliberately neutral: never reveal whether the address has an account.
+    showToast(t("login.resetLinkSent"), "success");
+  } catch (err) {
+    showToast(
+      err.name === "DemoDisabledError"
+        ? t("login.error.recoveryDemoDisabled")
+        : formatAuthError(err.message),
+      "error",
+    );
+  } finally {
+    setLoading(false);
+  }
+});
+
+recoveryForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearErrors(recoveryForm);
+  clearToast();
+
+  const password = inputNewPassword.value;
+  const confirm = inputConfirmNew.value;
+
+  let valid = true;
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    setFieldError(
+      errorNewPassword,
+      inputNewPassword,
+      t("login.validation.password"),
+    );
+    valid = false;
+  }
+  if (password !== confirm) {
+    setFieldError(
+      errorConfirmNew,
+      inputConfirmNew,
+      t("login.validation.passwordsMatch"),
+    );
+    valid = false;
+  }
+  if (!valid) return;
+
+  setLoading(true, recoveryUi);
+  try {
+    await updatePassword(password);
+    // Sign out and hand them back the sign-in form: entering the new password
+    // once proves it took, and no half-authenticated session is left behind.
+    await signOut();
+    showSignInScreen();
+    inputNewPassword.value = "";
+    inputConfirmNew.value = "";
+    showToast(t("login.recovery.success"), "success");
+  } catch (err) {
+    showToast(
+      err.name === "DemoDisabledError"
+        ? t("login.error.recoveryDemoDisabled")
+        : formatAuthError(err.message),
+      "error",
+    );
+  } finally {
+    setLoading(false, recoveryUi);
+  }
+});
+
+function setLoading(loading, ui = signInUi) {
+  ui.button.disabled = loading;
+  ui.text.style.display = loading ? "none" : "inline";
+  ui.spinner.style.display = loading ? "inline-block" : "none";
+  ui.form.querySelectorAll("input").forEach((el) => (el.disabled = loading));
   btnSwitch.disabled = loading;
+  btnForgot.disabled = loading;
 }
 
 function setFieldError(errorEl, inputEl, message) {
@@ -202,11 +425,9 @@ function setFieldError(errorEl, inputEl, message) {
   inputEl.closest(".input-wrapper").classList.add("input-error");
 }
 
-function clearErrors() {
-  [errorName, errorEmail, errorPassword, errorConfirm].forEach((el) => {
-    if (el) el.textContent = "";
-  });
-  authForm.querySelectorAll(".input-wrapper").forEach((el) => {
+function clearErrors(form = authForm) {
+  form.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
+  form.querySelectorAll(".input-wrapper").forEach((el) => {
     el.classList.remove("input-error");
   });
 }
@@ -248,8 +469,17 @@ function formatAuthError(message) {
   ) {
     return t("login.error.exists");
   }
+  if (
+    lower.includes("should be different from the old password") ||
+    lower.includes("same as the old password")
+  ) {
+    return t("login.error.samePassword");
+  }
   if (lower.includes("password should be")) {
     return t("login.error.passwordLength");
+  }
+  if (lower.includes("expired") || lower.includes("invalid token")) {
+    return t("login.error.linkExpired");
   }
   if (lower.includes("rate limit")) {
     return t("login.error.rateLimit");
@@ -260,9 +490,11 @@ function formatAuthError(message) {
   return message;
 }
 
-authForm.querySelectorAll("input").forEach((input) => {
-  input.addEventListener("input", () => {
-    const wrapper = input.closest(".input-wrapper");
-    if (wrapper) wrapper.classList.remove("input-error");
+[authForm, recoveryForm].forEach((form) => {
+  form.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", () => {
+      const wrapper = input.closest(".input-wrapper");
+      if (wrapper) wrapper.classList.remove("input-error");
+    });
   });
 });
