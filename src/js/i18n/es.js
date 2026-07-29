@@ -42,8 +42,22 @@ export default {
   // ── Validación de formularios en línea (se muestra bajo el campo, nunca
   //    como una ventana emergente del navegador). Compartida como `common`.
   validation: {
+    required: "Este campo es obligatorio.",
+    email: "Ingresa un correo electrónico válido.",
+    phone: "Solo se permiten dígitos, espacios, + y -.",
+    integer: "Ingresa un número entero.",
+    number: "Ingresa un número válido.",
+    min: "Debe ser al menos {min}.",
+    max: "Debe ser como máximo {max}.",
+    percent: "Ingresa un porcentaje entre 0 y 100.",
     dateWithin: "Debe estar entre {start} y {end}.",
     endAfterStart: "La fecha de fin debe ser posterior a la fecha de inicio.",
+    futureDate: "La fecha no puede estar en el futuro.",
+    unique: '"{value}" ya está en uso.',
+    enrollmentTaken: "El número de matrícula {value} ya está en uso.",
+    capacityRoom:
+      "El cupo de la sección ({capacity}) supera la capacidad del aula ({roomCapacity}).",
+    password: "La contraseña debe tener al menos 6 caracteres.",
   },
 
   enums: {
@@ -657,6 +671,18 @@ export default {
     profile: {
       signedInAs: "Sesión iniciada como",
       admin: "Administrador",
+    },
+    school: {
+      title: "Perfil de la escuela",
+      subtitle: "Identidad y terminología que usa la consola.",
+      name: "Nombre de la escuela",
+      namePlaceholder: "Colegio San José",
+      idLabel: "Etiqueta del campo de identificación",
+      idLabelHelp:
+        'Cómo se llama el campo de identificación en esta escuela (p. ej. "Cédula", "DUI", "Carné"). Déjalo en blanco para usar el predeterminado.',
+      saved: "Perfil de la escuela guardado.",
+      unavailable:
+        "El almacenamiento del perfil de la escuela aún no está configurado en este proyecto — se usan las etiquetas predeterminadas.",
     },
     confirm: {
       title: "¿Eliminar elemento?",

@@ -216,6 +216,19 @@ export function createAdminData(gateway) {
      */
     bulkInsert: (table, rows) => gateway.insertMany(table, rows),
 
+    // ── School settings (single row: name, logo, ID label) ────
+    /** The settings row, or null when the table is empty. */
+    async getSchoolSettings() {
+      const rows = await gateway.select("school_settings");
+      return rows[0] ?? null;
+    },
+    /** Seed the row on a project where it is missing. @param {object} row */
+    createSchoolSettings: (row) => gateway.insert("school_settings", row),
+    updateSchoolSettings: (
+      /** @type {number} */ id,
+      /** @type {object} */ patch,
+    ) => gateway.update("school_settings", id, patch),
+
     // ── Overview (school-wide reads) ──────────────────────────
     /** Attendance rows for a single date (today's attendance rate). */
     listAttendanceOn: (/** @type {string} */ date) =>

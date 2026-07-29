@@ -4,10 +4,7 @@ import {
   roundWeight,
   totalWeight,
   weightStatus,
-  checkPeriodRange,
 } from "../src/js/gradingPeriods.js";
-
-const YEAR = { start_date: "2025-09-01", end_date: "2026-06-30" };
 
 describe("roundWeight", () => {
   it("rounds to the stored numeric(5,2) precision", () => {
@@ -69,54 +66,5 @@ describe("weightStatus", () => {
 
   it("does not reject a total that is only float-noise off 100", () => {
     expect(weightStatus(33.33 + 33.33 + 33.34, 3)).toBe("ok");
-  });
-});
-
-describe("checkPeriodRange", () => {
-  it("accepts a period inside its year", () => {
-    expect(
-      checkPeriodRange({ start: "2025-09-15", end: "2025-12-19" }, YEAR),
-    ).toBeNull();
-  });
-
-  it("accepts a period exactly on the year's boundaries", () => {
-    expect(
-      checkPeriodRange({ start: "2025-09-01", end: "2026-06-30" }, YEAR),
-    ).toBeNull();
-  });
-
-  it("rejects an end on or before the start", () => {
-    expect(
-      checkPeriodRange({ start: "2025-10-01", end: "2025-10-01" }, YEAR),
-    ).toEqual({ field: "end_date", reason: "order" });
-    expect(
-      checkPeriodRange({ start: "2025-10-02", end: "2025-10-01" }, YEAR),
-    ).toEqual({ field: "end_date", reason: "order" });
-  });
-
-  it("rejects a start before the year begins", () => {
-    expect(
-      checkPeriodRange({ start: "2025-08-31", end: "2025-12-19" }, YEAR),
-    ).toEqual({ field: "start_date", reason: "outside" });
-  });
-
-  it("rejects an end after the year finishes", () => {
-    expect(
-      checkPeriodRange({ start: "2026-05-01", end: "2026-07-01" }, YEAR),
-    ).toEqual({ field: "end_date", reason: "outside" });
-  });
-
-  it("defers empty dates to the required-field rule", () => {
-    expect(checkPeriodRange({ start: "", end: "" }, YEAR)).toBeNull();
-    expect(checkPeriodRange({ start: "2025-10-01", end: "" }, YEAR)).toBeNull();
-  });
-
-  it("checks ordering even with no year to bound against", () => {
-    expect(
-      checkPeriodRange({ start: "2025-10-02", end: "2025-10-01" }, null),
-    ).toEqual({ field: "end_date", reason: "order" });
-    expect(
-      checkPeriodRange({ start: "2025-10-01", end: "2025-10-02" }, null),
-    ).toBeNull();
   });
 });

@@ -32,6 +32,9 @@ write. Id columns use identity (equivalent to the demo's sequences).
 >   — the `teachers.auth_user_id` column.
 > - [`supabase/schema/incremental_grading_period_bounds.sql`](../supabase/schema/incremental_grading_period_bounds.sql)
 >   — the trigger keeping each grading period inside its school year.
+> - [`supabase/schema/incremental_school_settings.sql`](../supabase/schema/incremental_school_settings.sql)
+>   — the single-row `school_settings` table (school name, logo, and the
+>   per-school label for the national-ID field).
 >
 > Both are already included in `school_schema.sql`, so a fresh project does
 > **not** need them separately.
@@ -41,7 +44,9 @@ write. Id columns use identity (equivalent to the demo's sequences).
 > migrations, or the integration reports a history mismatch.)
 >
 > Applied to both existing projects (demo `SMP DataBase` and `SMP Pilot
-School`) as of this milestone.
+School`) as of this milestone. On the demo project, `school_settings` also
+> carries the restrictive `demo_deny_*` policies the other tables have, so the
+> sandbox stays read-only server-side.
 
 ## 3. Deploy the account Edge Function
 

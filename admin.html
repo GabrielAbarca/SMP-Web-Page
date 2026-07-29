@@ -517,7 +517,12 @@
                 <thead>
                   <tr>
                     <th data-i18n="console.teachers.name">Name</th>
-                    <th data-i18n="console.teachers.nationalId">ID</th>
+                    <th
+                      id="th-teachers-national-id"
+                      data-i18n="console.teachers.nationalId"
+                    >
+                      ID
+                    </th>
                     <th data-i18n="console.teachers.email">Email</th>
                     <th data-i18n="console.teachers.specialization">
                       Specialization
@@ -600,7 +605,12 @@
                     <th data-i18n="console.students.enrollmentNumber">
                       Enrollment #
                     </th>
-                    <th data-i18n="console.students.nationalId">ID</th>
+                    <th
+                      id="th-students-national-id"
+                      data-i18n="console.students.nationalId"
+                    >
+                      ID
+                    </th>
                     <th data-i18n="console.students.gender">Gender</th>
                     <th data-i18n="console.students.section">Section</th>
                     <th data-i18n="console.students.status">Status</th>
@@ -616,6 +626,9 @@
         <!-- ─── SETTINGS (read-only) ─────────────────────────── -->
         <section class="view-section" id="view-settings">
           <h1 data-i18n="console.heading.settings">Settings</h1>
+          <!-- School profile is admin-writable, so admin.js renders it rather
+               than settings.js (that renderer is shared and read-only). -->
+          <div id="school-profile-root"></div>
           <div id="settings-root"></div>
         </section>
       </main>
