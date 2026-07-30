@@ -195,9 +195,62 @@ test.describe("teacher console", () => {
     expect(errors).toEqual([]);
     expect(writes).toEqual([]);
   });
+
+  test("Logout leaves the console instead of bouncing back", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, teacherFix);
+    // Seeded once, deliberately not via addInitScript: re-seeding on every
+    // navigation would put the session back and mask the bounce.
+    await page.goto("/login.html");
+    await page.evaluate(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+
+    await page.goto("/teacher.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
+      { timeout: 10_000 },
+    );
+
+    await page.click("#logout-btn");
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 10_000 })
+      .toBe("/login.html");
+  });
 });
 
 test.describe("admin console", () => {
+  test("Logout leaves the console instead of bouncing back", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, consoleFix);
+    await page.goto("/login.html");
+    await page.evaluate(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+
+    // The button is an <a href="/login.html">; the handler must stop the
+    // browser following it until signOut() has cleared the session, or the
+    // admin role gate routes straight back to /admin.html.
+    await page.click("#logout-btn");
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 10_000 })
+      .toBe("/login.html");
+  });
+
   test("loads the shell, does academic-structure CRUD, and never writes", async ({
     page,
     context,
