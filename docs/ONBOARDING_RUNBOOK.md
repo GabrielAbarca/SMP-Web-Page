@@ -55,6 +55,13 @@ write. Id columns use identity (equivalent to the demo's sequences).
 School`) as of this milestone. On the demo project, `school_settings` also
 > carries the restrictive `demo_deny_*` policies the other tables have, so the
 > sandbox stays read-only server-side.
+>
+> Same for the schedules tables: `schedule_configs`, `bell_schedules` and
+> `bell_schedule_blocks` carry `demo_deny_insert/update/delete` on the demo
+> project (restrictive, `anon` + `authenticated`), so all 27 public tables
+> there are locked. A real school project must **not** have them — admins
+> need to write. Whenever a table is added, remember the lock is a separate,
+> out-of-band step: the incremental snippets deliberately don't carry it.
 
 ## 3. Deploy the account Edge Function
 
