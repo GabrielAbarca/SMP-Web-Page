@@ -11,14 +11,26 @@
 //  the client. Every request is authorized: the caller's JWT must map
 //  to a profiles row with role = 'admin'.
 //
+//  Deploy with the platform's verify_jwt OFF: the function performs its
+//  own verification (above) and the CORS preflight has to pass without
+//  an Authorization header.
+//
 //  Deploy to each real (non-demo) school project — NEVER the shared demo
 //  project. In demo mode the console simulates account creation and does
 //  not call this function.
 //
 //  Actions (POST JSON { action, ... }):
 //    create     { email, password, role, name?, linkType?, linkId? }
-//    reset      { email }                       → returns a recovery link
+//    reset      { email, redirectTo? }          → returns a recovery link
 //    setActive  { userId, active }              → ban / unban the login
+//
+//  `redirectTo` is where the emailed link sends the user back to; the
+//  console passes its own origin so a reset works from localhost and from
+//  production without redeploying. It is not validated here on purpose —
+//  Supabase only honours URLs allow-listed in the project's Auth URL
+//  configuration (Site URL + additional redirect URLs), which is the
+//  boundary that keeps this from being an open redirect. Omitting it makes
+//  Supabase fall back to Site URL.
 // ─────────────────────────────────────────────────────────────────
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -127,9 +139,11 @@ Deno.serve(async (req: Request) => {
     if (action === "reset") {
       const email = String(body.email ?? "").trim();
       if (!email) return json({ error: "email is required" }, 400);
+      const redirectTo = body.redirectTo ? String(body.redirectTo) : undefined;
       const { data, error } = await admin.auth.admin.generateLink({
         type: "recovery",
         email,
+        options: redirectTo ? { redirectTo } : {},
       });
       if (error) return json({ error: error.message }, 400);
       return json({ actionLink: data.properties?.action_link ?? null });

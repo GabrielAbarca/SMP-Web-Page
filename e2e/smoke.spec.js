@@ -6,6 +6,7 @@ import {
   consoleFix,
   routeSupabase,
   sessionSeed,
+  accessTokenSeed,
 } from "./fixtures.js";
 
 // Fail the test if any uncaught error reaches the page.
@@ -39,6 +40,94 @@ test.describe("login", () => {
     ).toBe(true);
 
     expect(errors).toEqual([]);
+  });
+
+  // Recovery links used to be swallowed: supabase-js consumed the tokens and
+  // the page redirected the fresh session straight to a portal.
+  test("an expired recovery link explains itself instead of redirecting", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, {});
+    const errors = trackErrors(page);
+
+    await page.goto(
+      "/login.html#error=access_denied&error_code=otp_expired" +
+        "&error_description=Email+link+is+invalid+or+has+expired&sb=",
+    );
+    await page.waitForSelector("#auth-form");
+
+    await expect(page.locator("#auth-toast")).toHaveClass(/toast-error/);
+    await expect(page.locator("#auth-toast")).toContainText("expired");
+    // Still on the sign-in card, and the spent token is out of the URL.
+    await expect(page.locator("#recovery-form")).toBeHidden();
+    expect(new URL(page.url()).hash).toBe("");
+    expect(new URL(page.url()).pathname).toBe("/login.html");
+
+    expect(errors).toEqual([]);
+  });
+
+  test("a recovery link opens the set-a-new-password form", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, {});
+    const errors = trackErrors(page);
+
+    await page.goto(
+      "/login.html#access_token=" +
+        accessTokenSeed() +
+        "&refresh_token=fake-refresh&expires_in=3600" +
+        "&token_type=bearer&type=recovery",
+    );
+    await page.waitForSelector("#recovery-form", { state: "visible" });
+
+    await expect(page.locator("#auth-form")).toBeHidden();
+    await expect(page.locator("#auth-title")).toHaveText("Set a new password");
+    // Not redirected to a portal — the whole point of the fix.
+    expect(new URL(page.url()).pathname).toBe("/login.html");
+
+    // Demo mode must refuse the write rather than touch the shared account.
+    await page.fill("#input-new-password", "new-password-1");
+    await page.fill("#input-confirm-new", "new-password-1");
+    await page.click("#btn-recovery-submit");
+    await expect(page.locator("#auth-toast")).toContainText(
+      "disabled in the live demo",
+    );
+    expect(writes).toEqual([]);
+
+    expect(errors).toEqual([]);
+  });
+
+  test("mismatched passwords are caught before any request", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, {});
+
+    await page.goto(
+      "/login.html#access_token=" +
+        accessTokenSeed() +
+        "&refresh_token=fake-refresh&expires_in=3600" +
+        "&token_type=bearer&type=recovery",
+    );
+    await page.waitForSelector("#recovery-form", { state: "visible" });
+
+    await page.fill("#input-new-password", "new-password-1");
+    await page.fill("#input-confirm-new", "new-password-2");
+    await page.click("#btn-recovery-submit");
+
+    await expect(page.locator("#error-confirm-new")).toContainText(
+      "do not match",
+    );
+    expect(writes).toEqual([]);
+  });
+
+  test("forgot-password is hidden in demo mode", async ({ page, context }) => {
+    await routeSupabase(context, {});
+    await page.goto("/login.html");
+    await page.waitForSelector("#auth-form");
+    await expect(page.locator("#forgot-row")).toBeHidden();
   });
 });
 

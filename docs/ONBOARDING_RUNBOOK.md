@@ -84,6 +84,36 @@ VITE_DEMO_MODE=false
 Supabase instead of the in-browser demo overlay), routes logins by role, and
 resolves teachers by `auth_user_id`.
 
+Then point the project back at the app — Dashboard → Authentication → **URL
+Configuration**. Supabase defaults Site URL to `http://localhost:3000`, and
+that default is where every password-recovery email lands until it's changed:
+
+| Field         | Value                                                                |
+| ------------- | -------------------------------------------------------------------- |
+| Site URL      | the school's deployed origin, e.g. `https://smp-web-page.vercel.app` |
+| Redirect URLs | `<deployed origin>/**`                                               |
+| Redirect URLs | `http://localhost:3000/**` (dev — Vite's port, see `vite.config.js`) |
+
+Only allow-listed URLs are honoured as redirect targets, and that allow-list is
+the boundary that keeps the `redirectTo` the console sends from being an open
+redirect. Skipping this leaves recovery links pointing at `/`, the student
+dashboard, which consumes the token and signs the user in with no way to set a
+password.
+
+Optional, and worth it for schools on enterprise mail: some scanners pre-fetch
+links and burn the single-use token, so the recipient gets
+`error_code=otp_expired` on their first click. Switching the _Reset Password_
+template (Authentication → Emails) to a token-hash link avoids it — nothing is
+spent until the page itself exchanges the token:
+
+```html
+<a href="{{ .SiteURL }}/login.html?token_hash={{ .TokenHash }}&type=recovery">
+  Reset password
+</a>
+```
+
+The login page already handles both that shape and the default one.
+
 ## 6. Run the acceptance test (all through the UI)
 
 Sign in as the admin → you land on `/admin`. Then, without touching SQL:
@@ -148,3 +178,8 @@ project's anon key, `VITE_DEMO_MODE=false`) and sign in with the test admin.
 - **Deactivate:** the console's per-row deactivate flips the record `status`
   flag. Disabling the actual login (auth ban) is available via the Edge
   Function's `setActive` action.
+- **Password recovery:** anyone can start one from the login page's **Forgot
+  password?**, and an admin can send one for a specific login from the console.
+  Either way the emailed link comes back to `/login`, which detects it and asks
+  for a new password. Both paths depend on §5's URL configuration — without it
+  the link lands on the student dashboard instead.
