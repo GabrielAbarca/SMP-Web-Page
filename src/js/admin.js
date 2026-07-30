@@ -618,7 +618,12 @@ navLinks.forEach((link) => {
     closeNav();
   });
 });
-document.getElementById("logout-btn")?.addEventListener("click", async () => {
+// preventDefault matters: the button is an <a>, so without it the browser
+// follows the href while signOut() is still in flight. The session is still
+// live when the next page's guard runs, and role routing sends the admin
+// straight back here — the logout silently does nothing.
+document.getElementById("logout-btn")?.addEventListener("click", async (e) => {
+  e.preventDefault();
   await signOut();
   window.location.replace("/login.html");
 });

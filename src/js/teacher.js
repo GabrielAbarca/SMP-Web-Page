@@ -1163,7 +1163,10 @@ navLinks.forEach((link) => {
   });
 });
 
-document.getElementById("logout-btn")?.addEventListener("click", async () => {
+// See the admin console's logout: preventDefault stops the <a> from navigating
+// before signOut() has finished, which otherwise bounces the user right back.
+document.getElementById("logout-btn")?.addEventListener("click", async (e) => {
+  e.preventDefault();
   await signOut();
   window.location.replace("/login.html");
 });
