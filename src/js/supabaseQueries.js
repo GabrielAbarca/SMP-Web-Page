@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { nextOccurrence } from "./scheduleLogic.js";
 
 export async function fetchStudentProfile(studentId) {
   const { data, error } = await supabase
@@ -205,27 +206,8 @@ export async function fetchDashboardStats(studentId, classId) {
       : 0;
 
   const now = new Date();
-  const currentDay = now.getDay();
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-  let nextClass = null;
-
-  for (let offset = 0; offset < 7; offset++) {
-    const checkDay = ((currentDay + offset - 1) % 5) + 1;
-    const daySchedule = schedule.filter((s) => s.day_of_week === checkDay);
-    if (offset === 0) {
-      const upcoming = daySchedule.filter((s) => s.start_time > currentTime);
-      if (upcoming.length > 0) {
-        nextClass = upcoming[0];
-        break;
-      }
-    } else {
-      if (daySchedule.length > 0) {
-        nextClass = daySchedule[0];
-        break;
-      }
-    }
-  }
+  const nextClass = nextOccurrence(schedule, now.getDay(), currentTime);
 
   return {
     attendance: {

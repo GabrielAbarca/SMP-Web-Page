@@ -24,6 +24,7 @@ import {
   fetchEvents,
   fetchDashboardStats,
 } from "./supabaseQueries.js";
+import { DEFAULT_ACTIVE_DAYS, dayKeyShort } from "./scheduleLogic.js";
 
 const session = await getSession();
 if (!session) {
@@ -459,21 +460,28 @@ async function initSchedule() {
     ).values(),
   ].sort((a, b) => a.start.localeCompare(b.start));
 
-  const dayNames = ["mon", "tue", "wed", "thu", "fri"].map((k) =>
-    t(`common.daysShort.${k}`),
-  );
+  // Monday–Friday always show; a weekend column appears only when the
+  // student actually has class on it, so a normal week stays five wide.
+  const days = [
+    ...new Set([
+      ...DEFAULT_ACTIVE_DAYS,
+      ...schedule.map((s) => Number(s.day_of_week)),
+    ]),
+  ]
+    .filter((d) => d >= 1 && d <= 7)
+    .sort((a, b) => a - b);
 
   let html = "";
 
   html += `<div class="sch-header">${t("student.schedule.time")}</div>`;
-  dayNames.forEach((d) => {
-    html += `<div class="sch-header">${d}</div>`;
+  days.forEach((day) => {
+    html += `<div class="sch-header">${t(`common.daysShort.${dayKeyShort(day)}`)}</div>`;
   });
 
   timeSlots.forEach((slot) => {
     html += `<div class="sch-time">${formatTime(slot.start)}<br>${formatTime(slot.end)}</div>`;
 
-    for (let day = 1; day <= 5; day++) {
+    for (const day of days) {
       const entry = schedule.find(
         (s) =>
           s.day_of_week === day &&
@@ -495,6 +503,7 @@ async function initSchedule() {
     }
   });
 
+  grid.style.setProperty("--sched-days", String(days.length));
   grid.innerHTML = html;
 }
 

@@ -1016,7 +1016,9 @@
 
   .schedule-grid {
     display: grid;
-    grid-template-columns: 90px repeat(5, 1fr);
+    /* Column count is set from the days the student actually has class on
+       (five unless the school teaches on a weekend). */
+    grid-template-columns: 90px repeat(var(--sched-days, 5), 1fr);
     gap: 2px;
     background: var(--color-light);
     border-radius: var(--card-border-radius);

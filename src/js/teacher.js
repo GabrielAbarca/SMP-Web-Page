@@ -35,6 +35,7 @@ import {
 import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { wrapDbForDemo } from "./demoDb.js";
+import { dayKey, jsDayToDow } from "./scheduleLogic.js";
 import {
   initI18n,
   applyTranslations,
@@ -382,16 +383,6 @@ const realDb = {
       .order("start_time");
     if (error) throw error;
     return data;
-  },
-
-  async insertSchedule(payload) {
-    const { error } = await supabase.from("schedules").insert(payload);
-    if (error) throw error;
-  },
-
-  async deleteSchedule(id) {
-    const { error } = await supabase.from("schedules").delete().eq("id", id);
-    if (error) throw error;
   },
 
   // ── Shared reference data (for forms) ───────────────────────
@@ -954,16 +945,11 @@ function escapeHtml(value) {
   );
 }
 
-// Weekday labels indexed by day_of_week (1=Mon … 5=Fri). Resolved at call
-// time so the active language applies (rebuilt fresh on the post-switch reload).
+// Weekday label for a day_of_week (1=Mon … 7=Sun). Resolved at call time so
+// the active language applies (rebuilt fresh on the post-switch reload).
 function dayName(dow) {
-  const keys = ["", "monday", "tuesday", "wednesday", "thursday", "friday"];
-  return keys[dow] ? t(`common.days.${keys[dow]}`) : "";
-}
-function dayOptions() {
-  return ["monday", "tuesday", "wednesday", "thursday", "friday"].map(
-    (k, i) => ({ value: i + 1, label: t(`common.days.${k}`) }),
-  );
+  const key = dayKey(Number(dow));
+  return key ? t(`common.days.${key}`) : "";
 }
 
 // Distinct class options across the teacher's subject-sections.
@@ -2458,23 +2444,21 @@ async function saveAttendance() {
 }
 
 // ───────────────────────────────────────────────────────────────
-//  10. SCHEDULE TAB
+//  10. SCHEDULE TAB (read-only)
 // ───────────────────────────────────────────────────────────────
+//  Timetables are authored in one place — the admin console's Schedules
+//  tab, which is the only surface that checks for double-booked teachers
+//  and rooms across sections. Here a teacher just reads their week.
 function renderScheduleTab(content) {
   content.innerHTML = `
     <div class="view-toolbar">
       <div class="toolbar-filters">
         <label>${t("admin.schedule.weeklyFor", { class: escapeHtml(currentClass.className) })}</label>
       </div>
-      <button class="btn btn-primary" id="btn-add-schedule">
-        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span> ${t("admin.schedule.add")}
-      </button>
     </div>
     <div class="recent-activity">
       <div id="schedule-grid">${skeletonBlock(4)}</div>
     </div>`;
-
-  bindAdminAction(document.getElementById("btn-add-schedule"), openAddSchedule);
 
   loadSchedule();
 }
@@ -2503,7 +2487,6 @@ function renderScheduleTable(entries) {
       <tr>
         <th>${t("admin.schedule.day")}</th><th>${t("admin.schedule.start")}</th><th>${t("admin.schedule.end")}</th>
         <th>${t("admin.schedule.subject")}</th><th>${t("admin.schedule.teacher")}</th><th>${t("admin.schedule.room")}</th>
-        <th class="actions-col">${t("admin.schedule.actions")}</th>
       </tr>
     </thead>`;
   const tbody = document.createElement("tbody");
@@ -2515,24 +2498,6 @@ function renderScheduleTable(entries) {
            background:${entry.subjects.color};margin-right:6px;vertical-align:middle;"></span>`
       : "";
 
-    const actionsCell = document.createElement("td");
-    actionsCell.className = "actions-col";
-    actionsCell.appendChild(
-      makeActionBtn(
-        "delete",
-        t("common.delete"),
-        () => {
-          openConfirm(t("admin.confirm.deleteSchedule"), async () => {
-            await db.deleteSchedule(entry.id);
-            showToast(t("admin.toast.scheduleDeleted"));
-            loadSchedule();
-          });
-        },
-        true,
-        true,
-      ),
-    );
-
     tr.innerHTML = `
       <td>${dayName(entry.day_of_week) || entry.day_of_week}</td>
       <td>${escapeHtml(entry.start_time)}</td>
@@ -2540,94 +2505,12 @@ function renderScheduleTable(entries) {
       <td>${dot}${escapeHtml(entry.subjects?.name ?? "—")}</td>
       <td>${entry.teachers ? escapeHtml(entry.teachers.first_name + " " + entry.teachers.last_name) : "—"}</td>
       <td>${escapeHtml(entry.rooms?.name ?? "—")}</td>`;
-    tr.appendChild(actionsCell);
     tbody.appendChild(tr);
   });
 
   table.appendChild(tbody);
   container.innerHTML = "";
   container.appendChild(table);
-}
-
-async function openAddSchedule() {
-  let subjects, teachers, rooms;
-  try {
-    [subjects, teachers, rooms] = await Promise.all([
-      db.fetchSubjects(),
-      db.fetchTeachers(),
-      db.fetchRooms(),
-    ]);
-  } catch (err) {
-    showToast(
-      t("admin.schedule.formDataFailed", { msg: err.message }),
-      "error",
-    );
-    return;
-  }
-
-  openModal({
-    title: t("admin.schedule.addTitle", { class: currentClass.className }),
-    submitLabel: t("admin.schedule.addEntry"),
-    fields: [
-      {
-        name: "day_of_week",
-        label: t("admin.form.day"),
-        type: "select",
-        required: true,
-        options: dayOptions(),
-      },
-      {
-        name: "start_time",
-        label: t("admin.form.startTime"),
-        type: "time",
-        required: true,
-      },
-      {
-        name: "end_time",
-        label: t("admin.form.endTime"),
-        type: "time",
-        required: true,
-      },
-      {
-        name: "subject_id",
-        label: t("admin.form.subject"),
-        type: "select",
-        required: true,
-        value: currentClass.subjectId,
-        options: subjects.map((s) => ({ value: s.id, label: s.name })),
-      },
-      {
-        name: "teacher_id",
-        label: t("admin.form.teacher"),
-        type: "select",
-        required: true,
-        value: TEACHER_ID,
-        options: teachers.map((tc) => ({
-          value: tc.id,
-          label: `${tc.last_name}, ${tc.first_name}`,
-        })),
-      },
-      {
-        name: "room_id",
-        label: t("admin.form.room"),
-        type: "select",
-        options: rooms.map((r) => ({ value: r.id, label: r.name })),
-      },
-    ],
-    onSubmit: async (formData) => {
-      await db.insertSchedule({
-        class_id: currentClass.classId,
-        day_of_week: Number(formData.day_of_week),
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        subject_id: Number(formData.subject_id),
-        teacher_id: Number(formData.teacher_id),
-        room_id: formData.room_id ? Number(formData.room_id) : null,
-      });
-      showToast(t("admin.toast.scheduleAdded"));
-      loadSchedule();
-    },
-  });
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -3370,11 +3253,6 @@ async function loadToday() {
     day: "numeric",
   });
 
-  if (jsDow === 0 || jsDow === 6) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-weekend"></use></svg></span><p>${t("admin.today.weekend")}</p></div>`;
-    return;
-  }
-
   grid.innerHTML = skeletonCards(3);
   try {
     // myClassesCache lets us map a schedule row to its class_subject_teacher so
@@ -3382,15 +3260,17 @@ async function loadToday() {
     if (!myClassesCache.length) {
       myClassesCache = await db.fetchMyClasses(TEACHER_ID, ACTIVE_YEAR.id);
     }
-    const entries = await db.fetchScheduleToday(TEACHER_ID, jsDow); // Mon=1..Fri=5
-    renderToday(entries, grid);
+    // Weekends are queried like any other day — schools that teach on
+    // Saturday exist, and an empty result renders the same "no classes".
+    const entries = await db.fetchScheduleToday(TEACHER_ID, jsDayToDow(jsDow));
+    renderToday(entries, grid, jsDow);
   } catch (err) {
     loaded.today = false; // allow a retry on next visit
     grid.innerHTML = `<div class="loading-cell">${t("admin.today.loadFailed", { msg: escapeHtml(err.message) })}</div>`;
   }
 }
 
-function renderToday(entries, grid) {
+function renderToday(entries, grid, jsDow = null) {
   // Only show schedule rows the teacher actually grades (has a
   // class_subject_teacher assignment for); other teachers' classes are hidden.
   const mine = entries
@@ -3403,7 +3283,13 @@ function renderToday(entries, grid) {
     .filter((m) => m.cst);
 
   if (!mine.length) {
-    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-event_available"></use></svg></span><p>${t("admin.today.noClasses")}</p></div>`;
+    // A free Saturday still reads as a weekend; a free Tuesday does not.
+    const weekend = jsDow === 0 || jsDow === 6;
+    const icon = weekend ? "weekend" : "event_available";
+    const message = t(
+      weekend ? "admin.today.weekend" : "admin.today.noClasses",
+    );
+    grid.innerHTML = `<div class="empty-state"><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span><p>${message}</p></div>`;
     return;
   }
 

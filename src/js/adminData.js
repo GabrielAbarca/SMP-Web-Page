@@ -191,12 +191,70 @@ export function createAdminData(gateway) {
         match: { class_id: classId },
         order: { column: "day_of_week" },
       }),
+    /**
+     * Every entry of a school year, for cross-section conflict detection.
+     * `schedules` has no school_year_id — the year is implied through the
+     * class — so the controller passes the year's section ids.
+     * @param {number[]} classIds
+     */
+    listYearSchedules: (classIds) =>
+      classIds?.length
+        ? gateway.select("schedules", {
+            inList: { column: "class_id", values: classIds },
+            order: { column: "day_of_week" },
+          })
+        : Promise.resolve([]),
     createSchedule: (/** @type {object} */ row) =>
       gateway.insert("schedules", row),
     updateSchedule: (/** @type {number} */ id, /** @type {object} */ patch) =>
       gateway.update("schedules", id, patch),
     deleteSchedule: (/** @type {number} */ id) =>
       gateway.remove("schedules", id),
+
+    // ── Schedule configuration (one row per school year) ──────
+    /** The year's config, or null before the school has set one. */
+    async getScheduleConfig(/** @type {number} */ yearId) {
+      const rows = await gateway.select("schedule_configs", {
+        match: { school_year_id: yearId },
+      });
+      return rows[0] ?? null;
+    },
+    createScheduleConfig: (/** @type {object} */ row) =>
+      gateway.insert("schedule_configs", row),
+    updateScheduleConfig: (
+      /** @type {number} */ id,
+      /** @type {object} */ patch,
+    ) => gateway.update("schedule_configs", id, patch),
+
+    // ── Bell schedules (reusable time-block templates) ────────
+    listBellSchedules: () =>
+      gateway.select("bell_schedules", { order: { column: "name" } }),
+    createBellSchedule: (/** @type {object} */ row) =>
+      gateway.insert("bell_schedules", row),
+    updateBellSchedule: (
+      /** @type {number} */ id,
+      /** @type {object} */ patch,
+    ) => gateway.update("bell_schedules", id, patch),
+    deleteBellSchedule: (/** @type {number} */ id) =>
+      gateway.remove("bell_schedules", id),
+
+    /** Blocks of one template, in running order. */
+    listBellBlocks: (/** @type {number} */ bellScheduleId) =>
+      gateway.select("bell_schedule_blocks", {
+        match: { bell_schedule_id: bellScheduleId },
+        order: { column: "block_order" },
+      }),
+    /** Every block, so the template list can show block counts. */
+    listAllBellBlocks: () =>
+      gateway.select("bell_schedule_blocks", {
+        order: { column: "block_order" },
+      }),
+    createBellBlock: (/** @type {object} */ row) =>
+      gateway.insert("bell_schedule_blocks", row),
+    updateBellBlock: (/** @type {number} */ id, /** @type {object} */ patch) =>
+      gateway.update("bell_schedule_blocks", id, patch),
+    deleteBellBlock: (/** @type {number} */ id) =>
+      gateway.remove("bell_schedule_blocks", id),
 
     // ── Students & enrollment ─────────────────────────────────
     listStudents: () =>

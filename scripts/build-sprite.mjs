@@ -17,7 +17,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const SRC_DIR = resolve(ROOT, "node_modules/@material-symbols/svg-400/outlined");
+const SRC_DIR = resolve(
+  ROOT,
+  "node_modules/@material-symbols/svg-400/outlined",
+);
 const OUT_FILE = resolve(ROOT, "src/icons/icons.svg");
 
 // The exact set of icons used across the app (HTML + JS-generated). Keep sorted.
@@ -26,17 +29,85 @@ const OUT_FILE = resolve(ROOT, "src/icons/icons.svg");
 // fields, the event-type and subject icon maps in main.js, makeActionBtn args,
 // and the login.js avatar / password-toggle swaps).
 const ICONS = [
-  "account_circle", "add", "admin_panel_settings", "alternate_email", "arrow_back",
-  "assignment", "badge", "beach_access", "biotech", "block", "book", "cake", "calculate",
-  "calendar_month", "calendar_today", "call", "category", "celebration", "check_circle",
-  "chevron_right", "close", "co_present", "dark_mode", "dashboard", "delete",
-  "deployed_code", "description", "edit", "edit_note", "error", "event", "event_available",
-  "event_busy", "fact_check", "fingerprint", "fitness_center", "gavel", "grade", "grading",
-  "group", "groups", "handshake", "help", "history_edu", "home", "info", "light_mode",
-  "list_alt", "lock", "lock_reset", "logout", "mail", "menu", "menu_book", "monitoring",
-  "palette", "password", "person", "person_add", "policy", "print", "public", "quiz",
-  "save", "schedule", "school", "science", "search", "settings", "support_agent", "tag",
-  "today", "translate", "tune", "visibility", "visibility_off", "wc", "weekend",
+  "account_circle",
+  "add",
+  "admin_panel_settings",
+  "alternate_email",
+  "arrow_back",
+  "assignment",
+  "badge",
+  "beach_access",
+  "biotech",
+  "block",
+  "book",
+  "cake",
+  "calculate",
+  "calendar_month",
+  "calendar_today",
+  "call",
+  "category",
+  "celebration",
+  "check_circle",
+  "chevron_right",
+  "close",
+  "co_present",
+  "content_copy",
+  "dark_mode",
+  "dashboard",
+  "delete",
+  "deployed_code",
+  "description",
+  "edit",
+  "edit_note",
+  "error",
+  "event",
+  "event_available",
+  "event_busy",
+  "fact_check",
+  "fingerprint",
+  "fitness_center",
+  "gavel",
+  "grade",
+  "grading",
+  "group",
+  "groups",
+  "handshake",
+  "help",
+  "history_edu",
+  "home",
+  "info",
+  "light_mode",
+  "list_alt",
+  "lock",
+  "lock_reset",
+  "logout",
+  "mail",
+  "menu",
+  "menu_book",
+  "monitoring",
+  "palette",
+  "password",
+  "person",
+  "person_add",
+  "policy",
+  "print",
+  "public",
+  "quiz",
+  "save",
+  "schedule",
+  "school",
+  "science",
+  "search",
+  "settings",
+  "support_agent",
+  "tag",
+  "today",
+  "translate",
+  "tune",
+  "visibility",
+  "visibility_off",
+  "wc",
+  "weekend",
 ];
 
 // Material Symbols ligatures that share a glyph are deduped by the npm package under
@@ -54,7 +125,7 @@ function symbolFor(name) {
     raw = readFileSync(resolve(SRC_DIR, `${file}.svg`), "utf8");
   } catch {
     throw new Error(
-      `Missing icon "${name}" (file "${file}.svg") in ${SRC_DIR}. Check the name, or run \`npm i -D @material-symbols/svg-400\` first.`
+      `Missing icon "${name}" (file "${file}.svg") in ${SRC_DIR}. Check the name, or run \`npm i -D @material-symbols/svg-400\` first.`,
     );
   }
 
