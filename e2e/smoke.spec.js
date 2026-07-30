@@ -5,6 +5,7 @@ import {
   teacherFix,
   consoleFix,
   scheduleFix,
+  SUPA,
   routeSupabase,
   sessionSeed,
   accessTokenSeed,
@@ -363,6 +364,62 @@ test.describe("admin console", () => {
     expect(errors).toEqual([]);
     // Demo mode: every write above landed in the in-browser overlay.
     expect(writes).toEqual([]);
+  });
+
+  // The schedules tables ship as a hand-applied schema snippet, so a project
+  // can legitimately be running the new console without them. Losing the
+  // templates or the day config must not take the whole tab down.
+  test("schedules tab still works on a project without the new tables", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, scheduleFix);
+    // Registered after the fixture catch-all: Playwright gives precedence to
+    // the most recently added matching route.
+    for (const table of [
+      "schedule_configs",
+      "bell_schedules",
+      "bell_schedule_blocks",
+    ]) {
+      await context.route(`${SUPA}/rest/v1/${table}*`, (route) =>
+        route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({
+            code: "42P01",
+            message: `relation "public.${table}" does not exist`,
+          }),
+        }),
+      );
+    }
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+    await page.click('.sidebar a[data-page="schedules"]');
+
+    // The grid renders from `schedules` alone, on the Mon–Fri default.
+    await expect(page.locator("#sched-grid")).toContainText("Mathematics");
+    await expect(page.locator("#schedules-root")).not.toContainText(
+      "Failed to load",
+    );
+    expect(
+      await page.locator("#sched-grid .sched-head").allInnerTexts(),
+    ).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
+    // No templates to offer, but the picker still works.
+    expect(
+      await page.locator("#sched-template-picker option").allInnerTexts(),
+    ).toEqual(["Free times (no template)"]);
+
+    expect(errors).toEqual([]);
   });
 
   test("bounces a teacher-role profile to the teacher console", async ({

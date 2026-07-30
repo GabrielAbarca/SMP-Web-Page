@@ -2211,8 +2211,12 @@ async function loadSchedulesTab() {
     state.gradeLevels = gradeLevels;
 
     const [config, bells, entries] = await Promise.all([
-      loadScheduleConfig(state.activeYear.id),
-      data.listBellSchedules(),
+      optionalRead(
+        "schedule_configs",
+        data.getScheduleConfig(state.activeYear.id),
+        null,
+      ),
+      optionalRead("bell_schedules", data.listBellSchedules(), []),
       data.listYearSchedules(sectionsList.map((s) => s.id)),
     ]);
     state.scheduleConfig = config;
@@ -2231,17 +2235,26 @@ async function loadSchedulesTab() {
 }
 
 /**
- * The year's config row. A project that predates the table (schema is
- * applied by hand) must keep working, so a failed read means "unset" and
- * scheduleLogic's Monday–Friday default applies.
- * @param {number} yearId
+ * A read whose table a given project might not have yet.
+ *
+ * `schedule_configs` and `bell_schedules` arrive with a schema snippet that
+ * is applied by hand (supabase/schema/incremental_schedules.sql), so they can
+ * legitimately be missing while `schedules` — which has always existed — is
+ * full of data. Losing a template list or a day configuration must degrade to
+ * a default, not take the whole tab down with it.
+ *
+ * @template T
+ * @param {string} label table being read, for the console warning
+ * @param {Promise<T>} read
+ * @param {T} fallback used when the table is unavailable
+ * @returns {Promise<T>}
  */
-async function loadScheduleConfig(yearId) {
+async function optionalRead(label, read, fallback) {
   try {
-    return await data.getScheduleConfig(yearId);
+    return await read;
   } catch (err) {
-    console.warn("loadScheduleConfig: schedule_configs unavailable:", err);
-    return null;
+    console.warn(`loadSchedulesTab: ${label} unavailable:`, err);
+    return fallback;
   }
 }
 
