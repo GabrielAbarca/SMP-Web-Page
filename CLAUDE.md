@@ -68,6 +68,23 @@ schema is managed out of band, so a tracked migrations dir would make the
 Supabase↔GitHub integration report a history mismatch. Apply schema artifacts
 by hand (dashboard / CLI) per `docs/ONBOARDING_RUNBOOK.md`.
 
+Three of those artifacts are operational rather than structural:
+
+- `demo_lockdown.sql` — restrictive `demo_deny_*` policies making the demo
+  project read-only server-side. **Demo project only**; re-run after any
+  schema change (it loops over the live table catalog, so new tables get
+  locked too).
+- `incremental_profile_role_guard.sql` — trigger stopping a user from editing
+  their own `profiles.role`. RLS chooses rows, not columns, so without it any
+  signed-in user could PATCH themselves to `admin` with the browser's anon key.
+- `rls_audit.sql` — impersonates anon/student/teacher/admin and asserts ~45
+  allowed/denied outcomes inside a transaction that rolls back. Run it after
+  any policy change and as the last step of a restore drill.
+
+Docs: `docs/ONBOARDING_RUNBOOK.md` (provisioning),
+`docs/BACKUP_RESTORE.md` (backups + the restore drill),
+`docs/ACCOUNT_RECOVERY.md` (who resets a password, and how).
+
 ### Demo mode (important)
 
 `DEMO_MODE` defaults **ON** (`src/js/demoMode.js`; opt out with `VITE_DEMO_MODE=false`). `demoDb.js` is a **delta-overlay** wrapper around the real data layer: reads pass through to Supabase, then per-session in-memory deltas are applied; **writes only record deltas and never leave the browser**. When touching data flows, preserve this invariant — a demo-mode write must never reach Supabase.

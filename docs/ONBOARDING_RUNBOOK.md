@@ -9,6 +9,14 @@ touching Supabase directly._
 The public demo (`VITE_DEMO_MODE` on, default) is a shared, read-only sandbox
 and is **not** used for real schools. Each school gets its own Supabase project.
 
+> **Companion documents**
+>
+> - [BACKUP_RESTORE.md](BACKUP_RESTORE.md) — confirming backups per project and
+>   the restore drill. Run the drill **before** a school's first real data goes
+>   in, not after.
+> - [ACCOUNT_RECOVERY.md](ACCOUNT_RECOVERY.md) — who resets a forgotten
+>   password, and how, without the developer.
+
 ---
 
 ## 1. Provision the school's Supabase project
@@ -235,10 +243,20 @@ project's anon key, `VITE_DEMO_MODE=false`) and sign in with the test admin.
   demo-only by design — on a school project a teacher is resolved from
   `teachers.auth_user_id`.
 - **Deactivate:** the console's per-row deactivate flips the record `status`
-  flag. Disabling the actual login (auth ban) is available via the Edge
-  Function's `setActive` action.
+  flag but **leaves the login working**. Disabling the actual login (auth ban)
+  is available via the Edge Function's `setActive` action, which has no UI yet
+  — see [ACCOUNT_RECOVERY.md §5](ACCOUNT_RECOVERY.md) for what to do about
+  leavers in the meantime.
 - **Password recovery:** anyone can start one from the login page's **Forgot
   password?**, and an admin can send one for a specific login from the console.
   Either way the emailed link comes back to `/login`, which detects it and asks
   for a new password. Both paths depend on §5's URL configuration — without it
-  the link lands on the student dashboard instead.
+  the link lands on the student dashboard instead. Full matrix, including the
+  locked-out-administrator case, in
+  [ACCOUNT_RECOVERY.md](ACCOUNT_RECOVERY.md).
+- **Two administrators, always.** Provision a second admin account during
+  onboarding. If the only administrator loses access, recovering it needs the
+  Supabase dashboard — nobody inside the app can do it.
+- **Backups:** confirm they are actually running on the school's project
+  (Free-plan projects have none) and run the restore drill before real data
+  goes in. See [BACKUP_RESTORE.md](BACKUP_RESTORE.md).
