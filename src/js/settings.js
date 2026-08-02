@@ -303,8 +303,8 @@ function renderMoreInfo() {
       <h4 class="settings-card-title">${t("settings.about.links")}</h4>
       <ul class="settings-links">
         <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-description"></use></svg></span> ${t("settings.about.documentation")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-policy"></use></svg></span> ${t("settings.about.privacy")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
-        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-gavel"></use></svg></span> ${t("settings.about.terms")} <span class="settings-coming-soon">${t("common.comingSoon")}</span></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-policy"></use></svg></span> <a href="/privacy.html" target="_blank" rel="noopener">${t("settings.about.privacy")}</a></li>
+        <li><span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-gavel"></use></svg></span> <a href="/terms.html" target="_blank" rel="noopener">${t("settings.about.terms")}</a></li>
       </ul>
     </div>`;
 }

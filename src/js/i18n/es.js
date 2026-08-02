@@ -1044,6 +1044,8 @@ export default {
     signIn: "Iniciar sesión",
     signUp: "Registrarse",
     noAccount: "¿No tienes una cuenta?",
+    privacy: "Política de privacidad",
+    terms: "Términos del servicio",
     haveAccount: "¿Ya tienes una cuenta?",
     forgotPassword: "¿Olvidaste tu contraseña?",
     resetLinkSent:

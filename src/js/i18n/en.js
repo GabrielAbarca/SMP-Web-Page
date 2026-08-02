@@ -1044,6 +1044,8 @@ export default {
     signIn: "Sign In",
     signUp: "Sign Up",
     noAccount: "Don't have an account?",
+    privacy: "Privacy policy",
+    terms: "Terms of service",
     haveAccount: "Already have an account?",
     forgotPassword: "Forgot password?",
     resetLinkSent:
