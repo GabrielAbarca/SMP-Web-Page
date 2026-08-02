@@ -106,5 +106,13 @@ Requires a `.env` with:
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-# VITE_DEMO_MODE=false   # optional — turns the demo sandbox off
+# VITE_DEMO_MODE=false          # optional — turns the demo sandbox off
+# VITE_EXPECTED_PROJECT_REF=    # optional — see below
 ```
+
+`VITE_EXPECTED_PROJECT_REF` is the project ref this build is meant to talk to
+(the `<ref>` in `https://<ref>.supabase.co`). When set, `supabaseClient.js`
+refuses to start if `VITE_SUPABASE_URL` points elsewhere. Demo mode blocks
+writes but **not** reads, so a demo build aimed at a school project would
+serve that school's real student records to the public demo; this turns that
+into a hard failure. Leave it unset in dev and CI.

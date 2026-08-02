@@ -73,8 +73,17 @@ export async function sendPasswordReset(email, redirectTo) {
 /**
  * Exchange a recovery token hash for a session.
  *
- * Deliberately not demo-gated: this only reads the token's validity, and the
- * login page needs the result to tell an expired link from a usable one.
+ * Deliberately not demo-gated, and the one call in the app that can change
+ * server state while DEMO_MODE is on — verifying a token consumes it. That is
+ * accepted rather than overlooked: the login page needs the result to tell an
+ * expired link from a usable one, and gating it would leave a visitor staring
+ * at a form that cannot explain why it fails.
+ *
+ * It is also unreachable in practice. Demo mode refuses to request a recovery
+ * mail at all (sendPasswordReset above, and accounts.resetPassword simulates),
+ * so no valid token for the demo project can exist; a token minted by a school
+ * project is meaningless against the demo project's endpoint. See
+ * docs/ACCOUNT_RECOVERY.md.
  *
  * @param {string} tokenHash the `token_hash` query parameter
  */
