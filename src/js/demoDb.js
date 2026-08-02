@@ -16,6 +16,70 @@
 
 import { supabase } from "./supabaseClient.js";
 
+// ── student_period_grades view emulation ────────────────────
+// A port of the SQL view in supabase/schema/incremental_teacher_policies.sql,
+// which is itself the definition the demo project runs. Keep the two in step:
+// a student edited during a demo session is scored here, everyone else comes
+// straight from the view, and the two sit in the same gradebook column.
+//
+//   · within a category: points earned ÷ points possible × 100 — NOT the
+//     average of each assignment's percentage. With mixed max_scores those
+//     diverge sharply (a 100-point exam and a 10-point quiz are not equal
+//     halves of a grade), and this file used to do the latter.
+//   · categories combine weighted by grade_categories.weight, renormalised
+//     over only the categories carrying graded work
+//   · uncategorised work does not enter the weighted branch at all; it
+//     counts only in the fallback below, matching the view's inner join
+//   · with no weighted categories, the same points ratio over every graded
+//     assignment
+//   · null when nothing is graded; rounded to 2dp like the view's round()
+export function computePeriodScore(assignmentList, gradeRows, cats) {
+  const byId = new Map(assignmentList.map((a) => [a.id, a]));
+  const weightByCat = new Map(cats.map((c) => [c.id, Number(c.weight) || 0]));
+
+  // Points earned/possible overall, and per category for the weighted branch.
+  let allScore = 0;
+  let allMax = 0;
+  /** @type {Map<number, {score: number, max: number}>} */
+  const perCat = new Map();
+
+  gradeRows.forEach((g) => {
+    if (g.score == null) return;
+    const assignment = byId.get(g.assignment_id);
+    const max = Number(assignment?.max_score);
+    if (!assignment || !max) return;
+
+    const score = Number(g.score);
+    allScore += score;
+    allMax += max;
+
+    // A category the caller didn't hand us (deleted, or another subject's)
+    // is skipped here, the way the view's join to grade_categories drops it.
+    const catId = assignment.category_id;
+    if (catId == null || !weightByCat.has(catId)) return;
+    const bucket = perCat.get(catId) ?? { score: 0, max: 0 };
+    bucket.score += score;
+    bucket.max += max;
+    perCat.set(catId, bucket);
+  });
+
+  if (!allMax) return null;
+
+  let weightedSum = 0;
+  let weightTotal = 0;
+  perCat.forEach((bucket, catId) => {
+    if (!bucket.max) return;
+    const weight = weightByCat.get(catId);
+    // Zero-weight categories drop out of both sides, as sum(weight) does.
+    weightedSum += (bucket.score / bucket.max) * 100 * weight;
+    weightTotal += weight;
+  });
+
+  const score =
+    weightTotal > 0 ? weightedSum / weightTotal : (allScore / allMax) * 100;
+  return Math.round(score * 100) / 100;
+}
+
 export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
   // Local rows get negative ids: they can never collide with real rows and
   // are easy to keep out of server queries (real ids are positive integers).
@@ -105,52 +169,6 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
     (a.start_time ?? "").localeCompare(b.start_time ?? "");
   const byDateDesc = (a, b) => (b.date ?? "").localeCompare(a.date ?? "");
   const byCatName = (a, b) => (a.name ?? "").localeCompare(b.name ?? "");
-
-  // ── student_period_grades view emulation ────────────────────
-  // The view's SQL lives only in Supabase, so this is a best-effort mirror:
-  // per-assignment percentage, averaged per category and weighted by
-  // grade_categories.weight (renormalized over categories that have graded
-  // work, like weightedOverall in admin.js); uncategorized work gets the
-  // leftover weight when defined weights don't reach 100; flat average when
-  // no categories exist. Only students the session actually touched are
-  // recomputed, so any drift vs the real view stays confined to local edits.
-  function computePeriodScore(assignmentList, gradeRows, cats) {
-    const maxByAid = new Map(
-      assignmentList.map((a) => [a.id, Number(a.max_score)]),
-    );
-    const catByAid = new Map(
-      assignmentList.map((a) => [a.id, a.category_id ?? null]),
-    );
-
-    const pctsByCat = new Map();
-    gradeRows.forEach((g) => {
-      const max = maxByAid.get(g.assignment_id);
-      if (g.score == null || !max) return;
-      const cat = catByAid.get(g.assignment_id);
-      if (!pctsByCat.has(cat)) pctsByCat.set(cat, []);
-      pctsByCat.get(cat).push((Number(g.score) / max) * 100);
-    });
-    if (!pctsByCat.size) return null;
-
-    const avg = (list) => list.reduce((s, v) => s + v, 0) / list.length;
-    const flat = () => avg([...pctsByCat.values()].flat());
-    if (!cats.length) return flat();
-
-    const weightByCat = new Map(cats.map((c) => [c.id, Number(c.weight) || 0]));
-    const definedTotal = [...weightByCat.values()].reduce((s, w) => s + w, 0);
-    const uncatWeight = Math.max(0, 100 - definedTotal);
-
-    let sum = 0;
-    let wTot = 0;
-    pctsByCat.forEach((list, cat) => {
-      const w =
-        cat == null ? uncatWeight : (weightByCat.get(cat) ?? uncatWeight);
-      if (w <= 0) return;
-      sum += avg(list) * w;
-      wTot += w;
-    });
-    return wTot > 0 ? sum / wTot : flat();
-  }
 
   function assignmentPeriod(aid) {
     const local = assignments.inserts.find((r) => r.id === aid);
