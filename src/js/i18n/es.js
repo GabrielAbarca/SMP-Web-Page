@@ -22,6 +22,10 @@ export default {
     saved: "Guardado.",
     deleted: "Eliminado.",
     loadFailed: "No se pudieron cargar los datos. Inténtalo de nuevo.",
+    loadError: "No pudimos cargar esta sección. Revisa tu conexión.",
+    retry: "Reintentar",
+    offline:
+      "Parece que no tienes conexión. Puede que la información no esté actualizada.",
     couldNotLoadProfile: "No se pudo cargar tu perfil.",
     adminOnly: "Solo un administrador puede realizar esta acción.",
     comingSoon: "Próximamente",
@@ -138,6 +142,17 @@ export default {
       email: "Correo electrónico",
       password: "Contraseña",
       changePassword: "Cambiar contraseña",
+      newPassword: "Nueva contraseña",
+      confirmPassword: "Confirmar nueva contraseña",
+      changePasswordSaving: "Guardando…",
+      changePasswordSuccess: "Contraseña actualizada.",
+      changePasswordMismatch: "Las contraseñas no coinciden.",
+      changePasswordTooShort: "Usa al menos 6 caracteres.",
+      changePasswordFailed:
+        "No se pudo actualizar tu contraseña. Inténtalo de nuevo.",
+      changePasswordReauth:
+        "Por seguridad, inicia sesión de nuevo antes de cambiar tu contraseña. " +
+        "También puedes usar «¿Olvidaste tu contraseña?» en la pantalla de inicio de sesión.",
       twoFactor: "Autenticación de dos factores",
       twoFactorHint: "Agrega un segundo paso al iniciar sesión.",
       twoFactorDisabled: "Deshabilitado en la demo",
@@ -1040,6 +1055,8 @@ export default {
     signIn: "Iniciar sesión",
     signUp: "Registrarse",
     noAccount: "¿No tienes una cuenta?",
+    privacy: "Política de privacidad",
+    terms: "Términos del servicio",
     haveAccount: "¿Ya tienes una cuenta?",
     forgotPassword: "¿Olvidaste tu contraseña?",
     resetLinkSent:

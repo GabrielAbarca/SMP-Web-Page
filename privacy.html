@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Privacy policy — Simple Manage Pro school management."
+    />
+    <meta name="theme-color" content="#7380ec" />
+    <link
+      rel="preload"
+      href="/fonts/poppins-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <script>
+      // Apply the saved theme before first paint (avoids a light-mode flash).
+      try {
+        if (localStorage.getItem("smp-theme") === "dark")
+          document.documentElement.classList.add("dark-theme-variables");
+      } catch (e) {}
+    </script>
+    <title>Privacy policy · Simple Manage Pro</title>
+  </head>
+  <body class="legal-body">
+    <header class="legal-header">
+      <a class="legal-brand" href="/login.html">
+        <img
+          src="/apple-touch-icon.png"
+          alt=""
+          width="40"
+          height="40"
+          class="legal-logo"
+        />
+        <span>Simple Manage Pro</span>
+      </a>
+      <div class="legal-lang" role="group" aria-label="Language / Idioma">
+        <button type="button" data-legal-set-lang="en">English</button>
+        <button type="button" data-legal-set-lang="es">Español</button>
+      </div>
+    </header>
+
+    <main class="legal">
+      <!-- ─────────────────────────── English ─────────────────────────── -->
+      <section data-legal-lang="en">
+        <h1>Privacy policy</h1>
+        <p class="legal-updated">Last updated: 2 August 2026</p>
+
+        <div class="legal-demo-notice" role="note">
+          <strong>Demonstration version.</strong> This site runs on invented
+          data and holds no real student records. A few operator details are
+          marked as pending below; they are completed before any school's real
+          data is processed.
+        </div>
+
+        <div class="legal-callout">
+          <strong>The short version.</strong> This app holds school records,
+          most of which describe children. Your school decides what is stored
+          and who may see it. We store it, keep it separated from every other
+          school, and do not sell it, mine it, or use it for advertising.
+        </div>
+
+        <h2>1. Who is responsible for your data</h2>
+        <p>
+          Simple Manage Pro ("SMP", "we") is school-management software operated
+          by Gabriel Zelaya.
+        </p>
+        <p>
+          <strong>Your school is the data controller.</strong> It decides which
+          records exist, what goes in them, and who has an account. We are the
+          <strong>data processor</strong>: we run the software and store the
+          data on the school's behalf and on its instructions. If you are a
+          student or a parent or guardian, your school is the right first point
+          of contact for any question about your records — they can answer and
+          correct things we are not permitted to touch.
+        </p>
+
+        <h2>2. This service holds data about children</h2>
+        <p>
+          Most people described in these records are minors. We treat that as
+          the default rather than the exception: access is restricted by role,
+          there is no advertising or profiling of any kind, no behavioural
+          tracking, and no sale or sharing of records with third parties for
+          their own purposes. Accounts are created by school staff — children
+          cannot sign themselves up, and we do not collect data from anyone
+          directly.
+        </p>
+
+        <h2>3. What is stored</h2>
+        <p>Depending on what your school chooses to record:</p>
+        <ul>
+          <li>
+            <strong>Students:</strong> name, national identification number,
+            enrolment number, date of birth, sex, class and grade level, contact
+            details (phone, email, address), photo, enrolment status and dates.
+          </li>
+          <li>
+            <strong>Parents and guardians:</strong> name, national
+            identification number, relationship to the student, phone numbers,
+            email, address, occupation.
+          </li>
+          <li>
+            <strong>Teachers and staff:</strong> name, national identification
+            number, contact details, role or specialisation, hire date, status.
+          </li>
+          <li>
+            <strong>Academic records:</strong> attendance, assignments, marks,
+            period and overall grades, timetables.
+          </li>
+          <li>
+            <strong>Discipline records:</strong> date, type, description,
+            severity, who reported it, and how it was resolved.
+          </li>
+          <li>
+            <strong>Accounts:</strong> the email address used to sign in and an
+            encrypted representation of the password. We never see or store
+            passwords in readable form.
+          </li>
+        </ul>
+
+        <h2>4. Why it is stored</h2>
+        <p>
+          Only to run the school: enrolment and records, attendance, grading and
+          reports, timetabling, communication between staff, and letting
+          students and guardians see their own information. We do not use it for
+          anything else, and we do not use it to train machine-learning models.
+        </p>
+
+        <h2>5. Who can see what</h2>
+        <p>
+          Access is enforced by the database itself, not only by what the
+          interface chooses to display:
+        </p>
+        <ul>
+          <li>
+            <strong>Students</strong> see their own record, their own
+            attendance, grades and discipline entries, and their class
+            timetable. They cannot see other students.
+          </li>
+          <li>
+            <strong>Teachers</strong> see the students in the classes they
+            teach, and record attendance and marks for those classes only.
+          </li>
+          <li>
+            <strong>Administrators</strong> at the school see and manage that
+            school's records.
+          </li>
+          <li>
+            <strong>We</strong> reach the data only when operating the service
+            or when your school asks us to help with a specific problem.
+          </li>
+        </ul>
+
+        <h2>6. Where it is stored</h2>
+        <p>
+          Records are held in a PostgreSQL database hosted by Supabase, and the
+          app is served by Vercel. <strong>Each school gets its own separate
+          database project.</strong> One school's data is not stored alongside
+          another's, and no query can cross from one to another. Hosting region:
+          United States (<code>us-west-1</code>). Data is encrypted in
+          transit (HTTPS) and at rest by the hosting provider.
+        </p>
+        <p>
+          <strong>This means records are stored outside Costa Rica.</strong>
+          Schools in Costa Rica should be aware their students' data is
+          processed on servers in the United States by our hosting providers,
+          who act only on our instructions and do not use it for their own
+          purposes. A school that requires data to remain in a specific country
+          should raise this before onboarding.
+        </p>
+
+        <h2>7. What is kept in your browser</h2>
+        <p>
+          We use no advertising or tracking cookies. The app stores a small
+          amount of data in your browser's local storage:
+        </p>
+        <ul>
+          <li>your sign-in session, so you are not asked to log in constantly;</li>
+          <li>
+            your language choice (<code>smp-lang-…</code>) and light/dark theme
+            (<code>smp-theme</code>).
+          </li>
+        </ul>
+        <p>Signing out clears the session. Clearing site data removes the rest.</p>
+
+        <h2>8. Analytics</h2>
+        <p>
+          On our hosted deployments we collect anonymous page-performance
+          measurements (Vercel Speed Insights) — how quickly pages load and
+          respond. It sets no cookies, is served from the same domain, and is
+          not linked to any individual or to any student record.
+        </p>
+
+        <h2>9. How long it is kept</h2>
+        <p>
+          Records stay for as long as your school keeps them; retention is the
+          school's decision, subject to the record-keeping duties schools have
+          under local law. Backups are retained for
+          <strong>7 days</strong> and then
+          overwritten. When a school stops using SMP, its database project is
+          deleted at the school's request.
+        </p>
+
+        <h2>10. Your rights</h2>
+        <p>
+          You can ask to see the data held about you or your child, to have
+          mistakes corrected, to have data deleted where the school is not
+          legally required to keep it, and to receive a copy in a portable
+          format. <strong>Start with your school</strong> — as the controller it
+          can act on most requests directly. If they need us, or if you would
+          rather contact us, write to
+          <strong>contact@gzelaya.com</strong> and we will respond
+          within
+          <strong
+            >5 business days</strong
+          >.
+        </p>
+
+        <h2>11. Security</h2>
+        <p>
+          Passwords are hashed by our authentication provider and are never
+          visible to us or to your school's administrators — an administrator
+          can trigger a reset, not read a password. Access rules are enforced in
+          the database, and are re-verified by an automated audit whenever the
+          system changes. Traffic is encrypted with HTTPS. Backups are taken
+          regularly and restores are rehearsed.
+        </p>
+        <p>
+          No system is perfectly secure. If a breach affects your data, we will
+          notify your school without undue delay and support them in notifying
+          the people affected, as local law requires.
+        </p>
+
+        <h2>12. The public demo</h2>
+        <p>
+          The demo at our public address contains
+          <strong>invented data only</strong>. It is shared by everyone who
+          visits, is read-only at the database level, and anything you type into
+          it stays in your own browser and disappears when you refresh. Never
+          put real student information into the demo.
+        </p>
+
+        <h2>13. Changes to this policy</h2>
+        <p>
+          If we change this policy we will update the date above and tell
+          participating schools. Material changes will be communicated before
+          they take effect.
+        </p>
+
+        <h2>14. Contact</h2>
+        <p>
+          Gabriel Zelaya<br />
+          <strong>[PLACEHOLDER: postal address]</strong><br />
+          <strong>contact@gzelaya.com</strong>
+        </p>
+      </section>
+
+      <!-- ─────────────────────────── Español ─────────────────────────── -->
+      <section data-legal-lang="es" hidden>
+        <h1>Política de privacidad</h1>
+        <p class="legal-updated">Última actualización: 2 de agosto de 2026</p>
+
+        <div class="legal-demo-notice" role="note">
+          <strong>Versión de demostración.</strong> Este sitio funciona con
+          datos inventados y no contiene expedientes reales de estudiantes.
+          Algunos datos del operador aparecen abajo como pendientes; se
+          completan antes de procesar datos reales de cualquier centro
+          educativo.
+        </div>
+
+        <div class="legal-callout">
+          <strong>En resumen.</strong> Esta aplicación guarda expedientes
+          escolares, y la mayoría describen a menores de edad. Su centro
+          educativo decide qué se guarda y quién puede verlo. Nosotros lo
+          almacenamos, lo mantenemos separado del de cualquier otro centro y no
+          lo vendemos ni lo usamos con fines publicitarios.
+        </div>
+
+        <h2>1. Quién es responsable de sus datos</h2>
+        <p>
+          Simple Manage Pro («SMP», «nosotros») es un software de gestión
+          escolar operado por
+          Gabriel Zelaya.
+        </p>
+        <p>
+          <strong>Su centro educativo es el responsable del tratamiento.</strong>
+          Decide qué expedientes existen, qué contienen y quién tiene cuenta.
+          Nosotros somos el <strong>encargado del tratamiento</strong>: operamos
+          el software y almacenamos los datos por cuenta del centro y siguiendo
+          sus instrucciones. Si usted es estudiante, madre, padre o persona
+          encargada, su centro es el primer punto de contacto para cualquier
+          consulta sobre sus expedientes.
+        </p>
+
+        <h2>2. Este servicio guarda datos de menores</h2>
+        <p>
+          La mayoría de las personas descritas en estos expedientes son menores
+          de edad. Lo tratamos como la norma y no como la excepción: el acceso
+          está restringido por rol, no hay publicidad ni elaboración de perfiles
+          de ningún tipo, no hay seguimiento de comportamiento y no vendemos ni
+          compartimos expedientes con terceros para sus propios fines. Las
+          cuentas las crea el personal del centro: los menores no pueden
+          registrarse por su cuenta y no recopilamos datos directamente de
+          ellos.
+        </p>
+
+        <h2>3. Qué se guarda</h2>
+        <p>Según lo que su centro decida registrar:</p>
+        <ul>
+          <li>
+            <strong>Estudiantes:</strong> nombre, número de identificación,
+            número de matrícula, fecha de nacimiento, sexo, sección y nivel,
+            datos de contacto (teléfono, correo, dirección), fotografía, estado
+            y fechas de matrícula.
+          </li>
+          <li>
+            <strong>Madres, padres y encargados:</strong> nombre, número de
+            identificación, parentesco, teléfonos, correo, dirección, ocupación.
+          </li>
+          <li>
+            <strong>Personal docente y administrativo:</strong> nombre, número
+            de identificación, datos de contacto, cargo o especialidad, fecha de
+            ingreso, estado.
+          </li>
+          <li>
+            <strong>Expediente académico:</strong> asistencia, tareas,
+            calificaciones, notas por periodo y globales, horarios.
+          </li>
+          <li>
+            <strong>Expediente disciplinario:</strong> fecha, tipo, descripción,
+            gravedad, quién lo reportó y cómo se resolvió.
+          </li>
+          <li>
+            <strong>Cuentas:</strong> el correo con el que inicia sesión y una
+            representación cifrada de la contraseña. Nunca vemos ni guardamos
+            contraseñas legibles.
+          </li>
+        </ul>
+
+        <h2>4. Para qué se guarda</h2>
+        <p>
+          Únicamente para operar el centro educativo: matrícula y expedientes,
+          asistencia, calificaciones e informes, horarios, comunicación entre el
+          personal, y permitir que estudiantes y encargados consulten su propia
+          información. No lo usamos para nada más, ni para entrenar modelos de
+          aprendizaje automático.
+        </p>
+
+        <h2>5. Quién puede ver qué</h2>
+        <p>
+          El acceso lo impone la propia base de datos, no solo lo que la
+          interfaz decide mostrar:
+        </p>
+        <ul>
+          <li>
+            <strong>Estudiantes:</strong> su propio expediente, su asistencia,
+            sus calificaciones, sus registros disciplinarios y el horario de su
+            sección. No pueden ver a otros estudiantes.
+          </li>
+          <li>
+            <strong>Docentes:</strong> los estudiantes de las secciones que
+            imparten, y registran asistencia y notas solo para esas secciones.
+          </li>
+          <li>
+            <strong>Administración del centro:</strong> ve y gestiona los
+            expedientes de ese centro.
+          </li>
+          <li>
+            <strong>Nosotros:</strong> accedemos solo para operar el servicio o
+            cuando el centro nos pide ayuda con un problema concreto.
+          </li>
+        </ul>
+
+        <h2>6. Dónde se guarda</h2>
+        <p>
+          Los expedientes se almacenan en una base de datos PostgreSQL alojada
+          en Supabase, y la aplicación se sirve desde Vercel.
+          <strong>Cada centro tiene su propio proyecto de base de datos
+          independiente.</strong> Los datos de un centro no se almacenan junto a
+          los de otro y ninguna consulta puede cruzar de uno a otro. Región de
+          alojamiento: Estados Unidos (<code>us-west-1</code>). Los datos se
+          cifran en tránsito (HTTPS) y en reposo por el proveedor.
+        </p>
+        <p>
+          <strong>Esto significa que los expedientes se almacenan fuera de
+          Costa Rica.</strong> Los centros educativos costarricenses deben saber
+          que los datos de sus estudiantes se procesan en servidores en Estados
+          Unidos por nuestros proveedores de alojamiento, que actúan únicamente
+          siguiendo nuestras instrucciones y no los usan para fines propios. Un
+          centro que requiera que los datos permanezcan en un país determinado
+          debe plantearlo antes de la contratación.
+        </p>
+
+        <h2>7. Qué se guarda en su navegador</h2>
+        <p>
+          No usamos cookies publicitarias ni de seguimiento. La aplicación
+          guarda una pequeña cantidad de datos en el almacenamiento local:
+        </p>
+        <ul>
+          <li>su sesión, para no pedirle iniciar sesión constantemente;</li>
+          <li>
+            su idioma (<code>smp-lang-…</code>) y el tema claro/oscuro
+            (<code>smp-theme</code>).
+          </li>
+        </ul>
+        <p>
+          Cerrar sesión elimina la sesión. Borrar los datos del sitio elimina el
+          resto.
+        </p>
+
+        <h2>8. Analítica</h2>
+        <p>
+          En nuestros despliegues recopilamos mediciones anónimas de rendimiento
+          de página (Vercel Speed Insights): con qué rapidez cargan y responden
+          las páginas. No usa cookies, se sirve desde el mismo dominio y no se
+          vincula a ninguna persona ni a ningún expediente.
+        </p>
+
+        <h2>9. Cuánto tiempo se conserva</h2>
+        <p>
+          Los expedientes se conservan mientras el centro los mantenga; la
+          conservación es decisión del centro, sujeta a los deberes de archivo
+          que la ley local impone a los centros educativos. Las copias de
+          seguridad se conservan
+          <strong>7 días</strong> y luego se
+          sobrescriben. Cuando un centro deja de usar SMP, su proyecto de base
+          de datos se elimina a solicitud del centro.
+        </p>
+
+        <h2>10. Sus derechos</h2>
+        <p>
+          Puede solicitar acceso a los datos sobre usted o su hijo o hija, la
+          corrección de errores, la eliminación cuando el centro no esté
+          obligado por ley a conservarlos, y una copia en formato portable.
+          <strong>Empiece por su centro educativo</strong>: como responsable
+          puede atender la mayoría de solicitudes directamente. Si necesitan
+          nuestra ayuda, o si prefiere contactarnos, escriba a
+          <strong>contact@gzelaya.com</strong> y responderemos en un
+          plazo de
+          <strong
+            >5 días</strong
+          >.
+        </p>
+
+        <h2>11. Seguridad</h2>
+        <p>
+          Las contraseñas se cifran mediante nuestro proveedor de autenticación
+          y no son visibles para nosotros ni para la administración del centro:
+          una persona administradora puede iniciar un restablecimiento, no leer
+          una contraseña. Las reglas de acceso se aplican en la base de datos y
+          se verifican mediante una auditoría automatizada cada vez que el
+          sistema cambia. El tráfico se cifra con HTTPS. Se realizan copias de
+          seguridad periódicas y se ensayan las restauraciones.
+        </p>
+        <p>
+          Ningún sistema es perfectamente seguro. Si una brecha afecta sus
+          datos, se lo notificaremos al centro sin demora indebida y le
+          apoyaremos en la notificación a las personas afectadas, según exija la
+          ley local.
+        </p>
+
+        <h2>12. La demostración pública</h2>
+        <p>
+          La demostración de nuestra dirección pública contiene
+          <strong>únicamente datos inventados</strong>. Es compartida por todas
+          las personas que la visitan, es de solo lectura a nivel de base de
+          datos, y todo lo que escriba en ella permanece en su navegador y
+          desaparece al actualizar. Nunca introduzca información real de
+          estudiantes en la demostración.
+        </p>
+
+        <h2>13. Cambios en esta política</h2>
+        <p>
+          Si modificamos esta política actualizaremos la fecha indicada arriba e
+          informaremos a los centros participantes. Los cambios sustanciales se
+          comunicarán antes de entrar en vigor.
+        </p>
+
+        <h2>14. Contacto</h2>
+        <p>
+          Gabriel Zelaya<br />
+          <strong>[MARCADOR: dirección postal]</strong><br />
+          <strong>contact@gzelaya.com</strong>
+        </p>
+      </section>
+
+      <nav class="legal-footer">
+        <a href="/terms.html" data-legal-text="en:Terms of service|es:Términos del servicio">Terms of service</a>
+        <span aria-hidden="true">·</span>
+        <a href="/login.html" data-legal-text="en:Back to sign in|es:Volver al inicio de sesión">Back to sign in</a>
+      </nav>
+    </main>
+
+    <script src="/src/js/legal.js" type="module"></script>
+  </body>
+</html>

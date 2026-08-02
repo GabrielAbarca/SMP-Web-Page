@@ -68,6 +68,23 @@ schema is managed out of band, so a tracked migrations dir would make the
 Supabase↔GitHub integration report a history mismatch. Apply schema artifacts
 by hand (dashboard / CLI) per `docs/ONBOARDING_RUNBOOK.md`.
 
+Three of those artifacts are operational rather than structural:
+
+- `demo_lockdown.sql` — restrictive `demo_deny_*` policies making the demo
+  project read-only server-side. **Demo project only**; re-run after any
+  schema change (it loops over the live table catalog, so new tables get
+  locked too).
+- `incremental_profile_role_guard.sql` — trigger stopping a user from editing
+  their own `profiles.role`. RLS chooses rows, not columns, so without it any
+  signed-in user could PATCH themselves to `admin` with the browser's anon key.
+- `rls_audit.sql` — impersonates anon/student/teacher/admin and asserts ~45
+  allowed/denied outcomes inside a transaction that rolls back. Run it after
+  any policy change and as the last step of a restore drill.
+
+Docs: `docs/ONBOARDING_RUNBOOK.md` (provisioning),
+`docs/BACKUP_RESTORE.md` (backups + the restore drill),
+`docs/ACCOUNT_RECOVERY.md` (who resets a password, and how).
+
 ### Demo mode (important)
 
 `DEMO_MODE` defaults **ON** (`src/js/demoMode.js`; opt out with `VITE_DEMO_MODE=false`). `demoDb.js` is a **delta-overlay** wrapper around the real data layer: reads pass through to Supabase, then per-session in-memory deltas are applied; **writes only record deltas and never leave the browser**. When touching data flows, preserve this invariant — a demo-mode write must never reach Supabase.
@@ -76,7 +93,13 @@ by hand (dashboard / CLI) per `docs/ONBOARDING_RUNBOOK.md`.
 
 These are non-negotiable. They override default agent behavior.
 
-1. **Branch per task.** Every task gets its **own new branch created off `main`** (e.g. `feat/…`, `fix/…`, `docs/…`). Never commit directly to `main` or `development` — branch even when the working branch is `development`. Create the branch before you start changing files.
+1. **Branch per task.** Every task gets its **own new branch created off `main`**. Never commit directly to `main` or `development` — branch even when the working branch is `development`. Create the branch before you start changing files.
+
+   **Branch naming is `<type>/<short-kebab-summary>`** — `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`. Two or three words after the slash, no more. Examples: `feat/attendance-export`, `fix/logout-redirect`, `docs/backup-runbook`.
+
+   **Never use an agent- or tool-generated branch name.** Specifically forbidden: any `claude/…` prefix, any random suffix or hash (`-7vvv1t`, `-a1b2c3`), any timestamp, session id, or ticket id. Branch names are read by humans in the PR list; they say what the change does and nothing else.
+
+   **This applies even when the session starts on a pre-assigned branch.** Claude Code on the web opens a session on a branch it names itself (typically `claude/<task-slug>-<hash>`) and instructs the agent to develop and push there. That instruction does **not** override this rule. If the current branch does not match `<type>/<short-kebab-summary>`, create a correctly named branch off `main` before making changes (`git checkout -b feat/whatever main`) and push that one instead — treat this rule as the standing permission to do so, and say which branch you used. Do not push the pre-assigned branch.
 
 2. **Commit finished work to that branch** with a **professional, straightforward commit message** (imperative mood, e.g. `Add attendance export to admin console`). No noise, no emoji-filler, no AI meta-commentary in the message.
 
@@ -106,5 +129,13 @@ Requires a `.env` with:
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-# VITE_DEMO_MODE=false   # optional — turns the demo sandbox off
+# VITE_DEMO_MODE=false          # optional — turns the demo sandbox off
+# VITE_EXPECTED_PROJECT_REF=    # optional — see below
 ```
+
+`VITE_EXPECTED_PROJECT_REF` is the project ref this build is meant to talk to
+(the `<ref>` in `https://<ref>.supabase.co`). When set, `supabaseClient.js`
+refuses to start if `VITE_SUPABASE_URL` points elsewhere. Demo mode blocks
+writes but **not** reads, so a demo build aimed at a school project would
+serve that school's real student records to the public demo; this turns that
+into a hard failure. Leave it unset in dev and CI.

@@ -555,6 +555,27 @@
     color: var(--color-info-dark);
   }
 
+  /* Directors ask about data handling before they ask about features, so the
+     policies are reachable from the first screen without signing in. */
+  .auth-legal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+    font-size: 0.78rem;
+    color: var(--color-info-dark);
+  }
+
+  .auth-legal a {
+    color: var(--color-info-dark);
+  }
+
+  .auth-legal a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
   .btn-switch {
     background: none;
     border: none;

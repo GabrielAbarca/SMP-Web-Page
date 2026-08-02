@@ -4,15 +4,22 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // single} — all thenable — resolving fixture rows with eq/in filters applied.
 // `calls` records every resolved query so tests can assert query shape (e.g.
 // the N+1 fix issuing a single teachers?id=in.(…) batch).
-const { fixtures, calls } = vi.hoisted(() => ({
+// `errors[table]` makes that table's next query fail, the way a dropped
+// connection or an RLS denial would.
+const { fixtures, calls, errors } = vi.hoisted(() => ({
   fixtures: /** @type {Record<string, any[]>} */ ({}),
   calls: /** @type {Array<{ table: string, filters: any[] }>} */ ([]),
+  errors: /** @type {Record<string, {message: string} | undefined>} */ ({}),
 }));
 
 vi.mock("../src/js/supabaseClient.js", () => {
   function make(table) {
     const filters = [];
     const resolve = (single) => {
+      if (errors[table]) {
+        calls.push({ table, filters: [...filters] });
+        return Promise.resolve({ data: null, error: errors[table] });
+      }
       const rows = (fixtures[table] ?? []).filter((row) =>
         filters.every(([op, col, val]) =>
           op === "eq"
@@ -42,11 +49,17 @@ vi.mock("../src/js/supabaseClient.js", () => {
   return { supabase: { from: (table) => make(table) } };
 });
 
-const { fetchDashboardStats, fetchStudentAttendance } =
-  await import("../src/js/supabaseQueries.js");
+const {
+  fetchDashboardStats,
+  fetchStudentAttendance,
+  fetchStudentGrades,
+  fetchStudentProfile,
+  fetchEvents,
+} = await import("../src/js/supabaseQueries.js");
 
 function seed() {
   for (const k of Object.keys(fixtures)) delete fixtures[k];
+  for (const k of Object.keys(errors)) delete errors[k];
   calls.length = 0;
   fixtures.attendance = [
     { id: 1, student_id: 101, status: "present", recorded_by: 7 },
@@ -106,5 +119,53 @@ describe("fetchDashboardStats aggregation", () => {
     expect(tables).toContain("attendance");
     expect(tables).toContain("student_grades");
     expect(tables).toContain("schedules");
+  });
+});
+
+// A failed query used to return [] — indistinguishable from "no grades yet",
+// so a network drop rendered as an empty state. These pin the distinction:
+// a failure propagates, and only a genuinely absent row returns empty.
+describe("failures propagate instead of looking like empty data", () => {
+  it("fetchStudentGrades rejects when the query fails", async () => {
+    errors.student_grades = { message: "network down" };
+    await expect(fetchStudentGrades(101)).rejects.toMatchObject({
+      message: "network down",
+    });
+  });
+
+  it("fetchEvents rejects when the query fails", async () => {
+    errors.events = { message: "boom" };
+    await expect(fetchEvents()).rejects.toMatchObject({ message: "boom" });
+  });
+
+  it("fetchStudentAttendance rejects when the query fails", async () => {
+    errors.attendance = { message: "boom" };
+    await expect(fetchStudentAttendance(101)).rejects.toMatchObject({
+      message: "boom",
+    });
+  });
+
+  it("fetchDashboardStats rejects when any one of its reads fails", async () => {
+    errors.student_grades = { message: "boom" };
+    await expect(fetchDashboardStats(101, 21)).rejects.toMatchObject({
+      message: "boom",
+    });
+  });
+
+  it("fetchStudentProfile rejects on failure", async () => {
+    errors.students = { message: "boom" };
+    await expect(fetchStudentProfile(101)).rejects.toMatchObject({
+      message: "boom",
+    });
+  });
+
+  it("fetchStudentProfile still returns null when the student simply is not there", async () => {
+    // No error, no row — a real answer, not a failure.
+    fixtures.students = [];
+    await expect(fetchStudentProfile(999)).resolves.toBeNull();
+  });
+
+  it("returns data normally when nothing is failing", async () => {
+    await expect(fetchStudentGrades(101)).resolves.toHaveLength(3);
   });
 });

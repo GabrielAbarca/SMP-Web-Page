@@ -72,6 +72,84 @@ function showErrorBanner() {
   (document.body ?? document.documentElement).appendChild(bar);
 }
 
+// ── Offline notice ─────────────────────────────────────────────
+// Losing the network makes every query fail at once, which without this reads
+// as the app breaking for no reason. Naming the cause turns a mystery into
+// something the user can fix. Amber rather than red: nothing is broken, and
+// it repairs itself.
+
+let offlineBar = null;
+
+function offlineText() {
+  const es = (document.documentElement.lang || "")
+    .toLowerCase()
+    .startsWith("es");
+  return es
+    ? "Parece que no tienes conexión. Puede que la información no esté actualizada."
+    : "You appear to be offline. Some information may be out of date.";
+}
+
+function showOfflineBanner() {
+  if (offlineBar) return;
+
+  const bar = document.createElement("div");
+  // "status", not "alert": being offline is a condition, not an emergency, and
+  // a polite live region won't interrupt what a screen reader is saying.
+  bar.setAttribute("role", "status");
+  Object.assign(bar.style, {
+    position: "fixed",
+    insetInline: "0",
+    bottom: "0",
+    zIndex: "2147483646", // one below the error banner, which outranks it
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "1rem",
+    padding: "0.75rem 1rem",
+    background: "#8a5a00",
+    color: "#fff",
+    font: "500 0.9rem/1.3 system-ui, sans-serif",
+    boxShadow: "0 -2px 8px rgba(0,0,0,.25)",
+  });
+  bar.append(offlineText());
+
+  const dismiss = document.createElement("button");
+  dismiss.type = "button";
+  dismiss.setAttribute("aria-label", "Dismiss");
+  dismiss.textContent = "✕";
+  Object.assign(dismiss.style, {
+    background: "transparent",
+    border: "0",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: "1rem",
+    lineHeight: "1",
+  });
+  // Dismissing drops the reference, so going offline again shows it again.
+  dismiss.addEventListener("click", hideOfflineBanner);
+  bar.appendChild(dismiss);
+
+  offlineBar = bar;
+  (document.body ?? document.documentElement).appendChild(bar);
+}
+
+function hideOfflineBanner() {
+  offlineBar?.remove();
+  offlineBar = null;
+}
+
+window.addEventListener("offline", showOfflineBanner);
+window.addEventListener("online", hideOfflineBanner);
+
+// Cover the page that loads while already offline, not just the transition.
+if (navigator.onLine === false) {
+  if (document.body) showOfflineBanner();
+  else
+    document.addEventListener("DOMContentLoaded", showOfflineBanner, {
+      once: true,
+    });
+}
+
 window.addEventListener("error", (event) => {
   if (isBenign(event.error ?? event.message)) return;
   console.error("[SMP] Uncaught error:", event.error ?? event.message);

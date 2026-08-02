@@ -1,3 +1,10 @@
+// Student portal data layer.
+//
+// Every fetcher here throws when the query fails, and returns empty only when
+// the query succeeded and there genuinely is nothing. These used to be the
+// same thing — a failure returned [] — which meant a dropped connection or an
+// RLS denial rendered as "No grades recorded yet". The caller (main.js) is the
+// only consumer, and it turns a throw into a visible error state with a retry.
 import { supabase } from "./supabaseClient.js";
 import { nextOccurrence } from "./scheduleLogic.js";
 
@@ -19,13 +26,18 @@ export async function fetchStudentProfile(studentId) {
 
   if (error) {
     console.error("fetchStudentProfile:", error.message);
-    return null;
+    throw error;
   }
+  // A missing row is an answer, not a failure — main.js has its own handling
+  // for "this login isn't linked to a student".
   if (!data) {
     console.error("fetchStudentProfile: no student found with id", studentId);
     return null;
   }
 
+  // The two lookups below decorate the class with a teacher name and a room
+  // name. They stay error-tolerant on purpose: losing them costs a label, not
+  // the page, so they must not take the whole profile down with them.
   const cls = data.classes;
   if (cls && cls.homeroom_teacher_id) {
     const { data: teacher } = await supabase
@@ -57,7 +69,7 @@ export async function fetchGradingPeriods(schoolYearId) {
 
   if (error) {
     console.error("fetchGradingPeriods:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }
@@ -86,7 +98,7 @@ export async function fetchStudentGrades(studentId, gradingPeriodId = null) {
   const { data, error } = await query;
   if (error) {
     console.error("fetchStudentGrades:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }
@@ -105,7 +117,7 @@ export async function fetchStudentAttendance(studentId) {
 
   if (error) {
     console.error("fetchStudentAttendance:", error.message);
-    return [];
+    throw error;
   }
 
   // Resolve every recorder in ONE batched query instead of one lookup per row
@@ -148,7 +160,7 @@ export async function fetchClassSchedule(classId) {
 
   if (error) {
     console.error("fetchClassSchedule:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }
@@ -161,7 +173,7 @@ export async function fetchTeachers() {
 
   if (error) {
     console.error("fetchTeachers:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }
@@ -174,7 +186,7 @@ export async function fetchEvents() {
 
   if (error) {
     console.error("fetchEvents:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }
@@ -237,7 +249,7 @@ export async function fetchDisciplineRecords(studentId) {
 
   if (error) {
     console.error("fetchDisciplineRecords:", error.message);
-    return [];
+    throw error;
   }
   return data;
 }

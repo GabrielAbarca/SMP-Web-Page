@@ -66,6 +66,8 @@ export default defineConfig(({ mode }) => {
           login: resolve(__dirname, "login.html"),
           admin: resolve(__dirname, "admin.html"),
           teacher: resolve(__dirname, "teacher.html"),
+          privacy: resolve(__dirname, "privacy.html"),
+          terms: resolve(__dirname, "terms.html"),
           notFound: resolve(__dirname, "404.html"),
         },
         output: {
