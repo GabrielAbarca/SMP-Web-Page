@@ -2132,6 +2132,17 @@
     font-size: var(--text-sm);
   }
 
+  /* Says up front that this deployment is a demo, so the pending operator
+     details below read as deliberate rather than unfinished. */
+  .legal-demo-notice {
+    background: var(--color-warning-light);
+    border-left: 4px solid var(--color-warning-strong);
+    border-radius: var(--border-radius-1);
+    padding: var(--space-3);
+    margin: var(--space-4) 0;
+    font-size: var(--text-sm);
+  }
+
   /* The plain-language summary above the formal text. */
   .legal-callout {
     background: var(--color-light);
