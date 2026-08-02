@@ -22,6 +22,10 @@ export default {
     saved: "Guardado.",
     deleted: "Eliminado.",
     loadFailed: "No se pudieron cargar los datos. Inténtalo de nuevo.",
+    loadError: "No pudimos cargar esta sección. Revisa tu conexión.",
+    retry: "Reintentar",
+    offline:
+      "Parece que no tienes conexión. Puede que la información no esté actualizada.",
     couldNotLoadProfile: "No se pudo cargar tu perfil.",
     adminOnly: "Solo un administrador puede realizar esta acción.",
     comingSoon: "Próximamente",

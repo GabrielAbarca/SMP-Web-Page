@@ -1964,6 +1964,45 @@
     border-bottom: 1px solid var(--color-light);
   }
 
+  /* A section that failed to load. Deliberately unlike the muted .loading-cell
+     empty states — "nothing here yet" and "we couldn't reach the server" must
+     not look the same. */
+  .load-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-5) var(--space-3);
+    text-align: center;
+  }
+
+  .load-error-text {
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    margin: 0;
+  }
+
+  .btn-retry {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--border-radius-1);
+    padding: 0.5rem 1.2rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+  }
+
+  .btn-retry:hover {
+    opacity: 0.9;
+  }
+
+  .btn-retry:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
   @media screen and (max-width: 1200px) {
     .container {
       width: 94%;

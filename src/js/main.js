@@ -5,7 +5,7 @@ import { fetchRole, portalPath } from "./role.js";
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
-import { skeletonRows, initSidebarToggle } from "./ui.js";
+import { skeletonRows, initSidebarToggle, errorState, errorRow } from "./ui.js";
 import { renderSettings } from "./settings.js";
 import {
   initI18n,
@@ -145,10 +145,7 @@ function navigateTo(page) {
   // The `.right .top` bar (menu / theme / profile) is untouched and stays put.
   rightPanel?.classList.toggle("rail-widgets-hidden", page !== "dashboard");
 
-  if (!viewCache[page]) {
-    viewCache[page] = true;
-    initView(page);
-  }
+  runView(page);
 
   closeNav();
 
@@ -207,6 +204,53 @@ if (teacherPortalLink) {
       return;
     }
     window.location.href = "/teacher";
+  });
+}
+
+// Where each view's failure notice goes, and whether it has to be a table row.
+const VIEW_ERROR_TARGETS = {
+  dashboard: { selector: "#dashboard-grades-body", colspan: 5 },
+  grades: { selector: "#grades-body", colspan: 6 },
+  attendance: { selector: "#attendance-body", colspan: 5 },
+  schedule: { selector: "#schedule-grid" },
+  teachers: { selector: "#teacher-cards" },
+  events: { selector: "#events-timeline" },
+  settings: { selector: "#settings-root" },
+};
+
+/** Replace a view's content with a failure notice the user can act on. */
+function renderViewError(page) {
+  const target = VIEW_ERROR_TARGETS[page];
+  if (!target) return;
+  const host = document.querySelector(target.selector);
+  if (!host) return;
+
+  const message = t("common.loadError");
+  const retry = t("common.retry");
+  host.innerHTML = target.colspan
+    ? errorRow(target.colspan, message, retry)
+    : errorState(message, retry);
+
+  host.querySelector("[data-retry]")?.addEventListener("click", () => {
+    runView(page);
+  });
+}
+
+/**
+ * Load a view once, and let it be loaded again if it failed.
+ *
+ * The cache flag is set only on success, so a view that threw is not
+ * remembered as "already loaded" — which is what makes the retry button work
+ * and what stops a transient network blip from leaving a section permanently
+ * blank for the rest of the session.
+ */
+function runView(page) {
+  if (viewCache[page]) return;
+  viewCache[page] = true;
+  initView(page).catch((err) => {
+    console.error(`[SMP] ${page} view failed to load:`, err);
+    viewCache[page] = false;
+    renderViewError(page);
   });
 }
 
