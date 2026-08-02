@@ -126,8 +126,33 @@ The Edge Function needs an admin to authorize account creation, so the **first**
 admin is created out of band:
 
 1. Dashboard → Authentication → Users → **Add user** (email + password, mark
-   email confirmed).
+   email confirmed). Use a **real address the school controls** — password
+   recovery is undeliverable otherwise, and that is the account you least want
+   locked out of.
 2. SQL editor: `update public.profiles set role = 'admin' where id = '<the new user id>';`
+3. Normalise the auth token columns, which **Add user** can leave as `NULL` on
+   some GoTrue versions:
+
+   ```sql
+   update auth.users
+   set confirmation_token         = coalesce(confirmation_token, ''),
+       recovery_token             = coalesce(recovery_token, ''),
+       email_change               = coalesce(email_change, ''),
+       email_change_token_new     = coalesce(email_change_token_new, ''),
+       email_change_token_current = coalesce(email_change_token_current, ''),
+       phone_change               = coalesce(phone_change, ''),
+       phone_change_token         = coalesce(phone_change_token, ''),
+       reauthentication_token     = coalesce(reauthentication_token, '');
+   ```
+
+   A `NULL` there makes Supabase Auth fail with a bare HTTP 500 on **every**
+   admin action for that account — reset, ban, delete — and the dashboard shows
+   it as an empty `{}`. Cheap to prevent, confusing to diagnose later. See
+   [ACCOUNT_RECOVERY.md §7](ACCOUNT_RECOVERY.md).
+
+Create a **second** admin now as well. Recovering a school whose only
+administrator is locked out needs the Supabase dashboard, which the school
+does not have.
 
 ## 5. Point the app at the project
 
