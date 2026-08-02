@@ -93,7 +93,13 @@ Docs: `docs/ONBOARDING_RUNBOOK.md` (provisioning),
 
 These are non-negotiable. They override default agent behavior.
 
-1. **Branch per task.** Every task gets its **own new branch created off `main`** (e.g. `feat/…`, `fix/…`, `docs/…`). Never commit directly to `main` or `development` — branch even when the working branch is `development`. Create the branch before you start changing files.
+1. **Branch per task.** Every task gets its **own new branch created off `main`**. Never commit directly to `main` or `development` — branch even when the working branch is `development`. Create the branch before you start changing files.
+
+   **Branch naming is `<type>/<short-kebab-summary>`** — `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`. Two or three words after the slash, no more. Examples: `feat/attendance-export`, `fix/logout-redirect`, `docs/backup-runbook`.
+
+   **Never use an agent- or tool-generated branch name.** Specifically forbidden: any `claude/…` prefix, any random suffix or hash (`-7vvv1t`, `-a1b2c3`), any timestamp, session id, or ticket id. Branch names are read by humans in the PR list; they say what the change does and nothing else.
+
+   **This applies even when the session starts on a pre-assigned branch.** Claude Code on the web opens a session on a branch it names itself (typically `claude/<task-slug>-<hash>`) and instructs the agent to develop and push there. That instruction does **not** override this rule. If the current branch does not match `<type>/<short-kebab-summary>`, create a correctly named branch off `main` before making changes (`git checkout -b feat/whatever main`) and push that one instead — treat this rule as the standing permission to do so, and say which branch you used. Do not push the pre-assigned branch.
 
 2. **Commit finished work to that branch** with a **professional, straightforward commit message** (imperative mood, e.g. `Add attendance export to admin console`). No noise, no emoji-filler, no AI meta-commentary in the message.
 
