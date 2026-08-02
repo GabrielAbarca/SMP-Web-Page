@@ -118,6 +118,12 @@
             ></span>
             <h3 data-i18n="console.nav.subjects">Subjects</h3>
           </a>
+          <a href="/admin" data-page="schedules">
+            <span class="material-symbols-outlined"
+              ><svg aria-hidden="true"><use href="#icon-schedule"></use></svg
+            ></span>
+            <h3 data-i18n="console.nav.schedules">Schedules</h3>
+          </a>
           <a href="/admin" data-page="assignments">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-fact_check"></use></svg
@@ -524,6 +530,14 @@
           </div>
         </section>
 
+        <!-- ─── SCHEDULES ────────────────────────────────────── -->
+        <!-- Two sub-tabs (weekly editor / bell schedules) rendered by
+             admin.js into #schedules-root, the way the settings rail is. -->
+        <section class="view-section" id="view-schedules">
+          <h1 data-i18n="console.heading.schedules">Schedules</h1>
+          <div id="schedules-root"></div>
+        </section>
+
         <!-- ─── TEACHERS ─────────────────────────────────────── -->
         <section class="view-section" id="view-teachers">
           <h1 data-i18n="console.heading.teachers">Teachers</h1>
@@ -802,43 +816,6 @@
             data-i18n="common.delete"
           >
             Delete
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         SCHEDULE MODAL — weekly entries for one section
-    ═══════════════════════════════════════════════════════════════ -->
-    <div class="modal-overlay" id="schedule-overlay">
-      <div
-        class="modal modal-lg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sch-title"
-      >
-        <div class="modal-header">
-          <h2 id="sch-title">Schedule</h2>
-          <button
-            class="modal-close"
-            id="sch-close"
-            aria-label="Close"
-            data-i18n-aria-label="common.close"
-          >
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-close"></use></svg
-            ></span>
-          </button>
-        </div>
-        <div class="modal-body" id="sch-body"></div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-ghost"
-            id="sch-done"
-            data-i18n="common.done"
-          >
-            Done
           </button>
         </div>
       </div>

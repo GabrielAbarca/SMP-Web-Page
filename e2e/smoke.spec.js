@@ -4,6 +4,8 @@ import {
   studentFix,
   teacherFix,
   consoleFix,
+  scheduleFix,
+  SUPA,
   routeSupabase,
   sessionSeed,
   accessTokenSeed,
@@ -291,6 +293,133 @@ test.describe("admin console", () => {
     expect(errors).toEqual([]);
     // Demo mode: the write landed in the in-browser overlay, not Supabase.
     expect(writes).toEqual([]);
+  });
+
+  test("builds a section's week, warns on a double-booked teacher, and copies it", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, scheduleFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+
+    await page.click('.sidebar a[data-page="schedules"]');
+    // Section A's seeded Monday class renders in the weekly grid.
+    await expect(page.locator("#sched-grid")).toContainText("Mathematics");
+    await expect(page.locator("#sched-grid")).toContainText("Ana Rojas");
+
+    // Add a second period to the same section — no conflict, saves directly.
+    await page.click("#btn-sched-add");
+    await page.selectOption("#modal-field-day_of_week", { label: "Tuesday" });
+    await page.fill("#modal-field-start_time", "10:00");
+    await page.fill("#modal-field-end_time", "11:00");
+    await page.selectOption("#modal-field-subject_id", { label: "Biology" });
+    await page.selectOption("#modal-field-teacher_id", { label: "Luis Mora" });
+    await page.click("#modal-submit");
+    await expect(page.locator("#sched-grid")).toContainText("Biology");
+
+    // Same slot in Section B with the teacher already booked in Section A:
+    // the console warns rather than blocking, and the override writes.
+    await page.selectOption("#sched-section-picker", {
+      label: "10th Grade — Section B",
+    });
+    await page.click("#btn-sched-add");
+    await page.selectOption("#modal-field-day_of_week", { label: "Monday" });
+    await page.fill("#modal-field-start_time", "08:00");
+    await page.fill("#modal-field-end_time", "09:00");
+    await page.selectOption("#modal-field-subject_id", {
+      label: "Mathematics",
+    });
+    await page.selectOption("#modal-field-teacher_id", { label: "Ana Rojas" });
+    await page.click("#modal-submit");
+    await expect(page.locator("#confirm-overlay")).toHaveClass(/active/);
+    await expect(page.locator("#confirm-message")).toContainText("Ana Rojas");
+    await page.click("#confirm-delete");
+    await expect(page.locator("#sched-grid")).toContainText("Mathematics");
+    // The clash now shows in the passive year-wide conflicts panel.
+    await expect(page.locator(".sched-conflict-list")).toContainText(
+      "Ana Rojas",
+    );
+
+    // Copying Section A's week into B skips the slot B already has.
+    await page.click('#view-schedules button:has-text("Copy from")');
+    await page.selectOption("#modal-field-source_id", {
+      label: "10th Grade — Section A",
+    });
+    await page.click("#modal-submit");
+    await expect(page.locator("#confirm-overlay")).toHaveClass(/active/);
+    await page.click("#confirm-delete");
+    await expect(page.locator("#sched-grid")).toContainText("Biology");
+
+    expect(errors).toEqual([]);
+    // Demo mode: every write above landed in the in-browser overlay.
+    expect(writes).toEqual([]);
+  });
+
+  // The schedules tables ship as a hand-applied schema snippet, so a project
+  // can legitimately be running the new console without them. Losing the
+  // templates or the day config must not take the whole tab down.
+  test("schedules tab still works on a project without the new tables", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, scheduleFix);
+    // Registered after the fixture catch-all: Playwright gives precedence to
+    // the most recently added matching route.
+    for (const table of [
+      "schedule_configs",
+      "bell_schedules",
+      "bell_schedule_blocks",
+    ]) {
+      await context.route(`${SUPA}/rest/v1/${table}*`, (route) =>
+        route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({
+            code: "42P01",
+            message: `relation "public.${table}" does not exist`,
+          }),
+        }),
+      );
+    }
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/admin.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("admin-name")?.textContent?.includes("Gabriel"),
+      { timeout: 10_000 },
+    );
+    await page.click('.sidebar a[data-page="schedules"]');
+
+    // The grid renders from `schedules` alone, on the Mon–Fri default.
+    await expect(page.locator("#sched-grid")).toContainText("Mathematics");
+    await expect(page.locator("#schedules-root")).not.toContainText(
+      "Failed to load",
+    );
+    expect(
+      await page.locator("#sched-grid .sched-head").allInnerTexts(),
+    ).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
+    // No templates to offer, but the picker still works.
+    expect(
+      await page.locator("#sched-template-picker option").allInnerTexts(),
+    ).toEqual(["Free times (no template)"]);
+
+    expect(errors).toEqual([]);
   });
 
   test("bounces a teacher-role profile to the teacher console", async ({

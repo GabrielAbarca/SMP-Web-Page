@@ -472,34 +472,160 @@
     max-width: 30rem;
   }
 
-  /* ─── Schedule add form (inside the schedule modal) ────────────── */
-  .schedule-add-form {
-    margin-top: 1.4rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid var(--color-light);
-  }
-
-  .schedule-add-form h3 {
-    font-size: 0.9rem;
-    margin-bottom: 0.8rem;
-  }
-
-  .schedule-add-grid {
+  /* ─── Schedules tab ────────────────────────────────────────────── */
+  /* Toolbar above the weekly grid: what to edit, then what to do. */
+  .sched-toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem;
-    align-items: center;
+    gap: 0.9rem;
+    align-items: flex-end;
+    margin-bottom: 1.2rem;
   }
 
-  .schedule-add-grid select,
-  .schedule-add-grid input {
+  .sched-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 12rem;
+  }
+
+  .sched-field label {
+    font-size: 0.76rem;
+    color: var(--color-dark-variant);
+  }
+
+  .sched-field select {
     padding: 0.5rem 0.7rem;
     border: 1px solid var(--color-light);
     border-radius: var(--border-radius-2);
     background: var(--color-background);
     color: var(--color-dark);
     font-size: 0.82rem;
-    flex: 1 1 120px;
+  }
+
+  .sched-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  /* The week itself. Column count is set inline from the year's active
+     days, so a Saturday school gets six columns without a media query. */
+  .sched-grid {
+    display: grid;
+    grid-template-columns: 7rem repeat(var(--sched-days, 5), minmax(8rem, 1fr));
+    gap: 1px;
+    background: var(--color-light);
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-2);
+    overflow-x: auto;
+  }
+
+  .sched-corner,
+  .sched-head,
+  .sched-time,
+  .sched-cell {
+    background: var(--color-white);
+    padding: 0.55rem 0.6rem;
+  }
+
+  .sched-corner,
+  .sched-head {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-dark-variant);
+    text-align: center;
+  }
+
+  .sched-time {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.75rem;
+    color: var(--color-dark-variant);
+    white-space: nowrap;
+  }
+
+  .sched-time small {
+    font-size: 0.68rem;
+    opacity: 0.75;
+  }
+
+  .sched-cell {
+    min-height: 3.6rem;
+    display: flex;
+  }
+
+  /* A break block is dead space — nothing to schedule there. */
+  .sched-cell-break {
+    background: var(--color-background);
+  }
+
+  .sched-add {
+    flex: 1;
+    border: 1px dashed var(--color-light);
+    border-radius: var(--border-radius-2);
+    background: transparent;
+    color: var(--color-dark-variant);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  .sched-cell-empty:hover .sched-add,
+  .sched-add:focus-visible {
+    opacity: 1;
+  }
+
+  .sched-entry {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+    border-left: 3px solid var(--subject-color, var(--color-primary));
+    border-radius: var(--border-radius-2);
+    background: var(--color-background);
+  }
+
+  .sched-entry-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    border: none;
+    background: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+  }
+
+  .sched-entry-main strong {
+    font-size: 0.8rem;
+  }
+
+  .sched-entry-main span,
+  .sched-entry-main small {
+    font-size: 0.72rem;
+    color: var(--color-dark-variant);
+  }
+
+  .sched-conflict-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sched-conflict-item {
+    padding: 0.6rem 0.75rem;
+    border-left: 3px solid var(--color-warning, var(--color-danger));
+    border-radius: var(--border-radius-2);
+    background: var(--color-background);
+    font-size: 0.8rem;
   }
 
   /* ─── Panel actions (toolbar buttons + filter in a panel head) ──── */

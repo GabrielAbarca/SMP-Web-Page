@@ -201,6 +201,80 @@ export const consoleFix = {
   school_years: [{ id: 1, name: "2025-2026", is_active: true }],
 };
 
+// The Schedules tab needs the whole academic structure to build a week:
+// two sections (so copy-between and cross-section conflicts are testable),
+// two teachers, subjects, a room, and one seeded entry.
+export const scheduleFix = {
+  ...consoleFix,
+  grade_levels: [{ id: 1, name: "10th Grade", numeric_level: 10 }],
+  classes: [
+    {
+      id: 21,
+      school_year_id: 1,
+      grade_level_id: 1,
+      section: "A",
+      display_name: "1010-1",
+    },
+    {
+      id: 22,
+      school_year_id: 1,
+      grade_level_id: 1,
+      section: "B",
+      display_name: "1010-2",
+    },
+  ],
+  subjects: [
+    { id: 101, name: "Mathematics", code: "MAT", color: "#7380ec" },
+    { id: 102, name: "Biology", code: "BIO", color: "#41f1b6" },
+  ],
+  teachers: [
+    { id: 1001, first_name: "Ana", last_name: "Rojas" },
+    { id: 1002, first_name: "Luis", last_name: "Mora" },
+  ],
+  rooms: [{ id: 5, name: "Room 101" }],
+  schedules: [
+    {
+      id: 900,
+      class_id: 21,
+      subject_id: 101,
+      teacher_id: 1001,
+      day_of_week: 1,
+      start_time: "08:00:00",
+      end_time: "09:00:00",
+      room_id: 5,
+    },
+  ],
+  schedule_configs: [
+    {
+      id: 1,
+      school_year_id: 1,
+      structure_type: "section",
+      active_days: [1, 2, 3, 4, 5],
+    },
+  ],
+  bell_schedules: [{ id: 1, name: "Morning" }],
+  bell_schedule_blocks: [
+    {
+      id: 1,
+      bell_schedule_id: 1,
+      label: "Block 1",
+      kind: "class",
+      block_order: 1,
+      start_time: "08:00:00",
+      end_time: "09:00:00",
+    },
+    {
+      id: 2,
+      bell_schedule_id: 1,
+      label: "Recess",
+      kind: "break",
+      block_order: 2,
+      start_time: "09:00:00",
+      end_time: "09:20:00",
+    },
+  ],
+};
+
 function rowMatches(row, params) {
   for (const [k, v] of params) {
     if (["select", "order", "limit", "offset"].includes(k)) continue;

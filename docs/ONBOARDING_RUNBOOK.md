@@ -20,7 +20,7 @@ one already provisioned for this milestone (see §7).
 
 Run [`supabase/schema/school_schema.sql`](../supabase/schema/school_schema.sql)
 against the new project (dashboard SQL editor, or `supabase db execute`). It
-creates the full 23-table schema, the `is_admin()` helper, the
+creates the full 27-table schema, the `is_admin()` helper, the
 `auth.users → profiles` trigger, and RLS policies — **admin full-access + the
 student/teacher read policies, without the demo read-only lock**, so admins can
 write. Id columns use identity (equivalent to the demo's sequences).
@@ -35,9 +35,17 @@ write. Id columns use identity (equivalent to the demo's sequences).
 > - [`supabase/schema/incremental_school_settings.sql`](../supabase/schema/incremental_school_settings.sql)
 >   — the single-row `school_settings` table (school name, logo, and the
 >   per-school label for the national-ID field).
+> - [`supabase/schema/incremental_schedules.sql`](../supabase/schema/incremental_schedules.sql)
+>   — the Schedules tab: `schedule_configs` (active days + structure type
+>   per year), `bell_schedules` / `bell_schedule_blocks` (reusable time-block
+>   templates), the widened `schedules.day_of_week` check (1–7, so Saturday
+>   schools work), and the missing `Authenticated can read schedules` policy
+>   without which the teacher console's schedule view comes back empty.
+>   Verify the generated name of the day-of-week check constraint on the
+>   target project (`\d public.schedules`) before running the `alter table`.
 >
-> Both are already included in `school_schema.sql`, so a fresh project does
-> **not** need them separately.
+> All of them are already included in `school_schema.sql`, so a fresh project
+> does **not** need them separately.
 > (They live under `supabase/schema/`, not `supabase/migrations/`, so the
 > Supabase↔GitHub integration doesn't try to sync them to the demo project.
 > Apply them with the dashboard SQL editor — do **not** register them as
@@ -47,6 +55,13 @@ write. Id columns use identity (equivalent to the demo's sequences).
 School`) as of this milestone. On the demo project, `school_settings` also
 > carries the restrictive `demo_deny_*` policies the other tables have, so the
 > sandbox stays read-only server-side.
+>
+> Same for the schedules tables: `schedule_configs`, `bell_schedules` and
+> `bell_schedule_blocks` carry `demo_deny_insert/update/delete` on the demo
+> project (restrictive, `anon` + `authenticated`), so all 27 public tables
+> there are locked. A real school project must **not** have them — admins
+> need to write. Whenever a table is added, remember the lock is a separate,
+> out-of-band step: the incremental snippets deliberately don't carry it.
 
 ## 3. Deploy the account Edge Function
 

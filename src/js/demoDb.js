@@ -48,7 +48,6 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
   const deletedCategoryIds = new Set(); // emulate assignments.category_id ON DELETE SET NULL
   const seenStudents = new Map(); // student id → { class_id, status } (pristine)
   const cstSubjects = new Map(); // cst id → { name, color }
-  const classNames = new Map(); // class id → display_name
 
   // ── Delta bookkeeping ───────────────────────────────────────
   function recordInsert(delta, row) {
@@ -289,7 +288,6 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
     async fetchMyClasses(teacherId, yearId) {
       const rows = await realDb.fetchMyClasses(teacherId, yearId);
       rows.forEach((r) => {
-        if (r.classes) classNames.set(r.class_id, r.classes.display_name);
         if (r.subjects)
           cstSubjects.set(r.id, {
             name: r.subjects.name,
@@ -637,38 +635,6 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
       return rows.sort((a, b) =>
         (a.start_time ?? "").localeCompare(b.start_time ?? ""),
       );
-    },
-
-    async insertSchedule(payload) {
-      // Resolve the display joins the schedule reads return, so the re-fetch
-      // renders the new row with names/colors instead of ids.
-      const [subjects, teachers, rooms] = await Promise.all([
-        realDb.fetchSubjects(),
-        realDb.fetchTeachers(),
-        realDb.fetchRooms(),
-      ]);
-      const subject = subjects.find((s) => s.id === payload.subject_id);
-      const teacher = teachers.find((t) => t.id === payload.teacher_id);
-      const room = rooms.find((r) => r.id === payload.room_id);
-      recordInsert(schedules, {
-        id: newId(),
-        ...payload,
-        subjects: subject
-          ? { id: subject.id, name: subject.name, color: subject.color ?? null }
-          : null,
-        teachers: teacher
-          ? {
-              id: teacher.id,
-              first_name: teacher.first_name,
-              last_name: teacher.last_name,
-            }
-          : null,
-        rooms: room ? { id: room.id, name: room.name } : null,
-        classes: { display_name: classNames.get(payload.class_id) ?? null },
-      });
-    },
-    async deleteSchedule(id) {
-      recordDelete(schedules, id);
     },
 
     // ── Discipline ──────────────────────────────────────────
