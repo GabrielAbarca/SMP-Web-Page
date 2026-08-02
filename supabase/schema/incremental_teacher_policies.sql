@@ -161,127 +161,102 @@ create policy "Teachers update their own discipline reports" on public.disciplin
 --  student_period_grades — the gradebook's computed overall score
 -- ═══════════════════════════════════════════════════════════════
 --
---  ⚠ VERIFY BEFORE APPLYING ⚠
---  This view already exists on the demo project, where it was authored by
---  hand and never tracked in git. The definition below is reconstructed
---  from its two consumers (src/js/teacher.js fetchPeriodGrades /
---  fetchAllPeriodGrades) and from the demo overlay that mirrors it
---  (src/js/demoDb.js computePeriodScore). Before running this on a project
---  that already has the view, open Dashboard → Database → Views, diff the
---  two, and keep whichever is authoritative. Replacing a correct view with
---  a subtly different one silently changes every student's reported grade.
+--  This is the definition the demo project has been running, read back with
+--  pg_get_viewdef and tracked here rather than reinvented, so a school
+--  project grades exactly the way the demo everyone was shown does.
 --
 --  Contract the client depends on — these column names are load-bearing:
 --    student_id, class_subject_teacher_id, grading_period_id,
 --    period_score, graded_count, total_assignments
 --
---  Scoring, matching demoDb.js:
---    · each graded assignment scores score / max_score * 100
---    · percentages average within their category
---    · categories combine weighted by grade_categories.weight, renormalized
+--  Scoring:
+--    · within a category, points earned ÷ points possible × 100
+--      (NOT the average of each assignment's percentage — with mixed
+--      max_scores those differ, and a 100-point exam should outweigh a
+--      10-point quiz)
+--    · categories combine weighted by grade_categories.weight, renormalised
 --      over only the categories that have graded work
---    · uncategorized work takes the leftover weight (100 − defined total)
---    · flat average across all graded work when no weighting applies
---    · period_score is null when the student has nothing graded yet
+--    · when no categorised work exists, the same points ratio across every
+--      graded assignment
+--    · uncategorised work never enters the weighted branch; it only shows up
+--      in that fallback
+--    · a student with nothing graded produces no row (the LEFT JOIN leaves
+--      student_id null, which is why the client filters `student_id is not
+--      null` — see teacher.js fetchPeriodGrades)
 --
---  security_invoker = true is ESSENTIAL (and needs Postgres 15+). A view
---  defaults to running as its owner, which would bypass RLS entirely and
---  let any authenticated user read every student's grades through it.
+--  ONE DELIBERATE CHANGE from the live demo view: `security_invoker = true`.
+--  A view runs as its owner by default, so the demo's copy bypasses RLS —
+--  verified on 2026-08-02, where a student account that can see exactly one
+--  row in `students` could read 7 students' grades through the view. With
+--  security_invoker the view is filtered by the caller's own policies.
+--  Requires Postgres 15+. Do not drop this option to match an older project.
+--
+--  Known divergence: src/js/demoDb.js computePeriodScore averages
+--  per-assignment percentages instead, and its own comment calls itself a
+--  best-effort mirror. It only affects students edited during a demo
+--  session. Worth reconciling, but it is a demo-overlay bug, not a schema
+--  one, and changing it is out of scope here.
 
 create or replace view public.student_period_grades
 with (security_invoker = true) as
-with graded as (
+with base as (
   select
-    a.class_subject_teacher_id            as cst_id,
-    a.grading_period_id                   as grading_period_id,
-    ag.student_id                         as student_id,
-    a.category_id                         as category_id,
-    (ag.score / a.max_score) * 100.0      as pct
+    ag.student_id,
+    a.class_subject_teacher_id,
+    a.grading_period_id,
+    sum(ag.score)   as sum_score,
+    sum(a.max_score) as sum_max,
+    count(ag.score) as graded_count,
+    count(a.id)     as total_assignments
   from public.assignments a
-  join public.assignment_grades ag on ag.assignment_id = a.id
-  where ag.score is not null
-    and a.max_score > 0
+  left join public.assignment_grades ag
+         on ag.assignment_id = a.id and ag.score is not null
+  group by ag.student_id, a.class_subject_teacher_id, a.grading_period_id
 ),
--- Leftover weight is what uncategorized work inherits when the defined
--- category weights don't reach 100.
-leftover as (
+-- Only categorised work takes part in the weighted score; the join is inner
+-- on purpose. Uncategorised assignments fall through to the points fallback
+-- in the final select.
+cat as (
   select
-    class_subject_teacher_id                        as cst_id,
-    greatest(0, 100 - coalesce(sum(weight), 0))     as uncat_weight
-  from public.grade_categories
-  group by class_subject_teacher_id
+    ag.student_id,
+    a.class_subject_teacher_id,
+    a.grading_period_id,
+    gc.weight as cat_weight,
+    sum(ag.score) / nullif(sum(a.max_score), 0::numeric) * 100::numeric as cat_pct
+  from public.assignments a
+  join public.grade_categories gc on gc.id = a.category_id
+  join public.assignment_grades ag
+       on ag.assignment_id = a.id and ag.score is not null
+  group by ag.student_id, a.class_subject_teacher_id, a.grading_period_id,
+           a.category_id, gc.weight
 ),
-per_category as (
-  select
-    g.cst_id,
-    g.grading_period_id,
-    g.student_id,
-    avg(g.pct)                                          as cat_pct,
-    coalesce(gc.weight, l.uncat_weight, 0)::numeric      as weight
-  from graded g
-  left join public.grade_categories gc on gc.id = g.category_id
-  left join leftover l on l.cst_id = g.cst_id
-  group by g.cst_id, g.grading_period_id, g.student_id,
-           g.category_id, gc.weight, l.uncat_weight
-),
+-- Renormalised over the categories that actually have graded work, so a
+-- period with only one category marked still reads out of 100.
 weighted as (
   select
-    cst_id, grading_period_id, student_id,
-    sum(cat_pct * weight) filter (where weight > 0) as w_num,
-    sum(weight)           filter (where weight > 0) as w_den
-  from per_category
-  group by cst_id, grading_period_id, student_id
-),
-flat as (
-  select
-    cst_id, grading_period_id, student_id,
-    avg(pct)  as flat_pct,
-    count(*)  as graded_count
-  from graded
-  group by cst_id, grading_period_id, student_id
-),
-totals as (
-  select
-    class_subject_teacher_id as cst_id,
+    student_id,
+    class_subject_teacher_id,
     grading_period_id,
-    count(*)                 as total_assignments
-  from public.assignments
-  group by class_subject_teacher_id, grading_period_id
-),
--- One row per student per period the subject has work in, so the gradebook
--- can render an ungraded student as a blank rather than a missing row.
--- Unioned with `graded` so a student who changed class keeps their history.
-base as (
-  select cst.id as cst_id, t.grading_period_id, s.id as student_id
-    from public.class_subject_teachers cst
-    join public.students s on s.class_id = cst.class_id
-    join totals t on t.cst_id = cst.id
-  union
-  select cst_id, grading_period_id, student_id from graded
+    sum(cat_pct * cat_weight) / nullif(sum(cat_weight), 0::numeric) as w_score
+  from cat
+  group by student_id, class_subject_teacher_id, grading_period_id
 )
 select
-  b.student_id                                        as student_id,
-  b.cst_id                                            as class_subject_teacher_id,
-  b.grading_period_id                                 as grading_period_id,
+  b.student_id,
+  b.class_subject_teacher_id,
+  b.grading_period_id,
   round(
-    case
-      when w.w_den > 0 then w.w_num / w.w_den
-      else f.flat_pct
-    end, 2)::numeric(5,2)                             as period_score,
-  coalesce(f.graded_count, 0)::integer                as graded_count,
-  coalesce(t.total_assignments, 0)::integer           as total_assignments
+    coalesce(
+      w.w_score,
+      b.sum_score / nullif(b.sum_max, 0::numeric) * 100::numeric
+    ), 2) as period_score,
+  b.graded_count,
+  b.total_assignments
 from base b
 left join weighted w
-       on w.cst_id = b.cst_id
-      and w.grading_period_id = b.grading_period_id
-      and w.student_id = b.student_id
-left join flat f
-       on f.cst_id = b.cst_id
-      and f.grading_period_id = b.grading_period_id
-      and f.student_id = b.student_id
-left join totals t
-       on t.cst_id = b.cst_id
-      and t.grading_period_id = b.grading_period_id;
+       on w.student_id = b.student_id
+      and w.class_subject_teacher_id = b.class_subject_teacher_id
+      and w.grading_period_id = b.grading_period_id;
 
 -- ── demo_teacher_id() ──────────────────────────────────────────
 -- NOT created here on purpose. It is a demo-only RPC that hands the shared
