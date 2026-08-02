@@ -7,10 +7,15 @@
 //  adapter shape below, and calls renderSettings(rootEl, adapter).
 //
 //  DEMO SCOPE: display only. Everything in Account & Profile is
-//  natively `disabled` (greyed inputs + inert buttons); the Login
-//  security card is presentational (no Supabase Auth). Preferences is
+//  natively `disabled` (greyed inputs + inert buttons); Preferences is
 //  a styled shell (Language stub is a no-op, flagged "Coming soon").
-//  No writes of any kind originate here.
+//
+//  The one exception is "Change password" in the Login security card,
+//  which is live outside demo mode — a signed-in user otherwise has no
+//  way to change their own password and has to go through the
+//  forgot-password email loop. It routes through auth.updatePassword,
+//  which is itself demo-gated, and the button stays disabled in demo so
+//  the shared account's public password cannot be moved.
 //
 //  Adapter shape:
 //    {
@@ -26,6 +31,9 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { t, getLang, setLang } from "./i18n.js";
+import { DEMO_MODE } from "./demoMode.js";
+import { updatePassword } from "./auth.js";
+import { MIN_PASSWORD_LENGTH } from "./validate.js";
 
 // App version surfaced in "More info". Bump alongside package.json.
 const APP_VERSION = "1.0.0";
@@ -132,6 +140,88 @@ export function renderSettings(rootEl, adapter) {
   segments.forEach((seg) => {
     seg.addEventListener("click", () => setLang(seg.dataset.lang));
   });
+
+  bindChangePassword(rootEl);
+}
+
+/**
+ * Change-password form. Inert in demo mode (the button ships disabled), so
+ * this only has to handle the live case.
+ * @param {HTMLElement} rootEl
+ */
+function bindChangePassword(rootEl) {
+  const toggle = rootEl.querySelector("#settings-change-password");
+  const form = /** @type {HTMLFormElement | null} */ (
+    rootEl.querySelector("#settings-password-form")
+  );
+  if (!toggle || !form) return;
+
+  const next = /** @type {HTMLInputElement} */ (
+    form.querySelector("#settings-new-password")
+  );
+  const confirm = /** @type {HTMLInputElement} */ (
+    form.querySelector("#settings-confirm-password")
+  );
+  const status = form.querySelector("#settings-password-status");
+  const cancel = form.querySelector("#settings-cancel-password");
+
+  const say = (key, tone) => {
+    status.textContent = key ? t(key) : "";
+    status.classList.toggle("settings-hint-error", tone === "error");
+    status.classList.toggle("settings-hint-success", tone === "success");
+  };
+
+  const close = () => {
+    form.hidden = true;
+    form.reset();
+    say(null, null);
+  };
+
+  toggle.addEventListener("click", () => {
+    form.hidden = !form.hidden;
+    if (!form.hidden) next.focus();
+  });
+  cancel?.addEventListener("click", close);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (next.value.length < MIN_PASSWORD_LENGTH) {
+      say("settings.account.changePasswordTooShort", "error");
+      return;
+    }
+    if (next.value !== confirm.value) {
+      say("settings.account.changePasswordMismatch", "error");
+      return;
+    }
+
+    const submit = /** @type {HTMLButtonElement} */ (
+      form.querySelector('button[type="submit"]')
+    );
+    submit.disabled = true;
+    say("settings.account.changePasswordSaving", null);
+
+    try {
+      await updatePassword(next.value);
+      form.reset();
+      form.hidden = true;
+      // The status line lives outside the form, so it survives hiding it.
+      say("settings.account.changePasswordSuccess", "success");
+    } catch (err) {
+      // Supabase refuses a password change on a session that is too old, which
+      // is a fixable situation rather than a failure — point at the way out.
+      const reauth = /reauth|session|expired/i.test(err?.message ?? "");
+      say(
+        reauth
+          ? "settings.account.changePasswordReauth"
+          : "settings.account.changePasswordFailed",
+        "error",
+      );
+      console.error("[SMP] change password failed:", err);
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
 
 // ── Account & Profile ────────────────────────────────────────────
@@ -210,8 +300,28 @@ function renderAccount(adapter) {
           </span>
           <input type="password" value="••••••••••" disabled />
         </label>
-        <button type="button" class="btn btn-ghost" disabled>${t("settings.account.changePassword")}</button>
+        <button type="button" class="btn btn-ghost" id="settings-change-password"${DEMO_MODE ? " disabled" : ""}>${t("settings.account.changePassword")}</button>
       </div>
+      <!-- novalidate: the browser's built-in bubbles follow the browser's
+           language, not the app's, and they suppress our own checks. The
+           minlength attributes stay as hints for password managers. -->
+      <form class="settings-password-form" id="settings-password-form" novalidate hidden>
+        <div class="settings-row">
+          <label class="settings-field settings-field-grow">
+            <span class="settings-field-label">${t("settings.account.newPassword")}</span>
+            <input type="password" id="settings-new-password" autocomplete="new-password" minlength="${MIN_PASSWORD_LENGTH}" required />
+          </label>
+          <label class="settings-field settings-field-grow">
+            <span class="settings-field-label">${t("settings.account.confirmPassword")}</span>
+            <input type="password" id="settings-confirm-password" autocomplete="new-password" minlength="${MIN_PASSWORD_LENGTH}" required />
+          </label>
+        </div>
+        <p class="settings-hint" id="settings-password-status" role="status"></p>
+        <div class="settings-row settings-password-actions">
+          <button type="submit" class="btn btn-primary">${t("common.save")}</button>
+          <button type="button" class="btn btn-ghost" id="settings-cancel-password">${t("common.cancel")}</button>
+        </div>
+      </form>
       <div class="settings-toggle-row">
         <div class="settings-toggle-text">
           <span class="settings-toggle-title">${t("settings.account.twoFactor")}</span>

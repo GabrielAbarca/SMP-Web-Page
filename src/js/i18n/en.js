@@ -147,6 +147,16 @@ export default {
       email: "Email",
       password: "Password",
       changePassword: "Change password",
+      newPassword: "New password",
+      confirmPassword: "Confirm new password",
+      changePasswordSaving: "Saving…",
+      changePasswordSuccess: "Password updated.",
+      changePasswordMismatch: "The two passwords don't match.",
+      changePasswordTooShort: "Use at least 6 characters.",
+      changePasswordFailed: "Could not update your password. Please try again.",
+      changePasswordReauth:
+        "For your security, sign in again before changing your password. " +
+        "You can also use “Forgot password?” on the sign-in screen.",
       twoFactor: "Two-factor authentication",
       twoFactorHint: "Adds a second step at sign-in.",
       twoFactorDisabled: "Disabled in demo",
