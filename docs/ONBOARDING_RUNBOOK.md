@@ -43,6 +43,16 @@ write. Id columns use identity (equivalent to the demo's sequences).
 >   without which the teacher console's schedule view comes back empty.
 >   Verify the generated name of the day-of-week check constraint on the
 >   target project (`\d public.schedules`) before running the `alter table`.
+> - [`supabase/schema/incremental_profile_role_guard.sql`](../supabase/schema/incremental_profile_role_guard.sql)
+>   — **security fix, apply to every project including the demo.** Without it
+>   any signed-in user can PATCH their own `profiles` row to `role='admin'`
+>   with the browser's anon key and gain full read/write on every table.
+> - [`supabase/schema/incremental_teacher_policies.sql`](../supabase/schema/incremental_teacher_policies.sql)
+>   — teacher-scoped RLS (own classes only) plus the `student_period_grades`
+>   view the gradebook reads. Without it a `teacher` account on a real school
+>   project cannot read a single student and the teacher console is dead.
+>   **Diff the view against the demo project's existing definition before
+>   applying it there** — see the warning in the file.
 >
 > All of them are already included in `school_schema.sql`, so a fresh project
 > does **not** need them separately.
@@ -60,8 +70,34 @@ School`) as of this milestone. On the demo project, `school_settings` also
 > `bell_schedule_blocks` carry `demo_deny_insert/update/delete` on the demo
 > project (restrictive, `anon` + `authenticated`), so all 27 public tables
 > there are locked. A real school project must **not** have them — admins
-> need to write. Whenever a table is added, remember the lock is a separate,
-> out-of-band step: the incremental snippets deliberately don't carry it.
+> need to write.
+
+### Keeping the demo read-only
+
+The demo lock is no longer something to remember by hand. Run
+[`supabase/schema/demo_lockdown.sql`](../supabase/schema/demo_lockdown.sql)
+on the **demo project** after any schema change. It loops over the live
+table catalog rather than a fixed list, so a table added last week gets
+locked too, and it verifies itself at the end — a partial lock raises
+instead of reporting success. It is idempotent, so re-running costs nothing.
+
+Never run it on a school project: it would leave that school's admins unable
+to write anything.
+
+### Verifying RLS
+
+[`supabase/schema/rls_audit.sql`](../supabase/schema/rls_audit.sql) proves the
+access rules still hold on whichever project you run it against. It creates a
+small fictional school inside a transaction, impersonates an anonymous
+visitor, a student, a teacher and an admin, asserts roughly 45 allowed/denied
+outcomes, then rolls everything back. It detects the demo lockdown and flips
+its expectations accordingly, so the same file is correct on both project
+types.
+
+Run it after applying any schema or policy change, and as the last step of a
+restore drill (see [BACKUP_RESTORE.md](BACKUP_RESTORE.md)). Success ends with
+`RLS AUDIT: ALL CHECKS PASSED`; no summary line means it did not finish, which
+is a failure.
 
 ## 3. Deploy the account Edge Function
 
@@ -166,16 +202,23 @@ A pilot project was provisioned and verified for this milestone:
 - **Project:** `SMP Pilot School` (ref `wklxkntdnzshyrijvnjj`)
 - **URL:** `https://wklxkntdnzshyrijvnjj.supabase.co`
 - Schema applied · `admin-users` function deployed · admin-write RLS verified.
-- **Test admin:** `admin@pilot.smp` / `PilotAdmin#2026` (role `admin`).
+- **Test admin:** `admin@pilot.smp` (role `admin`). The password is **not** kept
+  in this repository — ask the project owner, or reset it from Dashboard →
+  Authentication → Users.
 - School data is empty (0 years / teachers / students) — the acceptance-test
   starting point.
 
 To try it: build/preview with the three env vars from §5 (URL above, the
 project's anon key, `VITE_DEMO_MODE=false`) and sign in with the test admin.
 
-> This is a throwaway test project with a **public** password. Rotate or delete
-> the test admin before using the project for anything real, and never reuse the
-> password elsewhere.
+> ⚠ **This password was previously committed to this file and is therefore
+> burned.** Removing it here does not remove it from git history, where it
+> stays readable forever. It must be rotated on the pilot project, and it must
+> never be reused anywhere. Treat any credential that has ever been committed
+> as public.
+>
+> This is a throwaway test project regardless — delete the test admin before
+> the project holds anything real.
 
 ---
 
@@ -186,10 +229,11 @@ project's anon key, `VITE_DEMO_MODE=false`) and sign in with the test admin.
   pattern (the demo project has them too). `handle_new_user()` has EXECUTE
   revoked from `anon`/`authenticated` (trigger-only); `is_admin()` keeps EXECUTE
   for `authenticated` because RLS policies evaluate it.
-- **Teacher gradebook on a real project:** this schema covers the admin console,
-  student portal, and teacher identity. The teacher gradebook's helper view
-  (`student_period_grades`) and demo-only `demo_teacher_id()` are not included —
-  add them from the demo project if a school will use the teacher gradebook.
+- **Teacher gradebook on a real project:** covered by
+  `incremental_teacher_policies.sql` (§2), which adds the teacher-scoped
+  policies and the `student_period_grades` view. `demo_teacher_id()` stays
+  demo-only by design — on a school project a teacher is resolved from
+  `teachers.auth_user_id`.
 - **Deactivate:** the console's per-row deactivate flips the record `status`
   flag. Disabling the actual login (auth ban) is available via the Edge
   Function's `setActive` action.

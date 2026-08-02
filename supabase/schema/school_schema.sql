@@ -461,10 +461,54 @@ begin
 end $$;
 
 -- Own-profile read/update.
+-- The update policy lets a user maintain their own display name. RLS picks
+-- rows, not columns, so on its own it would also let them rewrite their own
+-- `role` and land as an admin — see the trigger right below, which is what
+-- actually holds that line. Do not drop one without the other.
 create policy "Users can read their own profile" on public.profiles
   for select using (auth.uid() = id);
 create policy "Users can update their own profile" on public.profiles
   for update using (auth.uid() = id);
+
+-- Role changes are an admin action, enforced where RLS cannot reach: a
+-- column. Without this a signed-in student could PATCH their own profile
+-- row to role='admin' using the anon key that ships in the browser bundle,
+-- and is_admin() would then hand them every record in the school.
+-- SECURITY INVOKER (the default) is deliberate — the guard needs the role
+-- the caller actually connected as, which a definer function would hide.
+create or replace function public.protect_profile_role()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $$
+begin
+  if new.role is not distinct from old.role then
+    return new;
+  end if;
+
+  -- anon and authenticated are the untrusted, browser-facing roles. Anything
+  -- else (service_role for the admin-users Edge Function, postgres for the
+  -- dashboard) already holds the service key and is trusted to assign roles.
+  if current_user = 'anon' then
+    raise exception 'Only an administrator can change a profile role'
+      using errcode = '42501';
+  end if;
+
+  if current_user = 'authenticated' and not public.is_admin() then
+    raise exception 'Only an administrator can change a profile role'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.protect_profile_role() from anon, authenticated, public;
+
+drop trigger if exists profiles_protect_role on public.profiles;
+create trigger profiles_protect_role
+  before update on public.profiles
+  for each row execute function public.protect_profile_role();
 
 -- Students read their own linked rows.
 create policy "Users can read their own student record" on public.students
