@@ -1,5 +1,6 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
+import "./analytics.js";
 import { getSession, signOut } from "./auth.js";
 import { fetchRole, portalPath } from "./role.js";
 import { supabase } from "./supabaseClient.js";

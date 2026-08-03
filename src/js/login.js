@@ -1,5 +1,6 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
+import "./analytics.js";
 import {
   signIn,
   signUp,

@@ -21,6 +21,7 @@
 
 import "./errorHandler.js";
 import "./speedInsights.js";
+import "./analytics.js";
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
 import { fetchRole, portalPath } from "./role.js";
