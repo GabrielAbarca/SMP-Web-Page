@@ -1,7 +1,7 @@
 import "./errorHandler.js";
 import "./speedInsights.js";
 import { getSession, signOut } from "./auth.js";
-import { fetchRole, portalPath } from "./role.js";
+import { fetchRole, portalPath, haltForRedirect } from "./role.js";
 import { supabase } from "./supabaseClient.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
@@ -27,22 +27,18 @@ import {
 import { DEFAULT_ACTIVE_DAYS, dayKeyShort } from "./scheduleLogic.js";
 
 const session = await getSession();
-if (!session) {
-  window.location.replace("/login.html");
-  throw new Error("Unauthenticated");
-}
+if (!session) haltForRedirect("/login.html", "Unauthenticated");
 const user = session?.user;
 
-if (!user) {
-  window.location.replace("/login.html");
-  throw new Error("Unauthenticated");
-}
+if (!user) haltForRedirect("/login.html", "Unauthenticated");
 
+// maybeSingle, not single: an admin or teacher opening the site root legitimately
+// has no students row, and single() turns that expected case into a PGRST116.
 const { data: studentRow, error: studentError } = await supabase
   .from("students")
   .select("id")
   .eq("auth_user_id", user.id)
-  .single();
+  .maybeSingle();
 
 let STUDENT_ID;
 
@@ -54,8 +50,7 @@ if (studentRow?.id) {
   // student row is a data error and falls through to sign-out.
   const role = await fetchRole();
   if (role === "admin" || role === "teacher") {
-    window.location.replace(portalPath(role));
-    throw new Error("Redirecting to role portal.");
+    haltForRedirect(portalPath(role), "Redirecting to role portal");
   }
   if (import.meta.env.DEV) {
     console.warn(
@@ -70,8 +65,7 @@ if (studentRow?.id) {
       studentError?.message,
     );
     await signOut();
-    window.location.replace("/login.html");
-    throw new Error("No student profile linked.");
+    haltForRedirect("/login.html", "No student profile linked");
   }
 }
 

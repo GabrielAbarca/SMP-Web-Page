@@ -61,6 +61,7 @@ export default {
     number: "Enter a valid number.",
     min: "Must be at least {min}.",
     max: "Must be at most {max}.",
+    maxLength: "Must be {max} characters or fewer.",
     percent: "Enter a percentage between 0 and 100.",
     dateWithin: "Must be within {start} – {end}.",
     endAfterStart: "End date must be after the start date.",
@@ -70,6 +71,21 @@ export default {
     capacityRoom:
       "Section capacity ({capacity}) exceeds the room's capacity ({roomCapacity}).",
     password: "Password must be at least 6 characters.",
+  },
+
+  // Database failures that reach the user. Deliberately say what to do next and
+  // never name a table, column or constraint.
+  errors: {
+    db: {
+      tooLong: "That value is too long. Shorten it and try again.",
+      missingRequired: "A required field is missing. Fill it in and try again.",
+      stillReferenced:
+        "This record is still in use elsewhere, so it can't be deleted. Remove or reassign what depends on it first.",
+      duplicate: "That value is already used by another record.",
+      notAllowedValue: "That value isn't allowed here. Check it and try again.",
+      notPermitted: "You don't have permission to make this change.",
+      generic: "That change couldn't be saved. Please try again.",
+    },
   },
 
   enums: {
@@ -328,6 +344,9 @@ export default {
     today: {
       loading: "Loading your day…",
       contextNotLoaded: "Teacher context not loaded.",
+      noTeacherRecordTitle: "No teacher record",
+      noTeacherRecordBody:
+        "This account isn't linked to a teacher, so there are no classes to show here. Admins can manage the school from the admin console.",
       weekend: "No classes today — it's the weekend.",
       noClasses: "No classes on your schedule today.",
       loadFailed: "Failed to load today: {msg}",
@@ -730,8 +749,12 @@ export default {
       activateAnyway: "Activate anyway",
       deleted: "School year deleted.",
       empty: "No school years yet. Add one to get started.",
-      confirmDelete:
-        'Delete school year "{name}"? Its periods and sections must be removed first.',
+      confirmDelete: 'Delete school year "{name}"?',
+      deleteBlockedTitle: "Can't delete this school year",
+      deleteBlocked:
+        '"{name}" still has {periods} grading period(s) and {sections} section(s). Deleting it would permanently remove them along with every enrolment, schedule and grade for the year. Remove them first, then delete the year.',
+      deleteCheckFailed:
+        "Couldn't check what belongs to this school year, so it wasn't deleted. Try again.",
     },
     periods: {
       title: "Grading periods",
@@ -761,7 +784,8 @@ export default {
       name: "Name",
       namePlaceholder: "7th Grade",
       empty: "No grade levels yet.",
-      confirmDelete: 'Delete grade level "{name}"?',
+      confirmDelete:
+        'Delete grade level "{name}"? Its sections and subject links go with it.',
     },
     rooms: {
       title: "Rooms",
@@ -797,7 +821,8 @@ export default {
       empty: "No sections for this year yet.",
       noYear: "Activate a school year to manage its sections.",
       needGrade: "Create at least one grade level first.",
-      confirmDelete: 'Delete section "{name}"?',
+      confirmDelete:
+        'Delete section "{name}"? Its schedule and subject assignments will be deleted, and its students will be left without a section.',
     },
     subjects: {
       title: "Subject catalog",
@@ -810,7 +835,8 @@ export default {
       description: "Description",
       gradeLevels: "Grade levels",
       empty: "No subjects yet.",
-      confirmDelete: 'Delete subject "{name}"?',
+      confirmDelete:
+        'Delete subject "{name}"? Its class assignments and schedule entries will also be removed, along with any student scores recorded against them.',
     },
     teachers: {
       title: "Teachers",
@@ -837,13 +863,15 @@ export default {
       title: "Class assignments",
       add: "Add assignment",
       addTitle: "Assign subject & teacher",
+      editTitle: "Reassign teacher: {section} · {subject}",
       section: "Section",
       subject: "Subject",
       teacher: "Teacher",
       empty: "No assignments for this year yet.",
       noYear: "Activate a school year to manage assignments.",
       needData: "Add sections, subjects and teachers first.",
-      confirmDelete: "Remove this assignment?",
+      confirmDelete:
+        "Remove this assignment? All student scores and assignments for it will also be removed.",
     },
     schedules: {
       // Shared field labels for the weekly editor and the block editor.
@@ -963,7 +991,8 @@ export default {
       filterStudents: "Filter students",
       count: { one: "{count} student", other: "{count} students" },
       empty: "No students yet. Add one or import a roster.",
-      confirmDelete: "Delete student {name}?",
+      confirmDelete:
+        "Delete student {name}? Their grades, attendance and discipline records will also be deleted.",
     },
     import: {
       title: "Import roster (CSV)",

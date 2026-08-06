@@ -7,6 +7,7 @@ import {
   numeric,
   min,
   atMost,
+  maxLen,
   percent,
   dateWithin,
   endAfterStart,
@@ -111,6 +112,26 @@ describe("min / atMost", () => {
     const rule = atMost((values) => values.roomCap);
     expect(rule("999", { roomCap: null })).toBeNull();
     expect(rule("999", {})).toBeNull();
+  });
+});
+
+describe("maxLen", () => {
+  const rule = maxLen(5);
+  it("rejects a value longer than the limit", () => {
+    expect(keyOf(rule("abcdef", {}))).toBe("validation.maxLength");
+  });
+  it("reports the limit so the message can name it", () => {
+    expect(rule("abcdef", {}).vars).toEqual({ max: 5 });
+  });
+  it("accepts a value exactly at the limit", () => {
+    expect(rule("abcde", {})).toBeNull();
+  });
+  it("measures the trimmed value, matching what gets stored", () => {
+    expect(rule("  abcde  ", {})).toBeNull();
+  });
+  it("stays silent on blanks — only required() speaks for those", () => {
+    expect(rule("", {})).toBeNull();
+    expect(rule(null, {})).toBeNull();
   });
 });
 

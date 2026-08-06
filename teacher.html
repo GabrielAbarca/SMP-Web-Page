@@ -109,12 +109,10 @@
 
           <div class="sidebar-divider"></div>
 
-          <a href="/" class="nav-cta">
-            <span class="material-symbols-outlined"
-              ><svg aria-hidden="true"><use href="#icon-visibility"></use></svg
-            ></span>
-            <h3 data-i18n="admin.nav.viewStudentPortal">View Student Portal</h3>
-          </a>
+          <!-- No "View Student Portal" link here: the student dashboard resolves
+               its student by students.auth_user_id, and neither a teacher nor an
+               admin has such a row, so the link bounced every caller straight
+               back. It was an affordance no role could use. -->
           <a href="/login.html" id="logout-btn">
             <span class="material-symbols-outlined"
               ><svg aria-hidden="true"><use href="#icon-logout"></use></svg

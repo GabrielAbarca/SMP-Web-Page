@@ -59,6 +59,7 @@ export default {
     number: "Ingresa un número válido.",
     min: "Debe ser al menos {min}.",
     max: "Debe ser como máximo {max}.",
+    maxLength: "Debe tener {max} caracteres o menos.",
     percent: "Ingresa un porcentaje entre 0 y 100.",
     dateWithin: "Debe estar entre {start} y {end}.",
     endAfterStart: "La fecha de fin debe ser posterior a la fecha de inicio.",
@@ -68,6 +69,23 @@ export default {
     capacityRoom:
       "El cupo de la sección ({capacity}) supera la capacidad del aula ({roomCapacity}).",
     password: "La contraseña debe tener al menos 6 caracteres.",
+  },
+
+  // Errores de base de datos que llegan al usuario. Dicen qué hacer y nunca
+  // mencionan una tabla, columna o restricción.
+  errors: {
+    db: {
+      tooLong: "Ese valor es demasiado largo. Acórtalo e inténtalo de nuevo.",
+      missingRequired:
+        "Falta un campo obligatorio. Complétalo e inténtalo de nuevo.",
+      stillReferenced:
+        "Este registro todavía se usa en otro lugar, así que no se puede eliminar. Primero elimina o reasigna lo que depende de él.",
+      duplicate: "Ese valor ya lo usa otro registro.",
+      notAllowedValue:
+        "Ese valor no se permite aquí. Revísalo e inténtalo de nuevo.",
+      notPermitted: "No tienes permiso para hacer este cambio.",
+      generic: "No se pudo guardar el cambio. Inténtalo de nuevo.",
+    },
   },
 
   enums: {
@@ -322,6 +340,9 @@ export default {
     today: {
       loading: "Cargando tu día…",
       contextNotLoaded: "No se cargó el contexto del docente.",
+      noTeacherRecordTitle: "Sin registro de docente",
+      noTeacherRecordBody:
+        "Esta cuenta no está vinculada a un docente, así que no hay clases que mostrar aquí. Los administradores pueden gestionar la escuela desde la consola de administración.",
       weekend: "Hoy no hay clases — es fin de semana.",
       noClasses: "No tienes clases en tu horario de hoy.",
       loadFailed: "No se pudo cargar el día: {msg}",
@@ -725,8 +746,12 @@ export default {
       activateAnyway: "Activar de todas formas",
       deleted: "Año escolar eliminado.",
       empty: "Aún no hay años escolares. Agrega uno para comenzar.",
-      confirmDelete:
-        '¿Eliminar el año escolar "{name}"? Primero deben eliminarse sus períodos y secciones.',
+      confirmDelete: '¿Eliminar el año escolar "{name}"?',
+      deleteBlockedTitle: "No se puede eliminar este año escolar",
+      deleteBlocked:
+        '"{name}" todavía tiene {periods} período(s) de calificación y {sections} sección(es). Eliminarlo borraría de forma permanente esos registros junto con todas las matrículas, horarios y calificaciones del año. Elimínalos primero y luego elimina el año.',
+      deleteCheckFailed:
+        "No se pudo verificar qué pertenece a este año escolar, así que no se eliminó. Inténtalo de nuevo.",
     },
     periods: {
       title: "Períodos de evaluación",
@@ -758,7 +783,8 @@ export default {
       name: "Nombre",
       namePlaceholder: "Séptimo grado",
       empty: "Aún no hay grados.",
-      confirmDelete: '¿Eliminar el grado "{name}"?',
+      confirmDelete:
+        '¿Eliminar el grado "{name}"? Sus secciones y materias vinculadas se eliminarán con él.',
     },
     rooms: {
       title: "Aulas",
@@ -794,7 +820,8 @@ export default {
       empty: "Aún no hay secciones para este año.",
       noYear: "Activa un año escolar para gestionar sus secciones.",
       needGrade: "Primero crea al menos un grado.",
-      confirmDelete: '¿Eliminar la sección "{name}"?',
+      confirmDelete:
+        '¿Eliminar la sección "{name}"? Se eliminarán su horario y sus asignaciones de materias, y sus estudiantes quedarán sin sección.',
     },
     subjects: {
       title: "Catálogo de materias",
@@ -807,7 +834,8 @@ export default {
       description: "Descripción",
       gradeLevels: "Grados",
       empty: "Aún no hay materias.",
-      confirmDelete: '¿Eliminar la materia "{name}"?',
+      confirmDelete:
+        '¿Eliminar la materia "{name}"? También se eliminarán sus asignaciones de clase y entradas de horario, junto con las calificaciones registradas en ellas.',
     },
     teachers: {
       title: "Docentes",
@@ -834,13 +862,15 @@ export default {
       title: "Asignaciones de clase",
       add: "Agregar asignación",
       addTitle: "Asignar materia y docente",
+      editTitle: "Reasignar docente: {section} · {subject}",
       section: "Sección",
       subject: "Materia",
       teacher: "Docente",
       empty: "Aún no hay asignaciones para este año.",
       noYear: "Activa un año escolar para gestionar asignaciones.",
       needData: "Primero agrega secciones, materias y docentes.",
-      confirmDelete: "¿Quitar esta asignación?",
+      confirmDelete:
+        "¿Quitar esta asignación? También se eliminarán todas las calificaciones y tareas de los estudiantes asociadas a ella.",
     },
     schedules: {
       // Etiquetas compartidas por el editor semanal y el de bloques.
@@ -961,7 +991,8 @@ export default {
       filterStudents: "Filtrar estudiantes",
       count: { one: "{count} estudiante", other: "{count} estudiantes" },
       empty: "Aún no hay estudiantes. Agrega uno o importa una lista.",
-      confirmDelete: "¿Eliminar al estudiante {name}?",
+      confirmDelete:
+        "¿Eliminar al estudiante {name}? También se eliminarán sus calificaciones, asistencia y registros de disciplina.",
     },
     import: {
       title: "Importar lista (CSV)",
