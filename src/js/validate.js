@@ -129,6 +129,20 @@ export const atMost =
     );
   };
 
+/**
+ * Value must fit within `limit` characters. Mirrors the column width so an
+ * over-long entry fails inline here rather than reaching Postgres, which
+ * answers 22001 with text no school director should ever be shown.
+ * @param {number} limit
+ * @returns {Rule}
+ */
+export const maxLen = (limit) => (v) => {
+  if (isBlank(v)) return null;
+  return normalize(v).length > limit
+    ? msg("validation.maxLength", { max: limit })
+    : null;
+};
+
 /** A percentage between 0 and 100. @returns {Rule} */
 export const percent = () => (v) => {
   if (isBlank(v)) return null;

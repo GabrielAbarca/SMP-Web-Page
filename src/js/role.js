@@ -54,3 +54,29 @@ export function portalPath(role) {
   if (role === "teacher") return "/teacher.html";
   return "/";
 }
+
+/**
+ * Marks a throw that only exists to stop a module's top-level code after a
+ * redirect has already been issued. Entry points are top-level-await modules,
+ * so the throw surfaces as an unhandled rejection; errorHandler matches on
+ * `name` (never on the message) and stays quiet, which is what keeps a routine
+ * role redirect from flashing the global "Something went wrong" banner.
+ */
+export class RedirectHalt extends Error {
+  /** @param {string} [reason] logged context — never shown to the user */
+  constructor(reason = "Redirecting") {
+    super(reason);
+    this.name = "RedirectHalt";
+  }
+}
+
+/**
+ * Send the browser to `path` and halt the calling module.
+ * @param {string} path
+ * @param {string} [reason]
+ * @returns {never}
+ */
+export function haltForRedirect(path, reason) {
+  window.location.replace(path);
+  throw new RedirectHalt(reason ?? `Redirecting to ${path}`);
+}

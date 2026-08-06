@@ -17,7 +17,7 @@ import "./errorHandler.js";
 import "./speedInsights.js";
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
-import { fetchRole, portalPath } from "./role.js";
+import { fetchRole, portalPath, haltForRedirect } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initSidebarToggle } from "./ui.js";
 import { renderSettings } from "./settings.js";
@@ -28,6 +28,7 @@ import { parseCsv, autoMap } from "./csv.js";
 import { TARGET_WEIGHT, totalWeight, weightStatus } from "./gradingPeriods.js";
 import * as sched from "./scheduleLogic.js";
 import * as v from "./validate.js";
+import { mapDbError } from "./dbErrors.js";
 import {
   createAccount,
   resetPassword,
@@ -39,16 +40,10 @@ import { initI18n, applyTranslations, t, tn, formatDate } from "./i18n.js";
 //  1. AUTH GUARD + ROLE GATE
 // ───────────────────────────────────────────────────────────────
 const session = await getSession();
-if (!session) {
-  window.location.replace("/login.html");
-  throw new Error("Unauthenticated");
-}
+if (!session) haltForRedirect("/login.html", "Unauthenticated");
 
 const role = await fetchRole();
-if (role !== "admin") {
-  window.location.replace(portalPath(role));
-  throw new Error("Unauthorized");
-}
+if (role !== "admin") haltForRedirect(portalPath(role), "Unauthorized");
 
 // ───────────────────────────────────────────────────────────────
 //  2. DATA LAYER
@@ -103,6 +98,19 @@ function showToast(message, type = "success") {
   toast.innerHTML = `<span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-${icon}"></use></svg></span>${escapeHtml(message)}`;
   toastContainer.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
+}
+
+/**
+ * User-facing text for a failed write. Client-side rules catch most bad input
+ * before it leaves the browser; whatever still fails at the database is
+ * translated here, because a PostgREST message names constraints and columns
+ * and means nothing to the person running the school. The raw error is always
+ * logged, so nothing is lost for debugging.
+ * @param {any} err
+ */
+function errorText(err) {
+  console.error("[SMP] Write failed:", err);
+  return t(mapDbError(err).key);
 }
 
 function escapeHtml(value) {
@@ -180,6 +188,9 @@ function collectRules(fields) {
     if (field.type === "checkboxes") return;
     const rules = [...(field.rules ?? [])];
     if (field.required) rules.unshift(v.required());
+    // One `maxLength` declaration yields both the browser's own cap and a rule,
+    // so a pasted-in over-long value still fails inline instead of at the DB.
+    if (field.maxLength != null) rules.push(v.maxLen(field.maxLength));
     if (rules.length) map[field.name] = rules;
   });
   return map;
@@ -283,6 +294,7 @@ function openModal({
       input.rows = 3;
       input.value = field.value ?? "";
       if (field.placeholder) input.placeholder = field.placeholder;
+      if (field.maxLength != null) input.maxLength = field.maxLength;
     } else {
       input = document.createElement("input");
       input.id = `modal-field-${field.name}`;
@@ -294,6 +306,7 @@ function openModal({
       if (field.min != null) input.min = field.min;
       if (field.max != null) input.max = field.max;
       if (field.step != null) input.step = field.step;
+      if (field.maxLength != null) input.maxLength = field.maxLength;
     }
 
     group.appendChild(input);
@@ -347,7 +360,7 @@ function openModal({
       await onSubmit(values);
       closeModal();
     } catch (err) {
-      showToast(err.message ?? String(err), "error");
+      showToast(errorText(err), "error");
     } finally {
       submitBtn.disabled = false;
     }
@@ -426,8 +439,28 @@ function openConfirm(message, onConfirm, opts = {}) {
   confirmDeleteBtn.classList.toggle("btn-danger", danger);
   confirmDeleteBtn.classList.toggle("btn-primary", !danger);
   confirmCancelBtn.textContent = opts.cancelLabel ?? t("common.cancel");
+  // Inline display, not the `hidden` attribute: the dialog's own button styling
+  // sets `display`, which outranks the UA sheet's `[hidden] { display: none }`.
+  confirmCancelBtn.style.display = "";
   confirmHandler = onConfirm;
   confirmOverlay.classList.add("active");
+}
+
+/**
+ * A dismissible notice wearing the confirm dialog's clothes — for an action the
+ * console refuses outright, where there is nothing to decide. Drops the cancel
+ * button so it reads as information rather than a choice, and outlives a toast,
+ * which matters when the message names what the user has to go and remove.
+ * @param {string} message
+ * @param {{ title?: string, closeLabel?: string }} [opts]
+ */
+function openNotice(message, opts = {}) {
+  openConfirm(message, () => {}, {
+    title: opts.title,
+    confirmLabel: opts.closeLabel ?? t("common.close"),
+    danger: false,
+  });
+  confirmCancelBtn.style.display = "none";
 }
 function closeConfirm() {
   confirmOverlay.classList.remove("active");
@@ -440,7 +473,7 @@ confirmDeleteBtn.addEventListener("click", async () => {
     await confirmHandler();
     closeConfirm();
   } catch (err) {
-    showToast(err.message ?? String(err), "error");
+    showToast(errorText(err), "error");
   } finally {
     confirmDeleteBtn.disabled = false;
   }
@@ -836,20 +869,7 @@ function renderYears(years) {
     }
     actions.push(iconBtn("edit", t("common.edit"), () => openYearForm(y)));
     actions.push(
-      iconBtn(
-        "delete",
-        t("common.delete"),
-        () =>
-          openConfirm(
-            t("console.years.confirmDelete", { name: y.name }),
-            async () => {
-              await data.deleteSchoolYear(y.id);
-              showToast(t("console.years.deleted"));
-              loadYearPeriods();
-            },
-          ),
-        true,
-      ),
+      iconBtn("delete", t("common.delete"), () => requestDeleteYear(y), true),
     );
     tbody.appendChild(
       tableRow(
@@ -868,6 +888,57 @@ function renderYears(years) {
 }
 
 /**
+ * Delete a school year, but only once nothing hangs off it.
+ *
+ * Every structural table cascades from school_years — grading_periods, classes
+ * and class_subject_teachers directly, and through classes the enrolments,
+ * schedules, attendance and grades. Deleting a populated year therefore erases
+ * the school in a single click. The dialog has always told the Director its
+ * periods and sections must go first; this makes that true.
+ * @param {any} year
+ */
+async function requestDeleteYear(year) {
+  /** @type {any[]} */
+  let periods;
+  /** @type {any[]} */
+  let sections;
+  try {
+    [periods, sections] = await Promise.all([
+      data.listPeriods(year.id),
+      data.listSections(year.id),
+    ]);
+  } catch (err) {
+    // Deliberately the opposite of activateYear's fall-through below: that one
+    // is harmless when its pre-read fails, this one is irreversible, so a count
+    // we could not verify has to stop the delete rather than wave it through.
+    console.error("requestDeleteYear: could not count dependents:", err);
+    showToast(t("console.years.deleteCheckFailed"), "error");
+    return;
+  }
+
+  if (periods.length || sections.length) {
+    openNotice(
+      t("console.years.deleteBlocked", {
+        name: year.name,
+        periods: periods.length,
+        sections: sections.length,
+      }),
+      { title: t("console.years.deleteBlockedTitle") },
+    );
+    return;
+  }
+
+  openConfirm(
+    t("console.years.confirmDelete", { name: year.name }),
+    async () => {
+      await data.deleteSchoolYear(year.id);
+      showToast(t("console.years.deleted"));
+      loadYearPeriods();
+    },
+  );
+}
+
+/**
  * Make one year the active one. A year whose grading periods don't add up to
  * 100% is the state that silently breaks reporting downstream, so activating
  * one asks for confirmation first (and names the actual total) instead of
@@ -882,7 +953,7 @@ async function activateYear(year, previouslyActive) {
       showToast(t("console.years.activated"));
       loadYearPeriods();
     } catch (err) {
-      showToast(err.message ?? String(err), "error");
+      showToast(errorText(err), "error");
     }
   };
 
@@ -915,6 +986,7 @@ function openYearForm(year = null) {
     fields: [
       {
         name: "name",
+        maxLength: 20,
         label: t("console.years.name"),
         value: year?.name,
         required: true,
@@ -1079,6 +1151,7 @@ function openPeriodForm(period = null) {
     fields: [
       {
         name: "name",
+        maxLength: 50,
         label: t("console.periods.name"),
         value: period?.name,
         required: true,
@@ -1249,6 +1322,7 @@ function openGradeForm(grade = null) {
       },
       {
         name: "name",
+        maxLength: 50,
         label: t("console.grades.name"),
         value: grade?.name,
         required: true,
@@ -1337,6 +1411,7 @@ function openRoomForm(room = null) {
     fields: [
       {
         name: "name",
+        maxLength: 50,
         label: t("console.rooms.name"),
         value: room?.name,
         required: true,
@@ -1505,6 +1580,7 @@ function openSectionForm(section = null) {
       },
       {
         name: "section",
+        maxLength: 10,
         label: t("console.sections.section"),
         value: section?.section,
         required: true,
@@ -1674,6 +1750,7 @@ function openSubjectForm(subject = null, mapped = []) {
     fields: [
       {
         name: "name",
+        maxLength: 100,
         label: t("console.subjects.name"),
         value: subject?.name,
         required: true,
@@ -1686,6 +1763,7 @@ function openSubjectForm(subject = null, mapped = []) {
       },
       {
         name: "code",
+        maxLength: 10,
         label: t("console.subjects.code"),
         value: subject?.code,
         placeholder: "MATH7",
@@ -1897,12 +1975,14 @@ function openTeacherForm(teacher = null) {
     fields: [
       {
         name: "first_name",
+        maxLength: 100,
         label: t("console.teachers.firstName"),
         value: teacher?.first_name,
         required: true,
       },
       {
         name: "last_name",
+        maxLength: 100,
         label: t("console.teachers.lastName"),
         value: teacher?.last_name,
         required: true,
@@ -1911,6 +1991,7 @@ function openTeacherForm(teacher = null) {
         // Optional by design: not every school records a national ID, and the
         // field is called something different in each country (see idLabel).
         name: "national_id",
+        maxLength: 20,
         label: idLabel("teachers"),
         value: teacher?.national_id,
         rules: [
@@ -1922,6 +2003,7 @@ function openTeacherForm(teacher = null) {
       },
       {
         name: "email",
+        maxLength: 150,
         label: t("console.teachers.email"),
         type: "email",
         value: teacher?.email,
@@ -1935,12 +2017,14 @@ function openTeacherForm(teacher = null) {
       },
       {
         name: "phone",
+        maxLength: 20,
         label: t("console.teachers.phone"),
         value: teacher?.phone,
         rules: [v.phone()],
       },
       {
         name: "specialization",
+        maxLength: 100,
         label: t("console.teachers.specialization"),
         value: teacher?.specialization,
       },
@@ -2037,6 +2121,7 @@ function renderAssignments(list) {
           escapeHtml(teacherName(a.teacher_id)),
         ],
         [
+          iconBtn("edit", t("common.edit"), () => openAssignmentForm(a)),
           iconBtn(
             "delete",
             t("common.delete"),
@@ -2056,7 +2141,17 @@ function renderAssignments(list) {
   applySavedFlash("assignments-body");
 }
 
-function openAssignmentForm() {
+/**
+ * Create an assignment, or reassign an existing one's teacher.
+ *
+ * Editing is deliberately limited to the teacher. Section and subject identify
+ * the assignment — changing them would silently re-parent the grades,
+ * assignments and categories that cascade off this row, and can collide with
+ * the (class, subject, year) unique key. Correcting either of those is a
+ * delete-and-recreate, which is safe precisely when there is nothing to lose.
+ * @param {any} [assignment] the row to reassign; omit to create
+ */
+function openAssignmentForm(assignment = null) {
   if (
     !state.sections.length ||
     !state.subjects.length ||
@@ -2065,6 +2160,42 @@ function openAssignmentForm() {
     showToast(t("console.assignments.needData"), "error");
     return;
   }
+
+  const teacherField = {
+    name: "teacher_id",
+    label: t("console.assignments.teacher"),
+    type: "select",
+    required: true,
+    value: assignment?.teacher_id,
+    options: optionsFrom(
+      state.teachers,
+      (tch) => `${tch.first_name} ${tch.last_name}`,
+    ),
+  };
+
+  if (assignment) {
+    const sec = state.sections.find((s) => s.id === assignment.class_id);
+    openModal({
+      // The pair being reassigned is named in the title rather than shown as
+      // dead form controls, so nothing on screen invites an edit that is not on
+      // offer.
+      title: t("console.assignments.editTitle", {
+        section: sec ? sectionName(sec) : "—",
+        subject: subjectName(assignment.subject_id),
+      }),
+      fields: [teacherField],
+      onSubmit: async (v) => {
+        await data.updateAssignment(assignment.id, {
+          teacher_id: num(v.teacher_id),
+        });
+        markSaved("assignments-body", assignment.id);
+        showToast(t("common.saved"));
+        loadAssignments();
+      },
+    });
+    return;
+  }
+
   openModal({
     title: t("console.assignments.addTitle"),
     fields: [
@@ -2082,16 +2213,7 @@ function openAssignmentForm() {
         required: true,
         options: optionsFrom(state.subjects, (s) => s.name),
       },
-      {
-        name: "teacher_id",
-        label: t("console.assignments.teacher"),
-        type: "select",
-        required: true,
-        options: optionsFrom(
-          state.teachers,
-          (tch) => `${tch.first_name} ${tch.last_name}`,
-        ),
-      },
+      teacherField,
     ],
     onSubmit: async (v) => {
       const created = await data.createAssignment({
@@ -2962,6 +3084,7 @@ function openBellForm(bell = null) {
     fields: [
       {
         name: "name",
+        maxLength: 80,
         label: t("console.schedules.templates.name"),
         required: true,
         value: bell?.name ?? "",
@@ -3334,18 +3457,21 @@ function openStudentForm(student = null) {
     fields: [
       {
         name: "first_name",
+        maxLength: 100,
         label: t("console.students.firstName"),
         value: student?.first_name,
         required: true,
       },
       {
         name: "last_name",
+        maxLength: 100,
         label: t("console.students.lastName"),
         value: student?.last_name,
         required: true,
       },
       {
         name: "enrollment_number",
+        maxLength: 20,
         label: t("console.students.enrollmentNumber"),
         value: student?.enrollment_number,
         help: t("console.students.enrollmentHelp"),
@@ -3362,6 +3488,7 @@ function openStudentForm(student = null) {
       {
         // Optional, with a per-school label — same treatment as teachers.
         name: "national_id",
+        maxLength: 20,
         label: idLabel("students"),
         value: student?.national_id,
         rules: [
@@ -3391,6 +3518,7 @@ function openStudentForm(student = null) {
       },
       {
         name: "email",
+        maxLength: 150,
         label: t("console.students.email"),
         type: "email",
         value: student?.email,
@@ -3398,6 +3526,7 @@ function openStudentForm(student = null) {
       },
       {
         name: "phone",
+        maxLength: 20,
         label: t("console.students.phone"),
         value: student?.phone,
         rules: [v.phone()],
@@ -4119,7 +4248,7 @@ async function openImportModal(key) {
   try {
     prep = await descriptor.prepare();
   } catch (err) {
-    showToast(err.message ?? String(err), "error");
+    showToast(errorText(err), "error");
     return;
   }
   if (!prep.ok) {
@@ -4415,7 +4544,7 @@ function renderImportPreview() {
           closeImportModal();
           d.reload();
         } catch (err) {
-          showToast(err.message ?? String(err), "error");
+          showToast(errorText(err), "error");
         }
       },
     },
@@ -4516,7 +4645,7 @@ async function renderSchoolProfile() {
         // The ID label feeds table headers and both create forms.
         applyIdLabels();
       } catch (err) {
-        showToast(err.message ?? String(err), "error");
+        showToast(errorText(err), "error");
       }
     });
 }

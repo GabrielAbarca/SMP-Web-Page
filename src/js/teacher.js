@@ -23,7 +23,7 @@ import "./errorHandler.js";
 import "./speedInsights.js";
 import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
-import { fetchRole, portalPath } from "./role.js";
+import { fetchRole, portalPath, haltForRedirect } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import {
   skeletonRows,
@@ -48,18 +48,14 @@ import {
 //  1. AUTH GUARD + TEACHER IDENTITY
 // ───────────────────────────────────────────────────────────────
 const session = await getSession();
-if (!session) {
-  window.location.replace("/login.html");
-  throw new Error("Unauthenticated");
-}
+if (!session) haltForRedirect("/login.html", "Unauthenticated");
 
 // Teachers own this console; admins may enter too (school oversight, and the
 // shared demo profile carries the admin role). Everyone else is sent to the
 // portal their role resolves to.
 const role = await fetchRole();
 if (role !== "teacher" && role !== "admin") {
-  window.location.replace(portalPath(role));
-  throw new Error("Unauthorized");
+  haltForRedirect(portalPath(role), "Unauthorized");
 }
 
 // Resolve the current teacher (demo: fixed via app_config → demo_teacher_id()).
@@ -133,6 +129,10 @@ const realDb = {
   },
 
   async fetchTeacher(id) {
+    // An account with no teachers row resolves to a null id. Passing that to
+    // .eq() serialises as the literal "id=eq.null", which Postgres rejects
+    // against an integer column (22P02 → HTTP 400), so stop here instead.
+    if (id == null) return null;
     const { data, error } = await supabase
       .from("teachers")
       .select("id, first_name, last_name, specialization")
@@ -144,6 +144,7 @@ const realDb = {
 
   // Full teacher record for the read-only Settings view (display only).
   async fetchTeacherFull(id) {
+    if (id == null) return null;
     const { data, error } = await supabase
       .from("teachers")
       .select(
@@ -1083,6 +1084,13 @@ async function loadSettings() {
     return;
   }
 
+  if (!teacher) {
+    // No teachers row for this account — the shared renderer needs one, so
+    // explain rather than dereferencing a null record.
+    root.innerHTML = `<div class="loading-cell">${t("admin.today.noTeacherRecordBody")}</div>`;
+    return;
+  }
+
   const tr = teacher;
   const statusLabel = (v) => (v ? t(`enums.studentStatus.${v}`) : null);
 
@@ -1186,6 +1194,15 @@ document.querySelectorAll(".class-subtab").forEach((btn) => {
 async function loadMyClasses() {
   const grid = document.getElementById("myclasses-grid");
   const subtitle = document.getElementById("myclasses-subtitle");
+  if (!TEACHER_ID || !ACTIVE_YEAR) {
+    if (subtitle) subtitle.textContent = "";
+    grid.innerHTML = `<div class="loading-cell">${
+      TEACHER_ID
+        ? t("admin.today.contextNotLoaded")
+        : t("admin.today.noTeacherRecordBody")
+    }</div>`;
+    return;
+  }
   grid.innerHTML = skeletonCardItems(3);
 
   try {
@@ -3240,7 +3257,19 @@ async function loadToday() {
   const subtitle = document.getElementById("today-subtitle");
   if (!grid) return;
   if (!ACTIVE_YEAR || !TEACHER_ID) {
-    grid.innerHTML = `<div class="loading-cell">${t("admin.today.contextNotLoaded")}</div>`;
+    // This early return skips the subtitle write further down, so clear the
+    // static "Loading your day…" placeholder here — otherwise the header claims
+    // the page is still loading forever while the grid says it gave up.
+    if (subtitle) {
+      subtitle.textContent = TEACHER_ID
+        ? ""
+        : t("admin.today.noTeacherRecordTitle");
+    }
+    grid.innerHTML = `<div class="loading-cell">${
+      TEACHER_ID
+        ? t("admin.today.contextNotLoaded")
+        : t("admin.today.noTeacherRecordBody")
+    }</div>`;
     return;
   }
 
@@ -3502,16 +3531,26 @@ if (DEMO_MODE) {
 }
 
 try {
+  // Resolved separately, not with Promise.all: the year is useful on its own,
+  // and pairing the two meant a failure to resolve the teacher also threw away
+  // a perfectly good year, leaving every view without its context.
   TEACHER_ID = await db.getTeacherId();
-  const [year, teacher] = await Promise.all([
-    db.fetchActiveYear(),
-    db.fetchTeacher(TEACHER_ID),
-  ]);
-  ACTIVE_YEAR = year;
-  PERIODS = await db.fetchGradingPeriods(year?.id);
+  ACTIVE_YEAR = await db.fetchActiveYear();
+  PERIODS = await db.fetchGradingPeriods(ACTIVE_YEAR?.id);
 
-  document.getElementById("teacher-name").textContent =
-    `${teacher.first_name} ${teacher.last_name}`;
+  const teacher = await db.fetchTeacher(TEACHER_ID);
+  if (teacher) {
+    document.getElementById("teacher-name").textContent =
+      `${teacher.first_name} ${teacher.last_name}`;
+  } else {
+    // Signed in, authorised, but this account owns no teachers row — normally
+    // an admin using the console for oversight. That is an expected state, not
+    // a failure, so say so plainly rather than flashing an error toast. The
+    // element also backs a "Signed in as {name}" line, so it gets the account's
+    // own email rather than a status phrase that would not read as a name.
+    document.getElementById("teacher-name").textContent =
+      session.user.email ?? "";
+  }
 } catch (err) {
   console.error("Failed to resolve teacher context:", err);
   showToast(t("admin.toast.contextFailed"), "error");

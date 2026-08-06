@@ -182,6 +182,11 @@ export function createAdminData(gateway) {
       }),
     createAssignment: (/** @type {object} */ row) =>
       gateway.insert("class_subject_teachers", row),
+    // Reassigning the teacher is an update, not a delete-and-recreate: grades,
+    // assignments and grade categories all cascade off this row's id, so
+    // recreating it would take a term's marks with it.
+    updateAssignment: (/** @type {number} */ id, /** @type {object} */ patch) =>
+      gateway.update("class_subject_teachers", id, patch),
     deleteAssignment: (/** @type {number} */ id) =>
       gateway.remove("class_subject_teachers", id),
 

@@ -158,4 +158,43 @@ describe("adminData — createAdminData over a gateway", () => {
       ["remove", "rooms", 5],
     ]);
   });
+
+  it("reassigns an assignment's teacher by updating the row in place", async () => {
+    // Grades, assignments and grade categories cascade off this row's id, so a
+    // reassignment must be an UPDATE — a delete-and-recreate would silently
+    // take a term's marks with it.
+    const calls = [];
+    /** @type {any} */
+    const gateway = {
+      select: async () => [],
+      insert: async (table, row) => (calls.push(["insert", table, row]), row),
+      update: async (table, id, patch) =>
+        calls.push(["update", table, id, patch]),
+      remove: async (table, id) => calls.push(["remove", table, id]),
+    };
+    await createAdminData(gateway).updateAssignment(12, { teacher_id: 7 });
+    expect(calls).toEqual([
+      ["update", "class_subject_teachers", 12, { teacher_id: 7 }],
+    ]);
+  });
+
+  it("keeps an assignment reassignment inside the demo overlay", async () => {
+    const real = fakeRealGateway({
+      class_subject_teachers: [
+        {
+          id: 12,
+          class_id: 1,
+          subject_id: 2,
+          teacher_id: 3,
+          school_year_id: 1,
+        },
+      ],
+    });
+    const data = createAdminData(createDemoGateway(real));
+    await data.updateAssignment(12, { teacher_id: 7 });
+
+    expect(real.writes).toEqual([]); // never reached the real backend
+    const rows = await data.listAssignments(1);
+    expect(rows.find((r) => r.id === 12).teacher_id).toBe(7);
+  });
 });

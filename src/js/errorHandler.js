@@ -8,12 +8,18 @@
 // so it works on every page regardless of which stylesheet loaded.
 
 // Intentional control-flow throws that halt a module right after a redirect
-// (the auth guards) are not failures — don't alarm the user for those.
+// (the auth guards) are not failures — don't alarm the user for those. Guards
+// signal that by throwing role.js's RedirectHalt, matched by name below; these
+// message patterns stay as a safety net for any throw that predates it.
 const BENIGN = [/^Unauthenticated$/, /No student profile/i];
 
 let bannerShown = false;
 
 function isBenign(reason) {
+  // Matched structurally, not by string, so rewording a guard can never
+  // silently reintroduce the banner. Checked by name rather than instanceof to
+  // keep this module dependency-free — it must load on every page.
+  if (reason && reason.name === "RedirectHalt") return true;
   const msg =
     reason && reason.message ? String(reason.message) : String(reason ?? "");
   return BENIGN.some((re) => re.test(msg));
