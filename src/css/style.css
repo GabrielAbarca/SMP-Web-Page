@@ -231,6 +231,14 @@
     --border-subtle: var(--color-light);
     --border-control: var(--color-info-dark);
 
+    /* Hover tint for small surfaces (icon buttons, picker indicators).
+     Distinct from --color-light on purpose: that token is the divider and
+     shadow tint, and it flips to rgba(0,0,0,0.4) in dark mode. Darkening
+     works when it tints a wide table row and fails completely on a 20px
+     icon, where it fills the box and swallows the glyph. This one always
+     moves AWAY from the surface — darker on light, lighter on dark. */
+    --surface-hover: rgba(0, 0, 0, 0.06);
+
     /* Focus ring — one definition, applied to everything focusable. */
     --focus-ring: 0 0 0 3px var(--color-primary-light);
     --focus-outline: 2px solid var(--color-primary-text);
@@ -310,6 +318,8 @@
      5.14:1 on the page) and the darkened value would drop to 3.19:1. */
     --color-info-dark: #7d8da1;
     --color-light: rgba(0, 0, 0, 0.4);
+    /* Lighten rather than darken — see :root. */
+    --surface-hover: rgba(255, 255, 255, 0.08);
     --box-shadow: 0 2rem 3rem var(--color-light);
 
     /* Brighten readable status shades for dark surfaces (G4) */
@@ -437,10 +447,25 @@
     caret-color: var(--color-primary-text);
   }
 
-  /* Firefox scrollbars — the ::-webkit-scrollbar rules further down are
-   Chrome/Safari only, so Firefox was still painting OS scrollbars. */
-  html {
-    scrollbar-color: var(--color-info-light) transparent;
+  /* ── Firefox scrollbars ───────────────────────────────────────────
+   The ::-webkit-scrollbar rules further down are Chrome/Safari only, so
+   Firefox was still painting OS scrollbars.
+
+   This MUST stay behind the @supports guard. Chromium honours both the
+   standard properties and ::-webkit-scrollbar, but specifying either
+   standard property makes it ignore the webkit rules entirely — which
+   silently threw away the slim 6px bar those rules exist to produce and
+   replaced it with a wide, always-visible one. Applying the standard
+   properties only where ::-webkit-scrollbar does NOT exist means Firefox
+   gets themed scrollbars and Chrome/Safari keep theirs untouched.
+
+   Browsers without `selector()` support skip the block and fall back to
+   the webkit rules, which is the correct outcome for them too. */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-info-light) transparent;
+    }
   }
 
   /* Chrome paints autofilled fields with its own hard-coded background and
@@ -2844,10 +2869,14 @@
     opacity: 0.75;
   }
 
+  /* The tint here used to be --color-light, which is rgba(0,0,0,0.4) in dark
+   mode — a near-black square painted behind an already-dark icon, so hovering
+   turned the whole indicator into one solid block. --surface-hover moves away
+   from the surface in both themes. */
   input[type="date"]::-webkit-calendar-picker-indicator:hover,
   input[type="time"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
-    background: var(--color-light);
+    background: var(--surface-hover);
   }
 
   /* ── Search: the clear affordance ───────────────────────────────── */
