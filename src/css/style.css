@@ -22,7 +22,7 @@
    The order statement below is repeated verbatim in every stylesheet:
    whichever file the browser loads first establishes the order, and
    later identical declarations are a no-op. Do not reorder it. */
-@layer base, page;
+@layer base, page, controls;
 
 @layer base {
   /* ── Self-hosted Poppins (replaces the Google Fonts @import) ──────────────
@@ -144,6 +144,19 @@
   }
 
   :root {
+    /* ── Native control theming ───────────────────────────────────────
+     Tells the browser which palette to render its OWN UI in: the date
+     picker's indicator and calendar, number spin buttons, the <select>
+     option list, autofill highlighting, form control internals and
+     default scrollbars.
+
+     Without this the browser assumes light and keeps assuming it, so in
+     dark mode the calendar icon stayed black on a dark field and the
+     option list opened as a white slab. None of that is reachable from
+     CSS — `color-scheme` is the only lever, and it is the whole fix for
+     that class of defect. Paired with .dark-theme-variables below. */
+    color-scheme: light;
+
     --color-primary: #7380ec;
     --color-primary-light: rgba(115, 128, 236, 0.15);
     --color-danger: #ff7782;
@@ -263,6 +276,12 @@
   }
 
   .dark-theme-variables {
+    /* The other half of the native-control fix — see :root. This one
+     declaration is what turns the date picker, its calendar popup, the
+     number spinners, the option list and autofill dark along with the
+     rest of the app. */
+    color-scheme: dark;
+
     --color-background: #181a1e;
     --color-white: #202528;
     --color-dark: #edeffd;
@@ -332,6 +351,91 @@
   .pg-grid :focus-visible,
   .cg-grid :focus-visible {
     outline-offset: -2px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+   FORM CONTROLS — the app's, not the browser's
+   ───────────────────────────────────────────────────────────────
+   Form controls do NOT inherit font-family. That is a UA-stylesheet
+   rule, not an oversight in this codebase, and it is why every modal
+   input, every console select, every grade cell and every search box
+   was rendering in the system font while the rest of the app rendered
+   in Poppins. Three rules in the whole codebase set it; ~30 did not.
+
+   Declaring it once here fixes every control on every surface, and any
+   control added later inherits the fix instead of having to remember.
+═══════════════════════════════════════════════════════════════ */
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+    /* Also not inherited by default — a control's label should never be
+     a different weight or leading from the text around it. */
+    font-weight: inherit;
+    line-height: inherit;
+  }
+
+  /* Text-bearing controls sit on the type scale. Was --text-sm (0.82rem),
+   which at the 12.5–14px root floor rendered around 10–11px. Dense grid
+   inputs (.sg-*, .pg-*, .cg-*) deliberately keep their smaller size —
+   those are spreadsheet cells, and widening them reflows the grid. */
+  input,
+  select,
+  textarea {
+    font-size: var(--text-base);
+    color: var(--color-dark);
+  }
+
+  /* iOS zooms the viewport whenever a focused input computes under 16px,
+   and does not zoom back out — the user is left on a page scrolled
+   sideways. The app's root font never reaches 16px, so every control
+   triggered it. Applied only to touch pointers so desktop density is
+   untouched. */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: max(16px, var(--text-base));
+    }
+  }
+
+  /* Placeholders were themed on the login form only; everywhere else they
+   fell back to the UA's grey, which is outside the palette and unverified
+   for contrast. */
+  ::placeholder {
+    color: var(--color-info-dark);
+    opacity: 1; /* Firefox dims placeholders by default */
+  }
+
+  ::selection {
+    background: var(--color-primary-light);
+    color: var(--color-dark);
+  }
+
+  input,
+  textarea {
+    caret-color: var(--color-primary-text);
+  }
+
+  /* Firefox scrollbars — the ::-webkit-scrollbar rules further down are
+   Chrome/Safari only, so Firefox was still painting OS scrollbars. */
+  html {
+    scrollbar-color: var(--color-info-light) transparent;
+  }
+
+  /* Chrome paints autofilled fields with its own hard-coded background and
+   text colour, ignoring the theme entirely — most visible on the login
+   form in dark mode. The colour cannot be set directly; the standard
+   workaround is to flood the field with an inset shadow and delay the
+   transition long enough that the UA style never becomes visible. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-dark);
+    -webkit-box-shadow: 0 0 0 100px var(--color-background) inset;
+    caret-color: var(--color-primary-text);
+    transition: background-color 100000s ease-in-out 0s;
   }
 
   /* ── Inline SVG icons (replaces the Material Symbols icon font) ──────
@@ -1089,17 +1193,20 @@
     color: var(--color-dark-variant);
   }
 
+  /* `appearance: auto` used to be restored here — it was this one select's
+   private workaround for the global reset stripping the dropdown arrow. The
+   controls layer now gives every select a chevron, so the workaround is dead
+   code (and would have painted a second, native arrow beside the new one).
+   font-family/font-size are likewise inherited from the shared control rules
+   and no longer restated. */
   .period-selector select {
     padding: 0.6rem 0.9rem;
     border-radius: var(--border-radius-2);
     background: var(--color-white);
     color: var(--color-dark);
-    font-family: inherit;
-    font-size: var(--text-sm);
     border: 1px solid var(--border-control);
     cursor: pointer;
     transition: all var(--transition-speed) ease;
-    appearance: auto;
   }
 
   /* ─── Shared focus ring for form controls (mirrors the login input ring) ──
@@ -2628,5 +2735,141 @@
       animation-duration: 0.7s !important;
       animation-iteration-count: infinite !important;
     }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTROLS LAYER — the app claims the controls the browser drew
+   ───────────────────────────────────────────────────────────────
+   These rules sit in a THIRD cascade layer, above `page`, and that
+   placement is load-bearing rather than stylistic.
+
+   Several per-surface rules style selects with the `background:`
+   SHORTHAND (e.g. `.panel-actions select { background: var(--color-white) }`).
+   The shorthand resets `background-image` to none, so a chevron declared
+   in `base` would be silently wiped by the page layer on exactly the
+   controls that need it. Sitting above `page` is what makes control
+   ownership hold everywhere instead of surface by surface.
+
+   Everything here has one job: no control renders as a browser default.
+═══════════════════════════════════════════════════════════════ */
+@layer controls {
+  /* ── Select: give back the affordance the reset removed ──────────
+   The global `* { appearance: none }` strips a <select> of its native
+   dropdown arrow. Only two rules in the app ever restored it, so ~29
+   selects rendered as plain rectangles — nothing said "this opens".
+
+   The chevron is an inline SVG data URI. It cannot reference a custom
+   property (data URIs are opaque to the cascade), so the stroke colour
+   is written literally and the dark variant is declared below. Both
+   values are --color-dark-variant for their theme; keep them in step. */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667281' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 0.9rem;
+    /* Room for the chevron so a long option label never runs under it. */
+    padding-right: 2.1rem;
+  }
+
+  .dark-theme-variables select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3bdcc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+
+  /* The option list itself is drawn by the OS and is not styleable in
+   most browsers; `color-scheme` on :root is what makes it follow the
+   theme. These two properties are honoured by Firefox and by Chrome on
+   Linux/Windows, so they are worth setting even though they are not
+   universal. */
+  select option {
+    background: var(--color-white);
+    color: var(--color-dark);
+  }
+
+  /* ── Number: spin buttons ────────────────────────────────────────
+   Kept rather than hidden — score entry genuinely benefits from them,
+   and removing a control users expect would trade one Jakob's Law
+   problem for another. `color-scheme` themes them; this only stops them
+   crowding the value. */
+  input[type="number"] {
+    padding-right: 0.5rem;
+  }
+
+  /* ── Date / time: the picker trigger ─────────────────────────────
+   The indicator is a UA-drawn glyph. With `color-scheme` set it now
+   follows the theme instead of staying black on a dark field. Sized and
+   spaced here so it lines up with the select chevron beside it, and
+   given a pointer so it reads as the affordance it is. */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: var(--space-1);
+    margin-right: calc(var(--space-1) * -1);
+    border-radius: var(--border-radius-1);
+    opacity: 0.75;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background: var(--color-light);
+  }
+
+  /* ── Search: the clear affordance ───────────────────────────────── */
+  input[type="search"]::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+
+  /* ── Colour: the swatch ─────────────────────────────────────────
+   The UA wraps the colour in its own inset border with square corners,
+   which reads as a broken input next to the app's rounded fields. */
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  input[type="color"]::-webkit-color-swatch {
+    border: 1px solid var(--border-control);
+    border-radius: var(--border-radius-1);
+  }
+
+  input[type="color"]::-moz-color-swatch {
+    border: 1px solid var(--border-control);
+    border-radius: var(--border-radius-1);
+  }
+
+  /* ── File: the least-owned control in the app ───────────────────
+   The CSV import's file input shipped as a bare OS button — different
+   font, different metrics, no theme, on the screen a director uses to
+   load their entire roster. Dressed as a ghost button so it belongs to
+   the same family as the actions beside it. Both spellings: the
+   standardised one and the -webkit- alias older Safari still needs. */
+  input[type="file"] {
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: var(--text-sm);
+    color: var(--color-dark-variant);
+  }
+
+  input[type="file"]::file-selector-button,
+  input[type="file"]::-webkit-file-upload-button {
+    font: inherit;
+    margin-right: var(--space-2);
+    min-height: var(--tap-target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-control);
+    border-radius: var(--border-radius-1);
+    background: transparent;
+    color: var(--color-dark-variant);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  input[type="file"]::file-selector-button:hover,
+  input[type="file"]::-webkit-file-upload-button:hover {
+    background: var(--color-background);
+    border-color: var(--color-primary-text);
+    color: var(--color-dark);
   }
 }

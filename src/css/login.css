@@ -7,7 +7,7 @@
    The order statement below is repeated verbatim in every stylesheet:
    whichever file the browser loads first establishes the order, and
    later identical declarations are a no-op. Do not reorder it. */
-@layer base, page;
+@layer base, page, controls;
 
 @layer page {
   #login-body {
