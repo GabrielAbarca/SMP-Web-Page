@@ -30,6 +30,7 @@ export default {
     offline: "You appear to be offline. Some information may be out of date.",
     couldNotLoadProfile: "Could not load your profile.",
     adminOnly: "Only an administrator can perform this action.",
+    darkMode: "Dark mode",
     comingSoon: "Coming soon",
     days: {
       monday: "Monday",
@@ -53,6 +54,12 @@ export default {
 
   // ── Inline form validation (rendered under the field, never as a native
   //    browser popup). Shared across views like `common`.
+  // Accessible names for controls with no visible label — the grade-entry
+  // grids and the search boxes. Never rendered on screen; read aloud only.
+  a11y: {
+    scoreFor: "Score for {name}",
+    noteFor: "Note for {name}",
+  },
   validation: {
     required: "This field is required.",
     email: "Enter a valid email address.",
@@ -370,6 +377,7 @@ export default {
     },
     roster: {
       searchPlaceholder: "Search this roster…",
+      searchLabel: "Search this roster",
       addStudent: "Add Student",
       name: "Name",
       p1: "P1 Grade",
@@ -462,6 +470,7 @@ export default {
     },
     subjects: {
       searchPlaceholder: "Search by name or code...",
+      searchLabel: "Search subjects",
       readonly: "Read-only reference",
       code: "Code",
       name: "Name",
@@ -597,6 +606,10 @@ export default {
         'Delete assignment "{name}"? All student scores for it will also be removed. This cannot be undone.',
       deleteCategory:
         'Delete category "{name}"? Its assignments stay but become uncategorized (flat weighting).',
+      discardTitle: "Discard changes?",
+      discardMessage: "You have unsaved changes. Do you want to discard them?",
+      discard: "Discard",
+      keepEditing: "Keep editing",
     },
     modal: {
       addAssignment: "Add Assignment",
@@ -683,6 +696,9 @@ export default {
       intro:
         "This console is where the school is configured and operated: academic structure, people, enrollment and a school-wide overview.",
       activeYear: "Active school year",
+      setupTitle: "Let's set up your school",
+      setupBody:
+        "Nothing has been configured yet. Start by adding a school year — grading periods, sections, subjects and enrollment all hang off it.",
       noActiveYear: "No active school year yet",
       loading: "Loading overview…",
       enrollment: "Total enrollment",

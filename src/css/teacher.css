@@ -84,7 +84,7 @@
     align-items: center;
     gap: 0.6rem;
     background: var(--color-white);
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-1);
     padding: 0.6rem 1rem;
     flex: 1 1 240px;
@@ -119,11 +119,10 @@
   .view-toolbar input[type="date"] {
     padding: 0.6rem 0.9rem;
     border-radius: var(--border-radius-2);
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     background: var(--color-white);
     color: var(--color-dark);
     font-size: var(--text-sm);
-    outline: none;
   }
 
   /* ─── Buttons moved to style.css (shared button system) ────────── */
@@ -144,31 +143,35 @@
   .attendance-status-btn {
     background: var(--color-background);
     color: var(--color-dark-variant);
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
   }
   .attendance-status-btn:hover {
     border-color: var(--color-info-dark);
   }
 
+  /* Selected pills carry a text label on a colour fill. On the raw brand hues
+   that read at 1.45:1 (present), 2.15:1 (late) and 2.56:1 (absent) — the
+   worst contrast in the app, on the control a teacher uses most. The -fill
+   shades are the same hues at a legible depth (≥4.5:1 with #fff). */
   .attendance-status-btn.active[data-status="present"] {
-    background: var(--color-success);
-    color: var(--color-white);
-    border-color: var(--color-success);
+    background: var(--color-success-fill);
+    color: #fff;
+    border-color: var(--color-success-fill);
   }
   .attendance-status-btn.active[data-status="absent"] {
-    background: var(--color-danger);
-    color: var(--color-white);
-    border-color: var(--color-danger);
+    background: var(--color-danger-fill);
+    color: #fff;
+    border-color: var(--color-danger-fill);
   }
   .attendance-status-btn.active[data-status="late"] {
-    background: var(--color-warning-strong);
-    color: var(--color-white);
-    border-color: var(--color-warning-strong);
+    background: var(--color-warning-fill);
+    color: #fff;
+    border-color: var(--color-warning-fill);
   }
   .attendance-status-btn.active[data-status="excused"] {
-    background: var(--color-primary);
-    color: var(--color-white);
-    border-color: var(--color-primary);
+    background: var(--color-primary-fill);
+    color: #fff;
+    border-color: var(--color-primary-fill);
   }
 
   /* ─── Data tables ──────────────────────────────────────────────── */
@@ -212,6 +215,13 @@
     margin-left: 0.25rem;
   }
 
+  /* Keep the destructive action off the edge of the benign one. Edit and
+     Delete were 4px apart at ~26px each, so a slip on Edit hit Delete. */
+  .actions-col .btn-icon.danger,
+  .roster-row-rail .btn-icon.danger {
+    margin-left: var(--space-3);
+  }
+
   /* ─── Status badges (admin-specific states) ──────────────────── */
   /* .badge-primary / -success / -warning / -danger live in style.css.
    Only the neutral variant is admin-only. */
@@ -232,6 +242,8 @@
   }
 
   .table-pagination button {
+    min-width: var(--tap-target);
+    min-height: var(--tap-target);
     background: var(--color-background);
     border: none;
     border-radius: var(--border-radius-1);
@@ -255,7 +267,7 @@
   .data-table select {
     width: 100%;
     padding: 0.4rem 0.6rem;
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-1);
     background: var(--color-background);
     color: var(--color-dark);
@@ -306,11 +318,27 @@
     font-size: 1.1rem;
   }
 
+  /* Was the bare glyph at the inherited font size — a ~12px target, and the
+   primary way out of every dialog. */
   .modal-close {
+    min-width: var(--tap-target);
+    min-height: var(--tap-target);
+    margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1)
+      calc(var(--space-2) * -1) 0;
     background: none;
     border: none;
+    border-radius: var(--border-radius-1);
     cursor: pointer;
     color: var(--color-dark-variant);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .modal-close:hover {
+    background: var(--color-background);
+    color: var(--color-dark);
   }
 
   .modal-body {
@@ -335,12 +363,11 @@
   .modal-body select,
   .modal-body textarea {
     padding: 0.6rem 0.9rem;
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-2);
     background: var(--color-background);
     color: var(--color-dark);
     font-size: var(--text-sm);
-    outline: none;
   }
 
   .modal-body .field-row {
@@ -525,7 +552,7 @@
   }
 
   .breadcrumb-back:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   .breadcrumb-back .material-symbols-outlined {
@@ -585,12 +612,12 @@
   }
 
   .class-subtab:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   .class-subtab.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
+    color: var(--color-primary-text);
+    border-bottom-color: var(--color-primary-text);
   }
 
   /* ─── Toolbar action cluster + link button ─────────────────────── */
@@ -605,7 +632,7 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     font-size: 0.85rem;
     font-weight: 600;
     text-align: left;
@@ -695,7 +722,7 @@
     display: block;
     font-size: 1.05rem;
     font-weight: 700;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   .overall-sub {
@@ -873,19 +900,19 @@
 
   .att-chip.att-present {
     background: var(--color-success-light);
-    color: var(--color-success-dark);
+    color: var(--color-success-text);
   }
   .att-chip.att-absent {
     background: var(--color-danger-light);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
   }
   .att-chip.att-late {
     background: var(--color-warning-light);
-    color: var(--color-warning-dark);
+    color: var(--color-warning-text);
   }
   .att-chip.att-excused {
     background: var(--color-primary-light);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   .drawer-grades {
@@ -991,7 +1018,7 @@
 
   .qstat .material-symbols-outlined {
     font-size: 1rem;
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   /* ─── Responsive fixes (admin-only) ───────────────────────────── */
@@ -1220,7 +1247,7 @@
   .sg-grid .sg-note {
     width: 100%;
     padding: 0.4rem 0.5rem;
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-1);
     background: var(--color-background);
     color: var(--color-dark);
@@ -1250,6 +1277,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: var(--tap-target);
+    min-height: var(--tap-target);
     padding: 0.2rem;
     border: none;
     background: transparent;
@@ -1344,7 +1373,7 @@
   .pg-grid .pg-note {
     width: 100%;
     padding: 0.4rem 0.5rem;
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-1);
     background: var(--color-background);
     color: var(--color-dark);
@@ -1399,7 +1428,7 @@
   .cg-grid .cg-note {
     width: 100%;
     padding: 0.4rem 0.5rem;
-    border: 1px solid var(--color-light);
+    border: 1px solid var(--border-control);
     border-radius: var(--border-radius-1);
     background: var(--color-background);
     color: var(--color-dark);
@@ -1434,7 +1463,7 @@
 
   .absence-summary-head .material-symbols-outlined {
     font-size: 1.2rem;
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .absence-grid {
