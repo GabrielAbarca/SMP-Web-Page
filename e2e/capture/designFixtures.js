@@ -296,23 +296,24 @@ const assignments = [
   },
 ];
 
-const gradebookStudents = students
-  .filter((s) => s.class_id === 21)
-  .map((s) => ({
-    id: s.id,
-    first_name: s.first_name,
-    last_name: s.last_name,
-    email: s.email,
-    phone: s.phone,
-    status: s.status,
-    enrollment_number: s.enrollment_number,
-    national_id: s.national_id,
-    date_of_birth: s.date_of_birth,
-    gender: s.gender,
-    address: null,
-    photo_url: null,
-    enrollment_date: s.enrollment_date,
-  }));
+// The teacher console shows one section at a time, so the whole cohort sits
+// in 7A here: splitting them across four sections the way the admin console
+// does would leave the gradebook with three or four rows.
+const gradebookStudents = students.map((s) => ({
+  id: s.id,
+  first_name: s.first_name,
+  last_name: s.last_name,
+  email: s.email,
+  phone: s.phone,
+  status: s.status,
+  enrollment_number: s.enrollment_number,
+  national_id: s.national_id,
+  date_of_birth: s.date_of_birth,
+  gender: s.gender,
+  address: null,
+  photo_url: null,
+  enrollment_date: s.enrollment_date,
+}));
 
 // Spread across the grade bands so the colored grade cells are all visible.
 const PERIOD_SCORES = [94, 88, 72, 61, 45, 83, 97];
@@ -340,5 +341,227 @@ export const teacherPopulatedFix = {
     { id: 63, class_subject_teacher_id: 11, name: "Projects", weight: 30 },
   ],
   student_period_grades: periodGrades,
-  attendance: todayAttendance.filter((a) => a.class_id === 21),
+  attendance: todayAttendance.map((a) => ({ ...a, class_id: 21 })),
+};
+
+// ── Student portal ────────────────────────────────────────────────
+//
+// The shared studentFix carries one subject, one grade and three attendance
+// rows — enough for the suite's assertions, but the dashboard renders as a
+// near-empty shell: a one-row grade table, a single subject bar and a 33%
+// attendance ring. These rows fill every card on the page.
+
+const PERIODS = [
+  {
+    id: 1,
+    school_year_id: 1,
+    name: "Period 1",
+    period_order: 1,
+    start_date: "2025-09-01",
+    end_date: "2025-12-15",
+  },
+  {
+    id: 2,
+    school_year_id: 1,
+    name: "Period 2",
+    period_order: 2,
+    start_date: "2026-01-08",
+    end_date: "2026-03-27",
+  },
+  {
+    id: 3,
+    school_year_id: 1,
+    name: "Period 3",
+    period_order: 3,
+    start_date: "2026-04-06",
+    end_date: "2026-06-30",
+  },
+];
+
+const portalClass = {
+  id: 21,
+  section: "A",
+  display_name: "7A",
+  max_capacity: 30,
+  homeroom_teacher_id: 7,
+  room_id: 41,
+  grade_levels: { id: 1, name: "7th Grade", numeric_level: 7 },
+  school_years: {
+    id: 1,
+    name: "2025-2026",
+    start_date: "2025-09-01",
+    end_date: "2026-06-30",
+    is_active: true,
+  },
+};
+
+// One mark per subject per period, spread across the grade bands so the
+// dashboard table and the subject bars show the full color range.
+const SUBJECT_SCORES = {
+  31: [92, 88, 95],
+  32: [78, 84, 81],
+  33: [66, 71, 74],
+  34: [85, 90, 87],
+  35: [96, 98, 94],
+};
+const SUBJECT_TEACHER = { 31: 7, 32: 8, 33: 9, 34: 10, 35: 8 };
+
+const portalGrades = [];
+let gradeId = 500;
+Object.entries(SUBJECT_SCORES).forEach(([subjectId, scores]) => {
+  const subject = subjects.find((s) => s.id === Number(subjectId));
+  const teacherId = SUBJECT_TEACHER[subjectId];
+  const teacherRow = teachers.find((x) => x.id === teacherId);
+  scores.forEach((score, i) => {
+    portalGrades.push({
+      id: gradeId++,
+      student_id: 101,
+      grading_period_id: PERIODS[i].id,
+      score,
+      notes: null,
+      submitted_at: `2026-0${i + 1}-15T12:00:00Z`,
+      grading_periods: PERIODS[i],
+      class_subject_teachers: {
+        id: 10 + Number(subjectId),
+        subjects: subject,
+        teachers: teacherRow
+          ? {
+              id: teacherRow.id,
+              first_name: teacherRow.first_name,
+              last_name: teacherRow.last_name,
+            }
+          : null,
+      },
+    });
+  });
+});
+
+// Six school weeks of attendance: mostly present, with the odd late and
+// absence, so the ring lands on a realistic figure instead of 33%.
+const portalAttendance = [];
+let portalAttendanceId = 700;
+for (let d = 1; d <= 42; d += 1) {
+  const date = new Date();
+  date.setDate(date.getDate() - d);
+  const weekday = date.getDay();
+  if (weekday === 0 || weekday === 6) continue;
+  portalAttendance.push({
+    id: portalAttendanceId++,
+    student_id: 101,
+    date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+    status: d % 13 === 0 ? "absent" : d % 7 === 0 ? "late" : "present",
+    notes: null,
+    recorded_by: d % 2 === 0 ? 7 : 8,
+    classes: { id: 21, display_name: "7A" },
+  });
+}
+
+// A full timetable: five periods a day, Monday to Friday.
+const DAY_PLAN = [
+  [31, 32, 33, 34, 35],
+  [32, 31, 35, 33, 34],
+  [33, 34, 31, 35, 32],
+  [34, 35, 32, 31, 33],
+  [35, 33, 34, 32, 31],
+];
+const SLOTS = [
+  ["08:00", "09:00"],
+  ["09:10", "10:10"],
+  ["10:30", "11:30"],
+  ["11:40", "12:40"],
+  ["13:30", "14:30"],
+];
+
+const portalSchedules = [];
+let scheduleId = 300;
+DAY_PLAN.forEach((subjectIds, dayIndex) => {
+  subjectIds.forEach((subjectId, slotIndex) => {
+    const teacherId = SUBJECT_TEACHER[subjectId];
+    const teacherRow = teachers.find((x) => x.id === teacherId);
+    portalSchedules.push({
+      id: scheduleId++,
+      class_id: 21,
+      subject_id: subjectId,
+      teacher_id: teacherId,
+      room_id: rooms[slotIndex % rooms.length].id,
+      day_of_week: dayIndex + 1,
+      start_time: SLOTS[slotIndex][0],
+      end_time: SLOTS[slotIndex][1],
+      subjects: subjects.find((s) => s.id === subjectId),
+      teachers: teacherRow
+        ? {
+            id: teacherRow.id,
+            first_name: teacherRow.first_name,
+            last_name: teacherRow.last_name,
+          }
+        : null,
+      rooms: rooms[slotIndex % rooms.length],
+    });
+  });
+});
+
+/** Student portal with every dashboard card populated. */
+export const studentPopulatedFix = {
+  students: [
+    {
+      id: 101,
+      auth_user_id: UID,
+      class_id: 21,
+      first_name: "Ana",
+      last_name: "García",
+      email: "ana.garcia@example.com",
+      phone: "555-0200",
+      status: "active",
+      enrollment_number: "S-101",
+      national_id: "0801-2013-01000",
+      date_of_birth: "2013-04-01",
+      gender: "F",
+      enrollment_date: "2025-09-01",
+      classes: portalClass,
+    },
+  ],
+  teachers,
+  rooms,
+  subjects,
+  school_years: [portalClass.school_years],
+  school_settings: adminPopulatedFix.school_settings,
+  grading_periods: PERIODS,
+  student_grades: portalGrades,
+  attendance: portalAttendance,
+  schedules: portalSchedules,
+  events: [
+    {
+      id: 701,
+      title: "Parent–Teacher Conferences",
+      type: "meeting",
+      description: "Afternoon slots by appointment",
+      start_date: "2026-08-14",
+      end_date: "2026-08-14",
+    },
+    {
+      id: 702,
+      title: "Science Fair",
+      type: "activity",
+      description: "Projects on display in the auditorium",
+      start_date: "2026-08-21",
+      end_date: "2026-08-22",
+    },
+    {
+      id: 703,
+      title: "Final Exams",
+      type: "exam_period",
+      description: "Week of finals",
+      start_date: "2026-09-07",
+      end_date: "2026-09-11",
+    },
+    {
+      id: 704,
+      title: "Independence Day",
+      type: "holiday",
+      description: "School closed",
+      start_date: "2026-09-15",
+      end_date: "2026-09-15",
+    },
+  ],
+  discipline_records: [],
 };
