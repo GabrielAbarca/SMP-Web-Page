@@ -35,6 +35,7 @@ import {
   errorRow,
 } from "./ui.js";
 import { registerDialog } from "./dialog.js";
+import { initControls } from "./controls/index.js";
 import { mapDbError } from "./dbErrors.js";
 import * as v from "./validate.js";
 import { renderSettings } from "./settings.js";
@@ -1405,6 +1406,11 @@ bindThemeToggle(document.querySelector(".theme-toggler"));
 // and translate the static markup before any section renders.
 initI18n("teacher");
 applyTranslations();
+
+// Enhance every <select> and <input type="date"> — now and whenever the app
+// renders more. Must run AFTER initI18n/applyTranslations: the date picker
+// takes its month names, field order and week start from the active locale.
+initControls();
 
 document.getElementById("class-back-btn")?.addEventListener("click", () => {
   showSection("myclasses");

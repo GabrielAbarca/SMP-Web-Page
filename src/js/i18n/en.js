@@ -58,6 +58,9 @@ export default {
   // grids and the search boxes. Never rendered on screen; read aloud only.
   a11y: {
     scoreFor: "Score for {name}",
+    openCalendar: "Open calendar",
+    prevMonth: "Previous month",
+    nextMonth: "Next month",
     noteFor: "Note for {name}",
   },
   validation: {

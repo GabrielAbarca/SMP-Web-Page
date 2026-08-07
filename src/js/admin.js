@@ -21,6 +21,7 @@ import { fetchRole, portalPath, haltForRedirect } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
 import { initSidebarToggle, errorState, errorRow } from "./ui.js";
 import { registerDialog } from "./dialog.js";
+import { initControls } from "./controls/index.js";
 import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
@@ -736,6 +737,11 @@ initTheme();
 bindThemeToggle(document.querySelector(".theme-toggler"));
 initI18n("admin");
 applyTranslations();
+
+// Enhance every <select> and <input type="date"> — now and whenever the app
+// renders more. Must run AFTER initI18n/applyTranslations: the date picker
+// takes its month names, field order and week start from the active locale.
+initControls();
 
 // ───────────────────────────────────────────────────────────────
 //  5a. OVERVIEW

@@ -298,6 +298,10 @@
      Was -2px / -3px / -4px / scale(1.02) / scale(1.06) depending on file. */
     --lift-hover: -2px;
 
+    /* Above every dialog (modals run 1000–1400, the drawer 1200): a select
+     opened inside a modal has to paint over it. */
+    --z-popover: 1500;
+
     /* Retained: 33 existing uses, and it is the modal/panel tier. */
     --transition-speed: var(--duration-base);
   }
@@ -2934,5 +2938,322 @@
     background: var(--color-background);
     border-color: var(--color-primary-text);
     color: var(--color-dark);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     CUSTOM SELECT + DATE PICKER
+     ───────────────────────────────────────────────────────────────
+     The native control is still in the DOM in both cases — it holds the
+     value the form submits and the tests drive. It is CLIPPED, never
+     `display: none`: hiding it outright would take it out of the layout
+     and Playwright would stop being able to act on it.
+
+     On coarse pointers everything here reverses and the OS control comes
+     back, because a wheel picker beats a custom list on a phone.
+  ═══════════════════════════════════════════════════════════════ */
+  /* Six different surface rules style a <select> or a date input — modal,
+     panel toolbar, view toolbar, schedule field, CSV mapping row, data-table
+     cell — each with its own padding, border and background. Rather than
+     restate all six for a new element, the NATIVE control keeps painting its
+     own box and the custom UI is laid over it, transparent. Theme switches,
+     focus rings and any future surface rule then keep working for free.
+
+     The native's text is what has to go, not its chrome: `color: transparent`
+     hides the value it would otherwise draw under ours. Its own dropdown
+     chevron stays visible and serves as the trigger's chevron. */
+  .smp-select,
+  .smp-date {
+    position: relative;
+    display: block;
+    width: 100%;
+  }
+
+  .smp-select__native,
+  .smp-date__native {
+    width: 100%;
+    color: transparent;
+    /* Clicks belong to the overlay. Automation still reads and sets the
+       element directly, which is what the e2e suite does. */
+    pointer-events: none;
+  }
+
+  /* Enhanced date inputs hand their picker button to ours. */
+  .smp-date__native::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
+  .smp-select__trigger,
+  .smp-date__field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    /* Padding is copied from the native control at enhance time — it is the
+       one box property that differs per surface and never changes with the
+       theme, so copying it once is safe where copying colours would not be. */
+    font: inherit;
+    color: var(--color-dark);
+    background: transparent;
+    border: none;
+    border-radius: inherit;
+  }
+
+  .smp-select__trigger {
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .smp-date__field {
+    cursor: text;
+  }
+
+  .smp-select__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .smp-select__trigger.is-placeholder .smp-select__value,
+  .smp-date__field::placeholder {
+    color: var(--color-info-dark);
+  }
+
+  .smp-select__trigger:disabled,
+  .smp-date__field:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  /* The focus ring belongs on the visible box, which is the native element —
+     but focus lands on the overlay. Forward it. */
+  .smp-select:has(.smp-select__trigger:focus-visible) .smp-select__native,
+  .smp-date:has(.smp-date__field:focus-visible) .smp-date__native {
+    border-color: var(--color-primary-text);
+    box-shadow: var(--focus-ring);
+  }
+
+  .smp-select__trigger:focus-visible,
+  .smp-date__field:focus-visible {
+    outline: none;
+  }
+
+  /* ── The surfaces ─────────────────────────────────────────────── */
+  .smp-popover-root {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .smp-select__listbox,
+  .smp-date__pop {
+    position: fixed;
+    z-index: var(--z-popover, 1500);
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
+    background: var(--color-white);
+    border: 1px solid var(--border-control);
+    border-radius: var(--border-radius-2);
+    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    animation: smp-pop-in var(--duration-micro) var(--ease-out);
+  }
+
+  @keyframes smp-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .smp-select__listbox,
+    .smp-date__pop {
+      animation: none;
+    }
+  }
+
+  .smp-select__option {
+    display: block;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--border-radius-1);
+    font-size: var(--text-base);
+    color: var(--color-dark);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* One highlight, driven by the keyboard's active option — pointer hover
+     writes to the same state so the two can never disagree about what
+     Enter would choose. */
+  .smp-select__option.is-active {
+    background: var(--color-primary-light);
+    color: var(--color-primary-text);
+  }
+
+  .smp-select__option[aria-selected="true"] {
+    font-weight: var(--weight-semibold);
+  }
+
+  .smp-select__option[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .smp-select__group {
+    padding: 0.5rem 0.7rem 0.25rem;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-info-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Date field ───────────────────────────────────────────────── */
+  .smp-date__field {
+    padding: 0.6rem 0.9rem;
+    cursor: text;
+  }
+
+  /* Sits over the right edge of the native input, where its own picker
+     indicator used to be (that one is hidden above). */
+  .smp-date__button {
+    position: absolute;
+    top: 50%;
+    right: 0.3rem;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--border-radius-1);
+    background: transparent;
+    color: var(--color-dark-variant);
+    cursor: pointer;
+  }
+
+  .smp-date__button:hover {
+    background: var(--surface-hover);
+    color: var(--color-dark);
+  }
+
+  .smp-date__pop {
+    padding: var(--space-2);
+    min-width: 17rem;
+  }
+
+  .smp-date__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .smp-date__month {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-dark);
+    text-transform: capitalize;
+  }
+
+  .smp-date__nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--tap-target);
+    min-height: var(--tap-target);
+    border: none;
+    border-radius: var(--border-radius-1);
+    background: transparent;
+    color: var(--color-dark-variant);
+    cursor: pointer;
+  }
+
+  .smp-date__nav:hover {
+    background: var(--surface-hover);
+    color: var(--color-dark);
+  }
+
+  .smp-date__row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .smp-date__dow {
+    padding: 0.3rem 0;
+    text-align: center;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-info-dark);
+    text-transform: capitalize;
+  }
+
+  .smp-date__day {
+    aspect-ratio: 1;
+    min-width: 2.2rem;
+    border: none;
+    border-radius: var(--border-radius-1);
+    background: transparent;
+    color: var(--color-dark);
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .smp-date__day:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+
+  .smp-date__day.is-outside {
+    color: var(--color-info-dark);
+  }
+
+  /* Today is marked with a ring, selection with a fill — never colour
+     alone, so the two remain distinguishable to a colour-blind user and
+     when both land on the same day. */
+  .smp-date__day.is-today {
+    outline: 1px solid var(--border-control);
+    outline-offset: -3px;
+  }
+
+  .smp-date__day.is-selected {
+    background: var(--color-primary-fill);
+    color: #fff;
+    font-weight: var(--weight-semibold);
+  }
+
+  .smp-date__day:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* ── Touch: hand the controls back to the OS ──────────────────── */
+  @media (pointer: coarse) {
+    .smp-select__native,
+    .smp-date__native {
+      position: static;
+      width: 100%;
+      height: auto;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .smp-select__trigger,
+    .smp-select__listbox,
+    .smp-date__field,
+    .smp-date__button,
+    .smp-date__pop {
+      display: none;
+    }
   }
 }

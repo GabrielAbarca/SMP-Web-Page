@@ -76,9 +76,35 @@ function setBackgroundInert(on) {
     if (el.classList?.contains("modal-overlay")) return;
     if (el.classList?.contains("drawer-overlay")) return;
     if (el.classList?.contains("toast-container")) return;
+    // Select/date popups are rendered into a body-level root so they escape
+    // the modal's `overflow-y: auto` clipping. They belong to whatever dialog
+    // is open, so they must not be inerted along with the background.
+    if (el.classList?.contains("smp-popover-root")) return;
     if (on) el.setAttribute("inert", "");
     else el.removeAttribute("inert");
   });
+}
+
+/**
+ * Things that get first refusal on Escape.
+ *
+ * This module listens on `document` at CAPTURE phase, which means it sees
+ * Escape before anything rendered inside the dialog does. That is right for a
+ * bare dialog and wrong the moment something transient is open inside one: a
+ * combobox listbox inside the add/edit form would otherwise have its Escape
+ * eaten by the form, closing the whole dialog when the user only meant to
+ * dismiss the list.
+ *
+ * A guard returns true while it owns Escape. Registered by the controls
+ * module; the dependency runs one way (controls → dialog) so there is no
+ * import cycle.
+ * @type {Array<() => boolean>}
+ */
+const escapeGuards = [];
+
+/** @param {() => boolean} fn true while the caller should receive Escape first */
+export function registerEscapeGuard(fn) {
+  escapeGuards.push(fn);
 }
 
 function top() {
@@ -97,6 +123,9 @@ function onKeydown(e) {
   if (!current) return;
 
   if (e.key === "Escape") {
+    // Something transient inside the dialog owns this Escape — a combobox
+    // listbox, a calendar popover. Let it close itself; the dialog stays.
+    if (escapeGuards.some((fn) => fn())) return;
     e.preventDefault();
     // Deliberately routed through the dialog's OWN closer, not a blanket
     // hide: the admin form's closer is the one that warns before throwing

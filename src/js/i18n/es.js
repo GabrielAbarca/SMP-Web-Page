@@ -56,6 +56,9 @@ export default {
   // de notas y los buscadores. Nunca se muestran; solo se leen en voz alta.
   a11y: {
     scoreFor: "Nota de {name}",
+    openCalendar: "Abrir calendario",
+    prevMonth: "Mes anterior",
+    nextMonth: "Mes siguiente",
     noteFor: "Observación de {name}",
   },
   validation: {
