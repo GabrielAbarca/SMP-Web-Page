@@ -272,7 +272,26 @@
     --shadow-md: 0 1rem 2rem var(--color-light);
     --box-shadow: 0 2rem 3rem var(--color-light);
 
-    --transition-speed: 300ms;
+    /* ── Motion scale ────────────────────────────────────────────────
+     Durations are tiered by what the motion is FOR, not picked per
+     component. Everything used to run at one 300ms setting, which is
+     the right length for a modal and three times too long for a hover:
+     a pointer sweeping a grid left a trail of still-settling cards. */
+    --duration-micro: 100ms; /* hover, toggle, focus — must feel instant */
+    --duration-fast: 200ms; /* press, tooltip */
+    --duration-base: 300ms; /* modal, dropdown, panel */
+    --duration-slow: 400ms; /* drawer, page-level transitions */
+
+    /* Enter with ease-out, leave with ease-in, move with ease-in-out. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    /* One lift distance for the cards that genuinely respond to a click.
+     Was -2px / -3px / -4px / scale(1.02) / scale(1.06) depending on file. */
+    --lift-hover: -2px;
+
+    /* Retained: 33 existing uses, and it is the modal/panel tier. */
+    --transition-speed: var(--duration-base);
   }
 
   .dark-theme-variables {
@@ -649,12 +668,12 @@
     align-items: center;
     position: relative;
     height: 3.7rem;
-    transition: all var(--transition-speed) ease;
+    transition: color var(--duration-micro) var(--ease-out);
   }
 
   aside .sidebar a span {
     font-size: 1.6rem;
-    transition: all var(--transition-speed) ease;
+    transition: color var(--duration-micro) var(--ease-out);
   }
 
   aside .sidebar a:last-child {
@@ -701,7 +720,9 @@
     color: #fff;
     border-radius: var(--border-radius-2);
     font-weight: 600;
-    transition: all var(--transition-speed) ease;
+    transition:
+      background var(--duration-micro) var(--ease-out),
+      opacity var(--duration-micro) var(--ease-out);
   }
 
   aside .sidebar a.nav-cta span,
@@ -853,7 +874,9 @@
     border-radius: var(--card-border-radius);
     box-shadow: var(--box-shadow);
     margin: var(--space-3) 0 var(--space-1);
-    transition: all var(--transition-speed) ease;
+    transition:
+      box-shadow var(--duration-micro) var(--ease-out),
+      transform var(--duration-micro) var(--ease-out);
   }
 
   .student-info-bar:hover {
@@ -942,7 +965,9 @@
     border-radius: var(--card-border-radius);
     margin-top: 1rem;
     box-shadow: var(--box-shadow);
-    transition: all var(--transition-speed) ease;
+    transition:
+      box-shadow var(--duration-micro) var(--ease-out),
+      transform var(--duration-micro) var(--ease-out);
   }
 
   main .dashboard > div:hover {
@@ -950,18 +975,19 @@
   }
 
   /* Dashboard summary cards that double as shortcuts to their full section.
-   Pairs with each card's existing `transition: all var(--transition-speed)`
-   so the lift animates, and keeps a visible focus ring for keyboard users. */
+   This is now the ONLY card lift in the app: every other card that used to
+   rise on hover was not clickable and no longer moves. The distance comes
+   from --lift-hover so the three surfaces that do lift agree on how far. */
   .clickable-card {
     cursor: pointer;
   }
 
   .clickable-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(var(--lift-hover));
   }
 
   .clickable-card:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: var(--focus-outline);
     outline-offset: 3px;
   }
 
@@ -1056,7 +1082,6 @@
     padding: var(--card-padding);
     text-align: left;
     box-shadow: var(--box-shadow);
-    transition: all var(--transition-speed) ease;
   }
 
   /* Keep status columns centered (badge is a direct child of its cell) */
@@ -1064,10 +1089,11 @@
     text-align: center;
   }
 
-  main .recent-activity table:hover {
-    box-shadow: none;
-  }
-
+  /* No hover state: a <table> is not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A6. */
   main table thead th {
     padding: 0.8rem 1rem;
     color: var(--color-info-dark);
@@ -1089,6 +1115,10 @@
     transition: background var(--transition-speed) ease;
   }
 
+  /* A scanning aid, not an affordance: these rows are read-only, and the
+   tint only helps the eye hold its place across a wide row. Deliberately
+   left in place — see the teacher console, where rows that DO open
+   something take the accent tint so the two cases look different. */
   main table tbody tr:hover {
     background: var(--color-light);
   }
@@ -1206,7 +1236,9 @@
     color: var(--color-dark);
     border: 1px solid var(--border-control);
     cursor: pointer;
-    transition: all var(--transition-speed) ease;
+    transition:
+      border-color var(--duration-micro) var(--ease-out),
+      box-shadow var(--duration-micro) var(--ease-out);
   }
 
   /* ─── Shared focus ring for form controls (mirrors the login input ring) ──
@@ -1290,17 +1322,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-speed) ease;
     position: relative;
     gap: 0.2rem;
   }
 
-  .schedule-grid .sch-cell:hover {
-    transform: scale(1.02);
-    z-index: 1;
-    box-shadow: var(--shadow-md);
-  }
-
+  /* No hover state: schedule cells are read-only, and this rule applied to
+   EMPTY cells too — the grid advertised an action on slots with no class in
+   them. It also raised z-index and scaled, so a hovered cell lifted out of
+   the grid and overlapped its neighbours, shifting the thing the user was
+   trying to read. Removed with A1. */
   .schedule-grid .sch-cell .sch-subject {
     font-weight: 700;
     font-size: 0.82rem;
@@ -1341,7 +1371,6 @@
     padding: 1.8rem;
     border-radius: var(--card-border-radius);
     box-shadow: var(--box-shadow);
-    transition: all var(--transition-speed) ease;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1365,11 +1394,11 @@
     );
   }
 
-  .teacher-card:hover {
-    box-shadow: none;
-    transform: translateY(-4px);
-  }
-
+  /* No hover state: teacher cards are not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A2. */
   .teacher-card .teacher-avatar {
     width: 3.8rem;
     height: 3.8rem;
@@ -1425,13 +1454,13 @@
     box-shadow: var(--box-shadow);
     flex: 1 1 120px;
     text-align: center;
-    transition: all var(--transition-speed) ease;
   }
 
-  .att-stat:hover {
-    box-shadow: none;
-  }
-
+  /* No hover state: attendance tiles are not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A4. */
   .att-stat h2 {
     font-size: 1.6rem;
     font-weight: 800;
@@ -1469,7 +1498,6 @@
     padding: 1.4rem 1.8rem;
     border-radius: var(--card-border-radius);
     box-shadow: var(--box-shadow);
-    transition: all var(--transition-speed) ease;
     display: flex;
     gap: 1.2rem;
     align-items: flex-start;
@@ -1505,11 +1533,11 @@
     background: var(--color-info-dark);
   }
 
-  .event-card:hover {
-    box-shadow: none;
-    transform: translateX(4px);
-  }
-
+  /* No hover state: event cards are not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A3. */
   .event-icon {
     width: 2.8rem;
     height: 2.8rem;
@@ -1599,7 +1627,9 @@
     font-weight: var(--weight-medium);
     text-align: left;
     cursor: pointer;
-    transition: all var(--transition-speed) ease;
+    transition:
+      background var(--duration-micro) var(--ease-out),
+      color var(--duration-micro) var(--ease-out);
   }
 
   .settings-rail-item .material-symbols-outlined {
@@ -1871,7 +1901,9 @@
     font-family: inherit;
     font-size: var(--text-sm);
     cursor: pointer;
-    transition: all var(--transition-speed) ease;
+    transition:
+      background var(--duration-micro) var(--ease-out),
+      color var(--duration-micro) var(--ease-out);
   }
 
   .settings-segment.active {
@@ -2082,7 +2114,9 @@
     padding: var(--card-padding);
     box-shadow: var(--box-shadow);
     border-radius: var(--card-border-radius);
-    transition: all var(--transition-speed) ease;
+    transition:
+      box-shadow var(--duration-micro) var(--ease-out),
+      transform var(--duration-micro) var(--ease-out);
   }
 
   .right .recent-updates .updates-card:hover {
@@ -2123,13 +2157,13 @@
     margin-bottom: 0.7rem;
     display: flex;
     align-items: center;
-    transition: all var(--transition-speed) ease;
   }
 
-  .right .subjects-analytics .item:hover {
-    box-shadow: none;
-  }
-
+  /* No hover state: subject rows are not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A5. */
   .right .subjects-analytics .item .right-content {
     display: flex;
     justify-content: space-between;

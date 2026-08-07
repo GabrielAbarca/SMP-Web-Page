@@ -195,11 +195,11 @@
       transform 300ms ease;
   }
 
-  .brand-features li:hover {
-    background: rgba(0, 0, 0, 0.2);
-    transform: translateX(4px);
-  }
-
+  /* No hover state: the feature list is not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A10. */
   .brand-features li .material-symbols-outlined {
     font-size: 1.15rem;
     color: var(--color-success);
@@ -265,10 +265,11 @@
     transition: box-shadow var(--transition-speed) ease;
   }
 
-  .auth-card:hover {
-    box-shadow: 0 4px 20px var(--color-light);
-  }
-
+  /* No hover state: the sign-in card is not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A8. */
   @keyframes cardReveal {
     from {
       opacity: 0;
@@ -302,10 +303,11 @@
     transition: transform 300ms ease;
   }
 
-  .auth-avatar:hover {
-    transform: scale(1.06) rotate(-3deg);
-  }
-
+  /* No hover state: the header icon is not interactive. Hover feedback is the
+   app's signal that something responds to a click — spending it on a
+   static surface makes the signal meaningless everywhere else, and the
+   default cursor over a lifting card is a contradiction the user has to
+   resolve. Removed with A9. */
   .auth-avatar .material-symbols-outlined {
     color: #fff;
     font-size: 1.7rem;
@@ -532,7 +534,7 @@
   }
 
   .btn-submit:hover:not(:disabled) {
-    transform: translateY(-2px);
+    transform: translateY(var(--lift-hover));
     box-shadow: 0 8px 28px rgba(115, 128, 236, 0.55);
   }
 

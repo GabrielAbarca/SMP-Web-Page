@@ -45,13 +45,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    transition: all var(--transition-speed) ease;
   }
 
-  .stat-card:hover {
-    box-shadow: none;
-  }
-
+  /* No hover state: stat cards are read-only. The admin console's .stat-card
+   — same class name — never had one, so the two consoles behaved differently
+   on the same component. Removed with A7. */
   .stat-card > .material-symbols-outlined {
     background: var(--color-primary);
     color: var(--color-white);
@@ -484,11 +482,13 @@
     padding: 0;
     overflow: hidden;
     cursor: pointer;
-    transition: all var(--transition-speed) ease;
+    transition:
+      box-shadow var(--duration-micro) var(--ease-out),
+      transform var(--duration-micro) var(--ease-out);
   }
 
   .class-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(var(--lift-hover));
     box-shadow: var(--shadow-md);
   }
 
@@ -1125,8 +1125,26 @@
   /* ═══════════════════════════════════════════════════════════════
    GRADEBOOK — clickable student rows
 ═══════════════════════════════════════════════════════════════════ */
+  /* ── Row hover carries two different meanings; the paint must too ──
+   A plain tint on a table row is a SCANNING AID — it helps the eye hold
+   its place across a wide row, and every table gets it. On the rows that
+   actually open something (gradebook rows, roster rows) the same tint was
+   also the only hover signal, so a read-only row and a clickable row
+   looked identical and only the cursor told them apart.
+
+   Clickable rows take the accent tint on top, so the difference is
+   visible before the pointer arrives. */
   .gradebook-table tbody tr.row-clickable {
     cursor: pointer;
+  }
+
+  .gradebook-table tbody tr.row-clickable:hover,
+  .roster-row:hover {
+    background: var(--color-primary-light);
+  }
+
+  .gradebook-table tbody tr.row-clickable:hover .sticky-col {
+    background: var(--color-primary-light);
   }
 
   /* ═══════════════════════════════════════════════════════════════
