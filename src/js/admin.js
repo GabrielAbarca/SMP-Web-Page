@@ -19,7 +19,9 @@ import { supabase } from "./supabaseClient.js";
 import { signOut, getSession } from "./auth.js";
 import { fetchRole, portalPath, haltForRedirect } from "./role.js";
 import { initTheme, bindThemeToggle } from "./theme.js";
-import { initSidebarToggle } from "./ui.js";
+import { initSidebarToggle, errorState, errorRow } from "./ui.js";
+import { registerDialog } from "./dialog.js";
+import { initControls } from "./controls/index.js";
 import { renderSettings } from "./settings.js";
 import { DEMO_MODE } from "./demoMode.js";
 import { supabaseGateway, createAdminData } from "./adminData.js";
@@ -145,6 +147,14 @@ let currentSubmitHandler = null;
 let modalDirty = false;
 
 /** Render an inline error under one field and mark the field-group invalid. */
+/**
+ * Show a validation message under its field, and — the part that makes it
+ * reach assistive tech — bind the two together. Rendering the message next
+ * to the input is enough for a sighted user and nothing at all for a screen
+ * reader: without `aria-describedby` the text is just unrelated prose
+ * somewhere on the page, and without `aria-invalid` the field never reports
+ * itself as failing. `role="alert"` announces the message when it appears.
+ */
 function setFieldError(name, message) {
   const input = modalForm.querySelector(`[name="${name}"]`);
   const group = input?.closest(".field-group");
@@ -153,8 +163,16 @@ function setFieldError(name, message) {
   const msg = document.createElement("small");
   msg.className = "field-error";
   msg.dataset.fieldError = name;
+  msg.id = `modal-error-${name}`;
+  msg.setAttribute("role", "alert");
   msg.textContent = message;
   group.appendChild(msg);
+  // Checkbox groups have no single input to point at, so only bind when there
+  // is one control carrying the field's name.
+  if (input instanceof HTMLElement && !(input instanceof HTMLDivElement)) {
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", msg.id);
+  }
 }
 
 function clearFieldErrors() {
@@ -162,6 +180,10 @@ function clearFieldErrors() {
   modalForm
     .querySelectorAll(".field-group.input-error")
     .forEach((el) => el.classList.remove("input-error"));
+  modalForm.querySelectorAll("[aria-invalid]").forEach((el) => {
+    el.removeAttribute("aria-invalid");
+    el.removeAttribute("aria-describedby");
+  });
 }
 
 /** Drop one field's error as soon as the user starts correcting it. */
@@ -173,6 +195,9 @@ function clearFieldError(name) {
     .querySelector(`[name="${name}"]`)
     ?.closest(".field-group")
     ?.classList.remove("input-error");
+  const input = modalForm.querySelector(`[name="${name}"]`);
+  input?.removeAttribute("aria-invalid");
+  input?.removeAttribute("aria-describedby");
 }
 
 /**
@@ -491,8 +516,39 @@ function renderMessageRow(tbodyId, colspan, message) {
 function renderEmptyRow(tbodyId, colspan, message = t("common.noRecords")) {
   renderMessageRow(tbodyId, colspan, message);
 }
-function renderErrorRow(tbodyId, colspan) {
-  renderMessageRow(tbodyId, colspan, t("common.loadFailed"));
+/**
+ * A section that failed to load, with a way to try again.
+ *
+ * This used to route through renderMessageRow, which meant a failed fetch and
+ * an empty table rendered as the SAME muted grey line. "No students yet" and
+ * "we couldn't reach the server" mean opposite things to a director — one is
+ * an invitation to add the first student, the other is a dropped connection —
+ * and showing the first when the second happened is how an outage turns into
+ * a support call about missing records.
+ *
+ * Uses the same `.load-error` / `[data-retry]` markup the student portal
+ * already ships (ui.js), so the two surfaces fail identically.
+ *
+ * @param {string} tbodyId
+ * @param {number} colspan
+ * @param {() => any} [retry] re-runs the loader; the button is wired to it
+ */
+function renderErrorRow(tbodyId, colspan, retry) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = errorRow(colspan, t("common.loadError"), t("common.retry"));
+  tbody
+    .querySelector("[data-retry]")
+    ?.addEventListener("click", () => retry?.());
+}
+
+/** The same failure notice for a container that is not a table body. */
+function renderErrorBlock(host, retry) {
+  if (!host) return;
+  host.innerHTML = errorState(t("common.loadError"), t("common.retry"));
+  host
+    .querySelector("[data-retry]")
+    ?.addEventListener("click", () => retry?.());
 }
 
 function iconBtn(icon, label, onClick, danger = false) {
@@ -682,6 +738,11 @@ bindThemeToggle(document.querySelector(".theme-toggler"));
 initI18n("admin");
 applyTranslations();
 
+// Enhance every <select> and <input type="date"> — now and whenever the app
+// renders more. Must run AFTER initI18n/applyTranslations: the date picker
+// takes its month names, field order and week start from the active locale.
+initControls();
+
 // ───────────────────────────────────────────────────────────────
 //  5a. OVERVIEW
 // ───────────────────────────────────────────────────────────────
@@ -738,6 +799,59 @@ function setStat(id, value) {
   if (el) el.textContent = String(value);
 }
 
+/**
+ * First-run empty state for the overview.
+ *
+ * Shown only when the school is genuinely untouched — no active year, no
+ * students, no teachers, no subjects, no sections. In that state the seven
+ * stat cards are all em dashes, which reads as "something is broken" rather
+ * than "nothing has been set up yet", and offers no way forward.
+ *
+ * The one action offered is "Add school year", because every other tab
+ * depends on a year existing (that is the dependency order the sidebar is
+ * arranged in). One screen, one obvious next step.
+ *
+ * @returns {boolean} true when the setup panel replaced the stats
+ */
+function renderOverviewSetup({ students, teachers, subjects, sectionsList }) {
+  const host = document.getElementById("overview-setup");
+  const stats = document.getElementById("overview-stats");
+  if (!host || !stats) return false;
+
+  const untouched =
+    !state.activeYear &&
+    !students.length &&
+    !teachers.length &&
+    !subjects.length &&
+    !sectionsList.length;
+
+  host.hidden = !untouched;
+  stats.hidden = untouched;
+  if (!untouched) {
+    host.innerHTML = "";
+    return false;
+  }
+
+  host.innerHTML = `
+    <div class="console-placeholder">
+      <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-calendar_month"></use></svg></span>
+      <h2>${escapeHtml(t("console.overview.setupTitle"))}</h2>
+      <p>${escapeHtml(t("console.overview.setupBody"))}</p>
+      <button type="button" class="btn btn-primary" id="overview-setup-cta">
+        <span class="material-symbols-outlined"><svg aria-hidden="true"><use href="#icon-add"></use></svg></span>
+        <span>${escapeHtml(t("console.years.add"))}</span>
+      </button>
+    </div>`;
+
+  document
+    .getElementById("overview-setup-cta")
+    ?.addEventListener("click", () => {
+      showSection("yearperiods");
+      openYearForm();
+    });
+  return true;
+}
+
 async function loadOverviewStats() {
   try {
     const [
@@ -766,6 +880,13 @@ async function loadOverviewStats() {
     state.rooms = rooms;
     if (!state.gradeLevels.length)
       state.gradeLevels = await data.listGradeLevels();
+
+    // A school with nothing in it yet gets guidance instead of seven em
+    // dashes. This is the director's first screen on their first login, and
+    // a grid of blank counters tells them nothing about what to do next.
+    if (renderOverviewSetup({ students, teachers, subjects, sectionsList })) {
+      return;
+    }
 
     // Enrollment (active students).
     const active = students.filter((s) => s.status === "active");
@@ -843,7 +964,7 @@ async function loadYearPeriods() {
     await loadPeriods();
   } catch (err) {
     console.error("loadYearPeriods:", err);
-    renderErrorRow("years-body", 5);
+    renderErrorRow("years-body", 5, loadYearPeriods);
   }
 }
 
@@ -1050,7 +1171,7 @@ async function loadPeriods() {
     renderWeightTotal(periods);
   } catch (err) {
     console.error("loadPeriods:", err);
-    renderErrorRow("periods-body", 6);
+    renderErrorRow("periods-body", 6, loadPeriods);
   }
 }
 
@@ -1296,7 +1417,7 @@ async function loadGradeLevels() {
     applySavedFlash("grades-body");
   } catch (err) {
     console.error("loadGradeLevels:", err);
-    renderErrorRow("grades-body", 3);
+    renderErrorRow("grades-body", 3, loadGradeLevels);
   }
 }
 
@@ -1392,7 +1513,7 @@ async function loadRooms() {
     applySavedFlash("rooms-body");
   } catch (err) {
     console.error("loadRooms:", err);
-    renderErrorRow("rooms-body", 4);
+    renderErrorRow("rooms-body", 4, loadRooms);
   }
 }
 
@@ -1486,7 +1607,7 @@ async function loadSections() {
     renderSections(sectionsList);
   } catch (err) {
     console.error("loadSections:", err);
-    renderErrorRow("sections-body", 6);
+    renderErrorRow("sections-body", 6, loadSections);
   }
 }
 
@@ -1682,7 +1803,7 @@ async function loadSubjects() {
     renderSubjects(subjects, mapping);
   } catch (err) {
     console.error("loadSubjects:", err);
-    renderErrorRow("subjects-body", 5);
+    renderErrorRow("subjects-body", 5, loadSubjects);
   }
 }
 
@@ -1842,7 +1963,7 @@ async function loadTeachers() {
     renderTeachers(state.teachers);
   } catch (err) {
     console.error("loadTeachers:", err);
-    renderErrorRow("teachers-body", 6);
+    renderErrorRow("teachers-body", 6, loadTeachers);
   }
 }
 
@@ -2095,7 +2216,7 @@ async function loadAssignments() {
     renderAssignments(assignments);
   } catch (err) {
     console.error("loadAssignments:", err);
-    renderErrorRow("assignments-body", 4);
+    renderErrorRow("assignments-body", 4, loadAssignments);
   }
 }
 
@@ -2352,7 +2473,8 @@ async function loadSchedulesTab() {
     renderSchedulesTab();
   } catch (err) {
     console.error("loadSchedulesTab:", err);
-    scheduleRoot.innerHTML = `<div class="console-panel"><p class="loading-cell">${escapeHtml(t("common.loadFailed"))}</p></div>`;
+    scheduleRoot.innerHTML = `<div class="console-panel"></div>`;
+    renderErrorBlock(scheduleRoot.firstElementChild, loadSchedulesTab);
   }
 }
 
@@ -3331,7 +3453,7 @@ async function loadStudents() {
     renderStudents();
   } catch (err) {
     console.error("loadStudents:", err);
-    renderErrorRow("students-body", 7);
+    renderErrorRow("students-body", 7, loadStudents);
   }
 }
 
@@ -4573,6 +4695,14 @@ document
   .getElementById("import-close")
   .addEventListener("click", closeImportModal);
 
+// ── Dialog keyboard contract ───────────────────────────────────
+// Focus trap, Escape, focus-in on open and focus-back-to-trigger on close,
+// for all three console dialogs. Escape is routed through each dialog's own
+// closer, so the form's unsaved-changes warning still stands in its way.
+registerDialog(modalOverlay, { close: requestCloseModal });
+registerDialog(confirmOverlay, { close: closeConfirm });
+registerDialog(importOverlay, { close: closeImportModal });
+
 // ───────────────────────────────────────────────────────────────
 //  5h. SETTINGS (read-only)
 // ───────────────────────────────────────────────────────────────
@@ -4662,7 +4792,7 @@ async function loadSettings() {
     } catch (err) {
       console.error("loadSettings:", err);
       loaded.settings = false;
-      root.innerHTML = `<div class="loading-cell">${t("common.couldNotLoadProfile")}</div>`;
+      renderErrorBlock(root, loadSettings);
       return;
     }
   }
