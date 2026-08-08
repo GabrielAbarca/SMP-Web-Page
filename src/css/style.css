@@ -683,6 +683,7 @@
     flex: 1 0 auto;
     margin-top: 3rem;
     border-radius: var(--card-border-radius);
+    padding: 0 0.3rem;
   }
 
   aside h3 {
