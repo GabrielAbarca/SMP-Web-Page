@@ -238,6 +238,48 @@ test.describe("teacher console", () => {
     expect(writes).toEqual([]);
   });
 
+  // A failed context resolve used to be terminal: showSection latched
+  // loaded.today before the loader ran, nothing re-resolved, and the grid
+  // blamed a missing teachers row for what was really a dead connection.
+  test("a failed context resolve is retryable, not a dead end", async ({
+    page,
+    context,
+  }) => {
+    await routeSupabase(context, teacherFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+
+    // Break the school-year lookup, the way a dropped connection would.
+    let yearIsDown = true;
+    await context.route(`${SUPA}/rest/v1/school_years*`, async (route) => {
+      if (!yearIsDown) return route.fallback();
+      return route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "school_years unreachable" }),
+      });
+    });
+
+    await page.goto("/teacher.html");
+
+    // A retry, not "no teacher record" — the account has one, the query failed.
+    await expect(page.locator("#today-grid [data-retry]")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator("#today-grid")).not.toContainText(
+      "teacher record",
+    );
+
+    // Recovering the backend and retrying re-resolves the context in place.
+    yearIsDown = false;
+    await page.locator("#today-grid [data-retry]").click();
+    await expect(
+      page.locator("#today-grid .today-list, #today-grid .empty-state"),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
   test("applies an MEP component scheme to a gradebook with zero writes", async ({
     page,
     context,

@@ -25,8 +25,9 @@ export default {
   students: { one: "{count} estudiante", other: "{count} estudiantes" },
   today: {
     loading: "Cargando su día…",
-    contextNotLoaded: "No se cargó el contexto del docente.",
     noTeacherRecordTitle: "Sin registro de docente",
+    noActiveYear:
+      "Aún no hay un curso lectivo activo, así que no hay nada que mostrar. La dirección puede activarlo desde la consola administrativa.",
     noTeacherRecordBody:
       "Esta cuenta no está vinculada a un docente, así que no hay clases que mostrar aquí. La dirección puede gestionar el colegio desde la consola administrativa.",
     weekend: "Hoy no hay clases — es fin de semana.",
