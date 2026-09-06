@@ -25,6 +25,7 @@ import { initSidebarToggle } from "./ui.js";
 import { initControls } from "./controls/index.js";
 import { initI18n, applyTranslations, t } from "./i18n.js";
 import { initTeacherNav, showSection } from "./teacherNav.js";
+import { resolveTeacherContext } from "./teacherContext.js";
 import { showToast } from "./teacherFeedback.js";
 import { loadToday } from "./views/teacherToday.js";
 import { loadMyClasses } from "./views/myClasses.js";
@@ -95,14 +96,12 @@ if (DEMO_MODE) {
   }
 }
 
-try {
-  // Resolved separately, not with Promise.all: the year is useful on its own,
-  // and pairing the two meant a failure to resolve the teacher also threw away
-  // a perfectly good year, leaving every view without its context.
-  state.teacherId = await db.getTeacherId();
-  state.activeYear = await db.fetchActiveYear();
-  state.periods = await db.fetchGradingPeriods(state.activeYear?.id);
+if (!(await resolveTeacherContext(db))) {
+  console.error("Failed to resolve teacher context:", state.contextError);
+  showToast(t("admin.toast.contextFailed"), "error");
+}
 
+try {
   const teacher = await db.fetchTeacher(state.teacherId);
   if (teacher) {
     document.getElementById("teacher-name").textContent =
@@ -120,3 +119,9 @@ try {
   console.error("Failed to resolve teacher context:", err);
   showToast(t("admin.toast.contextFailed"), "error");
 }
+
+// Land on Today. Deliberately after the context resolution above (and outside
+// the try, so a failed resolve still replaces the skeleton with a message):
+// showSection latches state.loaded.today before it calls the loader, and
+// loadToday bails early without a teacher id or active year.
+showSection("today");

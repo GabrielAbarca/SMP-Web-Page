@@ -14,6 +14,7 @@
  *     className: string, subjectName: string, color: string,
  *     gradeLevel: string } | null,
  *   loaded: { today: boolean, subjects: boolean, settings: boolean },
+ *   contextError: any,
  * }}
  */
 export const state = {
@@ -25,4 +26,7 @@ export const state = {
   myClassesCache: [],
   currentClass: null,
   loaded: { today: false, subjects: false, settings: false },
+  // Set when resolveTeacherContext fails, so a null teacherId can be told
+  // apart from an account that owns no teachers row.
+  contextError: null,
 };

@@ -7,7 +7,12 @@ import { skeletonCards } from "../ui.js";
 import { db } from "../teacherData/index.js";
 import { state } from "../teacherState.js";
 import { jsDayToDow } from "../scheduleLogic.js";
-import { renderErrorBlock, escapeHtml } from "../teacherTableHelpers.js";
+import {
+  renderErrorBlock,
+  renderContextGap,
+  escapeHtml,
+} from "../teacherTableHelpers.js";
+import { resolveTeacherContext, hasTeacherContext } from "../teacherContext.js";
 import { className } from "../teacherFormat.js";
 import { openClassWorkspace } from "./classWorkspace.js";
 
@@ -15,20 +20,23 @@ export async function loadToday() {
   const grid = document.getElementById("today-grid");
   const subtitle = document.getElementById("today-subtitle");
   if (!grid) return;
-  if (!state.activeYear || !state.teacherId) {
+  if (!hasTeacherContext()) {
+    // showSection latches loaded.today before calling this, so clear it or a
+    // context that recovers later can never be drawn.
+    state.loaded.today = false;
     // This early return skips the subtitle write further down, so clear the
     // static "Loading your day…" placeholder here — otherwise the header claims
     // the page is still loading forever while the grid says it gave up.
     if (subtitle) {
-      subtitle.textContent = state.teacherId
-        ? ""
-        : t("admin.today.noTeacherRecordTitle");
+      subtitle.textContent =
+        !state.contextError && state.teacherId == null
+          ? t("admin.today.noTeacherRecordTitle")
+          : "";
     }
-    grid.innerHTML = `<div class="loading-cell">${
-      state.teacherId
-        ? t("admin.today.contextNotLoaded")
-        : t("admin.today.noTeacherRecordBody")
-    }</div>`;
+    renderContextGap(grid, async () => {
+      await resolveTeacherContext(db);
+      loadToday();
+    });
     return;
   }
 

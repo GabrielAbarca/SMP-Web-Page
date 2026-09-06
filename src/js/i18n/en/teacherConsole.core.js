@@ -25,8 +25,9 @@ export default {
   students: { one: "{count} student", other: "{count} students" },
   today: {
     loading: "Loading your day…",
-    contextNotLoaded: "Teacher context not loaded.",
     noTeacherRecordTitle: "No teacher record",
+    noActiveYear:
+      "No active school year yet, so there is nothing to show. An admin can activate one from the admin console.",
     noTeacherRecordBody:
       "This account isn't linked to a teacher, so there are no classes to show here. Admins can manage the school from the admin console.",
     weekend: "No classes today — it's the weekend.",

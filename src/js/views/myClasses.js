@@ -6,20 +6,24 @@ import { t, tn } from "../i18n.js";
 import { skeletonCardItems } from "../ui.js";
 import { db } from "../teacherData/index.js";
 import { state } from "../teacherState.js";
-import { renderErrorBlock, escapeHtml } from "../teacherTableHelpers.js";
+import {
+  renderErrorBlock,
+  renderContextGap,
+  escapeHtml,
+} from "../teacherTableHelpers.js";
+import { resolveTeacherContext, hasTeacherContext } from "../teacherContext.js";
 import { className } from "../teacherFormat.js";
 import { openClassWorkspace } from "./classWorkspace.js";
 
 export async function loadMyClasses() {
   const grid = document.getElementById("myclasses-grid");
   const subtitle = document.getElementById("myclasses-subtitle");
-  if (!state.teacherId || !state.activeYear) {
+  if (!hasTeacherContext()) {
     if (subtitle) subtitle.textContent = "";
-    grid.innerHTML = `<div class="loading-cell">${
-      state.teacherId
-        ? t("admin.today.contextNotLoaded")
-        : t("admin.today.noTeacherRecordBody")
-    }</div>`;
+    renderContextGap(grid, async () => {
+      await resolveTeacherContext(db);
+      loadMyClasses();
+    });
     return;
   }
   grid.innerHTML = skeletonCardItems(3);

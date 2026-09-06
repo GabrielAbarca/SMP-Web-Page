@@ -7,6 +7,8 @@ import { t } from "../i18n.js";
 import { db } from "../teacherData/index.js";
 import { state } from "../teacherState.js";
 import { renderSettings } from "../settings.js";
+import { renderContextGap } from "../teacherTableHelpers.js";
+import { resolveTeacherContext } from "../teacherContext.js";
 import { formatDate } from "../teacherFormat.js";
 
 // Read-only Settings for the teacher context. Resolves the demo teacher record
@@ -26,9 +28,13 @@ export async function loadSettings() {
   }
 
   if (!teacher) {
-    // No teachers row for this account — the shared renderer needs one, so
-    // explain rather than dereferencing a null record.
-    root.innerHTML = `<div class="loading-cell">${t("admin.today.noTeacherRecordBody")}</div>`;
+    // No record to render: either the account owns no teachers row — an
+    // expected state — or the id never resolved, which is retryable.
+    state.loaded.settings = false;
+    renderContextGap(root, async () => {
+      await resolveTeacherContext(db);
+      loadSettings();
+    });
     return;
   }
 
