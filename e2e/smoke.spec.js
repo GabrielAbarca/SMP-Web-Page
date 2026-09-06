@@ -200,6 +200,44 @@ test.describe("teacher console", () => {
     expect(writes).toEqual([]);
   });
 
+  // The split of teacher.js dropped the bootstrap's showSection("today"), so
+  // the tab that loads first sat on its static skeleton until the user clicked
+  // away and back. Nothing below clicks the sidebar: the grid must resolve on
+  // its own.
+  test("renders Today on first paint, without a tab switch", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, teacherFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/teacher.html");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("teacher-name")?.textContent?.includes("Sofía"),
+      { timeout: 10_000 },
+    );
+
+    // Either the day's cards or the no-classes/weekend state — the fixture
+    // schedules cover weekdays only, and both prove the skeleton was replaced.
+    await expect(
+      page.locator("#today-grid .today-list, #today-grid .empty-state"),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#today-grid .skeleton")).toHaveCount(0);
+    // The header stops claiming the page is still loading.
+    await expect(page.locator("#today-subtitle")).not.toBeEmpty();
+    await expect(page.locator("#today-subtitle")).not.toContainText(
+      "Loading your day",
+    );
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
+
   test("applies an MEP component scheme to a gradebook with zero writes", async ({
     page,
     context,

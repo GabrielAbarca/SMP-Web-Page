@@ -120,3 +120,9 @@ try {
   console.error("Failed to resolve teacher context:", err);
   showToast(t("admin.toast.contextFailed"), "error");
 }
+
+// Land on Today. Deliberately after the context resolution above (and outside
+// the try, so a failed resolve still replaces the skeleton with a message):
+// showSection latches state.loaded.today before it calls the loader, and
+// loadToday bails early without a teacher id or active year.
+showSection("today");
