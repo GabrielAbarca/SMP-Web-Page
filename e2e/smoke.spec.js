@@ -174,6 +174,38 @@ test.describe("student portal", () => {
     // Student portal is read-only; nothing should write to the backend.
     expect(writes).toEqual([]);
   });
+
+  test("attendance names the subject, falling back to the section", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, studentFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/");
+    await page.waitForFunction(
+      () =>
+        document.getElementById("welcome-name")?.textContent?.includes("Ana"),
+      { timeout: 10_000 },
+    );
+    await page.click('aside a[data-page="attendance"]');
+    await page.waitForSelector("#attendance-body tr");
+
+    const body = page.locator("#attendance-body");
+    // Two records on adjacent days are now told apart by subject rather than
+    // both reading "7A".
+    await expect(body).toContainText("Mathematics");
+    await expect(body).toContainText("Spanish");
+    // The pre-migration row has no subject to show, so it keeps the section.
+    await expect(body).toContainText("7A");
+
+    expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
 });
 
 test.describe("teacher console", () => {
@@ -315,6 +347,67 @@ test.describe("teacher console", () => {
     await expect(page.locator("#categories-body")).toContainText("Pruebas");
 
     expect(errors).toEqual([]);
+    expect(writes).toEqual([]);
+  });
+
+  test("attendance is per subject: two teachers on one section do not collide", async ({
+    page,
+    context,
+  }) => {
+    const writes = await routeSupabase(context, teacherFix);
+    await context.addInitScript(
+      ([key, value]) => localStorage.setItem(key, value),
+      [`sb-${REF}-auth-token`, sessionSeed()],
+    );
+    const errors = trackErrors(page);
+
+    await page.goto("/teacher.html");
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("teacher-name")
+          ?.textContent?.includes("Sof\u00eda"),
+      { timeout: 10_000 },
+    );
+
+    // Ana sorts first (Garc\u00eda before Mart\u00ednez), so she is row 0 on both sheets.
+    const anaStatus = (status) =>
+      page.locator(
+        `.attendance-status-btn[data-idx="0"][data-status="${status}"]`,
+      );
+
+    const openAttendance = async (subject) => {
+      await page.click('aside a[data-page="myclasses"]');
+      await page.waitForSelector(".class-card");
+      await page.locator(".class-card", { hasText: subject }).click();
+      await page.locator('.class-subtab[data-tab="attendance"]').click();
+      await page.waitForSelector(".attendance-status-btn");
+    };
+
+    // The fixture gives Ana a different status under each subject on the same
+    // day \u2014 impossible under the old (student_id, date) unique constraint.
+    await openAttendance("Mathematics");
+    await expect(anaStatus("present")).toHaveClass(/active/);
+
+    await anaStatus("late").click();
+    await page.click("#btn-save-attendance");
+    // Not a count: the first write in a demo session also raises the one-time
+    // sandbox notice, so two toasts is the normal case here.
+    await expect(page.locator("#toast-container .toast").first()).toBeVisible();
+
+    // The edit must not reach into the other subject's register. This is the
+    // assertion that fails when the overlay is keyed by class instead of by
+    // class-subject-teacher.
+    await openAttendance("Spanish");
+    await expect(anaStatus("absent")).toHaveClass(/active/);
+    await expect(anaStatus("late")).not.toHaveClass(/active/);
+
+    // ...and the edit survived on the subject it was made under.
+    await openAttendance("Mathematics");
+    await expect(anaStatus("late")).toHaveClass(/active/);
+
+    expect(errors).toEqual([]);
+    // Demo mode: the save recorded a local delta and never left the browser.
     expect(writes).toEqual([]);
   });
 

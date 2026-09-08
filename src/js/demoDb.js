@@ -103,7 +103,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
   // Upsert tables, keyed by their DB conflict key. Values hold the exact
   // payload the console sent, so reads can serve them back verbatim.
   const gradeDeltas = new Map(); //  "assignmentId|studentId"
-  const attendanceDeltas = new Map(); //  "studentId|classId|date"
+  const attendanceDeltas = new Map(); //  "studentId|cstId|date"
   const postedDeltas = new Map(); //  "studentId|cstId|periodId"
 
   // ── Context caches (filled as reads pass through) ───────────
@@ -531,8 +531,8 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
     },
 
     // ── Attendance ──────────────────────────────────────────
-    async fetchAttendanceSheet(classId, date) {
-      const sheet = await realDb.fetchAttendanceSheet(classId, date);
+    async fetchAttendanceSheet(classId, cstId, date) {
+      const sheet = await realDb.fetchAttendanceSheet(classId, cstId, date);
       sheet.forEach((row) =>
         seenStudents.set(row.id, { class_id: classId, status: "active" }),
       );
@@ -563,7 +563,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
           });
       });
       rows.forEach((row) => {
-        const d = attendanceDeltas.get(`${row.id}|${classId}|${date}`);
+        const d = attendanceDeltas.get(`${row.id}|${cstId}|${date}`);
         if (d) {
           row.status = d.status;
           row.notes = d.notes ?? "";
@@ -572,11 +572,18 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
       return rows.sort(byLastName);
     },
 
-    async upsertAttendance(classId, date, rows, recordedBy) {
+    async upsertAttendance(classId, cstId, date, rows, recordedBy) {
+      // Mirrors the real writer: a null cstId cannot upsert, so a demo session
+      // must fail exactly where a school project would rather than quietly
+      // accumulating rows the sheet can never read back.
+      if (cstId == null) {
+        throw new Error("upsertAttendance: missing class_subject_teacher_id");
+      }
       rows.forEach((r) => {
-        attendanceDeltas.set(`${r.id}|${classId}|${date}`, {
+        attendanceDeltas.set(`${r.id}|${cstId}|${date}`, {
           student_id: r.id,
           class_id: classId,
+          class_subject_teacher_id: cstId,
           date,
           status: r.status,
           notes: r.notes || null,
@@ -587,14 +594,14 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
     },
 
     // The wrapped reads below select too few columns to dedupe local upserts
-    // (attendance is keyed by student+class+date), so they run their own
+    // (attendance is keyed by student+subject+date), so they run their own
     // read-only SELECT with the key columns included.
     async fetchStudentAttendance(studentId) {
       let server = [];
       if (studentId > 0) {
         const { data, error } = await supabase
           .from("attendance")
-          .select("status, date, class_id")
+          .select("status, date, class_subject_teacher_id")
           .eq("student_id", studentId);
         if (error) throw error;
         server = data ?? [];
@@ -602,7 +609,7 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
       const out = [];
       const covered = new Set();
       server.forEach((r) => {
-        const key = `${studentId}|${r.class_id}|${r.date}`;
+        const key = `${studentId}|${r.class_subject_teacher_id}|${r.date}`;
         const d = attendanceDeltas.get(key);
         out.push({ status: d ? d.status : r.status });
         if (d) covered.add(key);
@@ -614,24 +621,24 @@ export function wrapDbForDemo(realDb, { onWrite = () => {} } = {}) {
       return out;
     },
 
-    async fetchClassAttendance(classId) {
+    async fetchCstAttendance(cstId) {
       const { data, error } = await supabase
         .from("attendance")
         .select("student_id, status, date")
-        .eq("class_id", classId);
+        .eq("class_subject_teacher_id", cstId);
       if (error) throw error;
       const out = [];
       const covered = new Set();
       (data ?? []).forEach((r) => {
         if (students.deletes.has(r.student_id)) return;
-        const key = `${r.student_id}|${classId}|${r.date}`;
+        const key = `${r.student_id}|${cstId}|${r.date}`;
         const d = attendanceDeltas.get(key);
         out.push({ student_id: r.student_id, status: d ? d.status : r.status });
         if (d) covered.add(key);
       });
       attendanceDeltas.forEach((d, key) => {
         if (
-          d.class_id === classId &&
+          d.class_subject_teacher_id === cstId &&
           !covered.has(key) &&
           !students.deletes.has(d.student_id)
         )

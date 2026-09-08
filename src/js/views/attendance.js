@@ -1,6 +1,7 @@
 import { t, formatDate } from "../i18n.js";
 import { fetchStudentAttendance } from "../supabaseQueries.js";
 import { state } from "../studentState.js";
+import { escapeHtml } from "./viewHelpers.js";
 
 export async function initAttendanceView() {
   const records = await fetchStudentAttendance(state.studentId);
@@ -53,12 +54,19 @@ export async function initAttendanceView() {
       // fetchStudentAttendance attaches the recorder as `r.teacher` (singular);
       // reading `r.teachers` here left this column always blank ("—").
       const teacher = r.teacher;
+      // Attendance is per subject. Rows predating that migration carry no
+      // class_subject_teacher_id, and the section name is the only label they
+      // have — so fall back to it rather than showing them as unattributed.
+      const subject =
+        r.class_subject_teachers?.subjects?.name ??
+        r.classes?.display_name ??
+        "—";
       return `<tr>
       <td>${formatDate(r.date)}</td>
-      <td>${r.classes?.display_name ?? "—"}</td>
+      <td>${escapeHtml(subject)}</td>
       <td><span class="status-badge ${statusCls}">${attendanceLabel(r.status)}</span></td>
-      <td>${teacher ? `${teacher.first_name} ${teacher.last_name}` : "—"}</td>
-      <td>${r.notes ?? "—"}</td>
+      <td>${teacher ? escapeHtml(`${teacher.first_name} ${teacher.last_name}`) : "—"}</td>
+      <td>${escapeHtml(r.notes ?? "—")}</td>
     </tr>`;
     })
     .join("");

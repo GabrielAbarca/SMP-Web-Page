@@ -78,6 +78,7 @@ async function loadAttendanceSheet(date) {
   try {
     _attendanceRows = await db.fetchAttendanceSheet(
       state.currentClass.classId,
+      state.currentClass.cstId,
       date,
     );
     _attendanceRows.forEach((row) => {
@@ -153,6 +154,7 @@ async function saveAttendance() {
   try {
     await db.upsertAttendance(
       state.currentClass.classId,
+      state.currentClass.cstId,
       date,
       changed,
       state.teacherId,
@@ -181,7 +183,7 @@ async function loadAbsenceSummary() {
   if (!container) return;
   try {
     const [rows, roster] = await Promise.all([
-      db.fetchClassAttendance(state.currentClass.classId),
+      db.fetchCstAttendance(state.currentClass.cstId),
       db.fetchRoster(state.currentClass.classId),
     ]);
     renderAbsenceSummary(rows, roster, container);

@@ -62,11 +62,55 @@ function seed() {
   for (const k of Object.keys(fixtures)) delete fixtures[k];
   for (const k of Object.keys(errors)) delete errors[k];
   calls.length = 0;
+  // Rows 1 and 2 are the same DAY under two different subjects — the shape the
+  // per-subject constraint now allows and the old (student_id, date) unique
+  // made impossible. Row 4 predates the migration and carries no subject.
   fixtures.attendance = [
-    { id: 1, student_id: 101, status: "present", recorded_by: 7 },
-    { id: 2, student_id: 101, status: "late", recorded_by: 8 },
-    { id: 3, student_id: 101, status: "absent", recorded_by: 7 },
-    { id: 4, student_id: 101, status: "absent", recorded_by: 7 },
+    {
+      id: 1,
+      student_id: 101,
+      date: "2026-09-07",
+      status: "present",
+      recorded_by: 7,
+      classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: {
+        id: 11,
+        subjects: { id: 31, name: "Mathematics", code: "MATH7" },
+      },
+    },
+    {
+      id: 2,
+      student_id: 101,
+      date: "2026-09-07",
+      status: "late",
+      recorded_by: 8,
+      classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: {
+        id: 12,
+        subjects: { id: 32, name: "Spanish", code: "ESP7" },
+      },
+    },
+    {
+      id: 3,
+      student_id: 101,
+      date: "2026-09-04",
+      status: "absent",
+      recorded_by: 7,
+      classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: {
+        id: 11,
+        subjects: { id: 31, name: "Mathematics", code: "MATH7" },
+      },
+    },
+    {
+      id: 4,
+      student_id: 101,
+      date: "2026-09-03",
+      status: "absent",
+      recorded_by: 7,
+      classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: null,
+    },
   ];
   fixtures.teachers_directory = [
     { id: 7, first_name: "Sofía", last_name: "Ramírez" },
@@ -101,13 +145,33 @@ describe("fetchStudentAttendance (N+1 fix)", () => {
     expect(rows.find((r) => r.id === 1).teacher.last_name).toBe("Ramírez");
     expect(rows.find((r) => r.id === 2).teacher.last_name).toBe("López");
   });
+
+  it("keeps both subjects' records for one day instead of collapsing them", async () => {
+    const rows = await fetchStudentAttendance(101);
+    const sameDay = rows.filter((r) => r.date === "2026-09-07");
+    expect(sameDay).toHaveLength(2);
+    expect(
+      sameDay.map((r) => r.class_subject_teachers.subjects.name).sort(),
+    ).toEqual(["Mathematics", "Spanish"]);
+  });
+
+  it("leaves a pre-migration row without a subject, for the view to fall back on", async () => {
+    const rows = await fetchStudentAttendance(101);
+    const legacy = rows.find((r) => r.id === 4);
+    expect(legacy.class_subject_teachers).toBeNull();
+    // The section name is the only label such a row can carry.
+    expect(legacy.classes.display_name).toBe("7A");
+  });
 });
 
 describe("fetchDashboardStats aggregation", () => {
   it("computes attendance %, grade average and a next class", async () => {
     const stats = await fetchDashboardStats(101, 21);
 
-    // present + late = 2 of 4 → 50%
+    // present + late = 2 of 4 → 50%. The denominator counts attendance ROWS,
+    // which are now subject-periods rather than days — MEP counts ausencias
+    // por leccion, so this is the intended unit. Pinned so a change is
+    // deliberate rather than accidental.
     expect(stats.attendance).toEqual({ present: 2, total: 4, percentage: 50 });
     // (90 + 80) / 2 = 85, null excluded
     expect(stats.grades).toEqual({ average: 85, count: 2 });

@@ -14,11 +14,19 @@
 --
 -- WHY IT IS SAFE TO RE-RUN, AND WHY IT NEVER GOES STALE
 --   The window is derived from current_date, not hardcoded: every run tops up
---   the month it is run in. `on conflict do nothing` against the two uniques
---   on attendance — (student_id, date) and (student_id, class_id, date) —
---   makes a repeat run a no-op rather than a duplicate-key failure, and means
---   this never overwrites a row the demo already had (including the 21
---   originals, which it leaves exactly as they are).
+--   the month it is run in. Rows that already exist are skipped by an explicit
+--   NOT EXISTS anti-join, so a repeat run is a no-op rather than a duplicate,
+--   and the 21 originals from demo_seed_costa_rica.sql are left exactly as
+--   they are.
+--
+--   The anti-join replaces a bare `on conflict do nothing`, which stopped
+--   working when attendance became per-subject. That form arbitrates against
+--   whatever unique index exists — now (student_id, class_subject_teacher_id,
+--   date) — and Postgres treats NULLs as DISTINCT, so two rows with a null
+--   class_subject_teacher_id never conflict. A seed writing null subjects
+--   would therefore have duplicated the whole month on every re-run. The
+--   anti-join uses `is not distinct from`, which compares nulls as equal and
+--   is correct whether or not a row carries a subject.
 --
 -- WHY THE SPREAD IS DETERMINISTIC
 --   Statuses come from a hash of (student_id, date), not random(). Two
@@ -104,34 +112,61 @@ begin
       from generate_series(win_from, win_to, interval '1 day') as d
      where extract(isodow from d) between 1 and 5   -- Mon-Fri
   ),
+  -- Attendance is per subject, so every row needs a class_subject_teacher_id.
+  -- Resolved the same way incremental_attendance_by_subject.sql's backfill
+  -- does — the section's homeroom teacher's CST for the active year, lowest id
+  -- as a deterministic tie-break — so the seed and the backfill agree and a
+  -- re-run collides with the rows the backfill produced instead of doubling
+  -- them. A section with no homeroom teacher yields null and is skipped:
+  -- attendance that cannot name its subject is not worth seeding.
   roster as (
-    select id as student_id, class_id
-      from public.students
-     where status = 'active' and class_id is not null
+    select
+      s.id as student_id,
+      s.class_id,
+      (select cst.id
+         from public.class_subject_teachers cst
+         join public.classes c on c.id = s.class_id
+        where cst.class_id = s.class_id
+          and cst.school_year_id = c.school_year_id
+          and cst.teacher_id = c.homeroom_teacher_id
+        order by cst.id
+        limit 1) as cst_id
+      from public.students s
+     where s.status = 'active' and s.class_id is not null
   ),
   register as (
     select
       r.student_id,
       r.class_id,
+      r.cst_id,
       s.day,
       -- hashtext can be negative; abs() then mod for a stable 0-99 bucket.
       (abs(hashtext(r.student_id::text || s.day::text)) % 100) as bucket
       from roster r cross join school_days s
+     where r.cst_id is not null
   ),
   ins as (
-    insert into public.attendance (student_id, class_id, date, status)
+    insert into public.attendance
+      (student_id, class_id, class_subject_teacher_id, date, status)
     select
-      student_id,
-      class_id,
-      day,
+      reg.student_id,
+      reg.class_id,
+      reg.cst_id,
+      reg.day,
       case
-        when bucket < 91 then 'present'
-        when bucket < 95 then 'late'
-        when bucket < 98 then 'absent'
+        when reg.bucket < 91 then 'present'
+        when reg.bucket < 95 then 'late'
+        when reg.bucket < 98 then 'absent'
         else 'excused'
       end
-      from register
-    on conflict do nothing
+      from register reg
+     where not exists (
+       select 1
+         from public.attendance a
+        where a.student_id = reg.student_id
+          and a.date = reg.day
+          and a.class_subject_teacher_id is not distinct from reg.cst_id
+     )
     returning date
   )
   select
@@ -177,8 +212,8 @@ begin
   -- The 21 rows demo_seed_costa_rica.sql pins to those two dates survived.
   -- A floor, not an exact count: August 6 and 7 2026 are ordinary weekdays, so
   -- when this seed runs during that month it legitimately fills the gaps on
-  -- them too. What `on conflict do nothing` guarantees is that it never
-  -- rewrites or removes one of the originals, which is what this checks.
+  -- them too. What the anti-join guarantees is that it never rewrites or
+  -- removes one of the originals, which is what this checks.
   select count(*) into n from public.attendance
    where date in ('2026-08-06', '2026-08-07');
   if n < 21 then

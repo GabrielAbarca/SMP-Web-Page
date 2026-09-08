@@ -134,7 +134,10 @@ export async function fetchStudentAttendance(studentId) {
     .select(
       `
       id, date, status, notes, recorded_by,
-      classes ( id, display_name )
+      classes ( id, display_name ),
+      class_subject_teachers!class_subject_teacher_id (
+        id, subjects!subject_id ( id, name, code, color )
+      )
     `,
     )
     .eq("student_id", studentId)
