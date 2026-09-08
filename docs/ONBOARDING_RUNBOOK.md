@@ -83,11 +83,24 @@ write. Id columns use identity (equivalent to the demo's sequences).
 >   `Authenticated can read teachers`. Dropping only one name leaves the
 >   blanket policy, and the PII, in place.
 > - [`supabase/schema/incremental_attendance_by_subject.sql`](../supabase/schema/incremental_attendance_by_subject.sql)
->   — adds `attendance.class_subject_teacher_id` (REAC 2026 needs attendance
->   per subject, not per day) and replaces the old `unique (student_id, date)`
->   / `unique (student_id, class_id, date)` constraints with
->   `unique (student_id, class_subject_teacher_id, date)`, best-effort
->   backfilling existing rows against each class's homeroom teacher.
+>   — **required before deploying the app version that writes per-subject
+>   attendance.** Adds `attendance.class_subject_teacher_id` (REAC 2026 needs
+>   attendance per subject, not per day) and replaces the old
+>   `unique (student_id, date)` / `unique (student_id, class_id, date)`
+>   constraints with `unique (student_id, class_subject_teacher_id, date)`,
+>   best-effort backfilling existing rows against each class's homeroom
+>   teacher. Against a project still on the old shape the teacher console's
+>   attendance tab fails with 42703 on read and 42P10 on save, so apply this
+>   first, not after.
+>   **The constraint drop matches on column set, not on constraint name.** An
+>   earlier version dropped two hardcoded names and missed the demo project's
+>   `attendance_student_class_date_unique` (created out of band), which left
+>   `unique (student_id, class_id, date)` in place and silently preserved the
+>   two-teacher collision the file exists to remove. Re-running the current
+>   version on a project that took the earlier one cleans that up.
+>   Verify afterwards that `attendance` has exactly one unique constraint:
+>   `select conname, pg_get_constraintdef(oid) from pg_constraint
+where conrelid = 'public.attendance'::regclass and contype = 'u';`
 >
 > All of them are already included in `school_schema.sql`, so a fresh project
 > does **not** need them separately. Verify this before trusting it on a new

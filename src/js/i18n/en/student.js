@@ -67,7 +67,7 @@ export default {
   },
   attendance: {
     date: "Date",
-    class: "Class",
+    subject: "Subject",
     status: "Status",
     recordedBy: "Recorded By",
     notes: "Notes",

@@ -10,6 +10,7 @@ const { wrapDbForDemo, computePeriodScore } =
 let realDb;
 let writes;
 let db;
+let serverAttendance;
 
 beforeEach(() => {
   const server = {
@@ -30,7 +31,18 @@ beforeEach(() => {
       { name: "Pruebas", weight: 40, item_order: 2 },
     ],
     fetchCategories: async () => [],
+    // The sheet the overlay wraps: roster rows carrying whatever the server
+    // already has for THIS subject on THIS date.
+    fetchAttendanceSheet: async (classId, cstId, date) =>
+      server[classId].map((s) => ({
+        id: s.id,
+        first_name: s.first_name,
+        last_name: s.last_name,
+        status: serverAttendance[`${s.id}|${cstId}|${date}`] ?? null,
+        notes: "",
+      })),
   };
+  serverAttendance = {};
   writes = 0;
   db = wrapDbForDemo(realDb, { onWrite: () => writes++ });
 });
@@ -230,5 +242,71 @@ describe("computePeriodScore matches the student_period_grades view", () => {
       { assignment_id: 999, score: 0 }, // deleted/other period
     ];
     expect(computePeriodScore(assignments, grades, [])).toBe(75);
+  });
+});
+
+// The defect this suite exists to pin: before attendance carried a subject,
+// the overlay keyed its deltas on (student, class, date). Two teachers sharing
+// a section therefore wrote to the same key, and whoever saved second silently
+// replaced the first one's register. The demo reproduced that faithfully
+// because demoDb mirrored the schema's old constraint.
+describe("demoDb attendance overlay — one register per subject", () => {
+  const DATE = "2026-09-07";
+
+  it("keeps two subjects' registers for the same student and day apart", async () => {
+    await db.upsertAttendance(21, 11, DATE, [{ id: 101, status: "absent" }], 7);
+    await db.upsertAttendance(
+      21,
+      12,
+      DATE,
+      [{ id: 101, status: "present" }],
+      8,
+    );
+
+    const maths = await db.fetchAttendanceSheet(21, 11, DATE);
+    const spanish = await db.fetchAttendanceSheet(21, 12, DATE);
+
+    expect(maths.find((r) => r.id === 101).status).toBe("absent");
+    expect(spanish.find((r) => r.id === 101).status).toBe("present");
+    expect(writes).toBe(2);
+  });
+
+  it("does not leak one subject's edit into another subject's sheet", async () => {
+    await db.upsertAttendance(21, 11, DATE, [{ id: 101, status: "absent" }], 7);
+    const spanish = await db.fetchAttendanceSheet(21, 12, DATE);
+    expect(spanish.find((r) => r.id === 101).status).toBeNull();
+  });
+
+  it("still overwrites within the same subject", async () => {
+    await db.upsertAttendance(21, 11, DATE, [{ id: 101, status: "absent" }], 7);
+    await db.upsertAttendance(21, 11, DATE, [{ id: 101, status: "late" }], 7);
+    const maths = await db.fetchAttendanceSheet(21, 11, DATE);
+    expect(maths.find((r) => r.id === 101).status).toBe("late");
+  });
+
+  it("overlays a delta on top of a status the server already had", async () => {
+    serverAttendance[`101|11|${DATE}`] = "present";
+    expect(
+      (await db.fetchAttendanceSheet(21, 11, DATE)).find((r) => r.id === 101)
+        .status,
+    ).toBe("present");
+    await db.upsertAttendance(
+      21,
+      11,
+      DATE,
+      [{ id: 101, status: "excused" }],
+      7,
+    );
+    expect(
+      (await db.fetchAttendanceSheet(21, 11, DATE)).find((r) => r.id === 101)
+        .status,
+    ).toBe("excused");
+  });
+
+  it("refuses a null subject, exactly like the real writer", async () => {
+    await expect(
+      db.upsertAttendance(21, null, DATE, [{ id: 101, status: "absent" }], 7),
+    ).rejects.toThrow(/class_subject_teacher_id/);
+    expect(writes).toBe(0);
   });
 });

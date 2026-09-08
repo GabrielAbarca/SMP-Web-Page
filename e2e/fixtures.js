@@ -8,6 +8,12 @@ export const SUPA = "https://demo.supabase.co";
 export const REF = "demo";
 export const UID = "00000000-0000-4000-8000-000000000001";
 
+// The date the Attendance tab opens on. teacherAttendance.js derives it with
+// toISOString().split("T")[0] — UTC, not local — so it is computed the same
+// way here rather than with a local-time helper, or the two drift near
+// midnight and the seeded register lands on a day the tab never shows.
+export const TODAY = new Date().toISOString().split("T")[0];
+
 const cls = {
   id: 21,
   section: "A",
@@ -111,6 +117,15 @@ export const studentFix = {
       status: "present",
       recorded_by: 7,
       classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: {
+        id: 11,
+        subjects: {
+          id: 31,
+          name: "Mathematics",
+          code: "MATH7",
+          color: "#7380ec",
+        },
+      },
     },
     {
       id: 602,
@@ -119,7 +134,13 @@ export const studentFix = {
       status: "late",
       recorded_by: 8,
       classes: { id: 21, display_name: "7A" },
+      class_subject_teachers: {
+        id: 12,
+        subjects: { id: 32, name: "Spanish", code: "ESP7", color: "#41f1b6" },
+      },
     },
+    // Deliberately carries no subject: a row written before the per-subject
+    // migration. The view must fall back to the section name for it.
     {
       id: 603,
       student_id: 101,
@@ -176,6 +197,20 @@ export const teacherFix = {
       },
       subjects: { id: 31, name: "Mathematics", color: "#7380ec" },
     },
+    {
+      id: 12,
+      class_id: 21,
+      subject_id: 32,
+      teacher_id: 7,
+      school_year_id: 1,
+      classes: {
+        id: 21,
+        display_name: "7A",
+        section: "A",
+        grade_levels: { name: "7th Grade" },
+      },
+      subjects: { id: 32, name: "Spanish", color: "#41f1b6" },
+    },
   ],
   students: [
     {
@@ -196,9 +231,34 @@ export const teacherFix = {
     },
   ],
   schedules: studentFix.schedules,
-  subjects: [{ id: 31, name: "Mathematics", code: "MATH7", color: "#7380ec" }],
+  subjects: [
+    { id: 31, name: "Mathematics", code: "MATH7", color: "#7380ec" },
+    { id: 32, name: "Spanish", code: "ESP7", color: "#41f1b6" },
+  ],
   rooms: [{ id: 41, name: "Room 101", capacity: 30 }],
-  attendance: [],
+  // Ana on the same day under both subjects, with different statuses. Before
+  // attendance carried a subject this pair could not exist, and the second
+  // teacher to save silently replaced the first.
+  attendance: [
+    {
+      id: 801,
+      student_id: 101,
+      class_id: 21,
+      class_subject_teacher_id: 11,
+      date: TODAY,
+      status: "present",
+      notes: "",
+    },
+    {
+      id: 802,
+      student_id: 101,
+      class_id: 21,
+      class_subject_teacher_id: 12,
+      date: TODAY,
+      status: "absent",
+      notes: "",
+    },
+  ],
   assignments: [],
   assignment_grades: [],
   student_period_grades: [],
